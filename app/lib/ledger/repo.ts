@@ -1,9 +1,20 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { DB } from "@/app/lib/db";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
+import * as schema from "@/app/lib/schema";
 import { transactions, txType, users } from "@/app/lib/schema";
 import { MissingUserError } from "@/app/lib/errors";
 
-type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
+// Driver-agnostic transaction handle: the authoritative writer runs on the
+// production postgres-js `db` and on the PGlite test db, whose Drizzle types
+// differ only by the query-result HKT. Keeping `TQueryResult` generic lets a
+// single `applyEntry` accept either without `as any`.
+export type LedgerTx = PgTransaction<
+  PgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+type Tx = LedgerTx;
 type Type = (typeof txType.enumValues)[number];
 
 function reqUser(userId: string): string {
