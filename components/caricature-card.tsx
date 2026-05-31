@@ -42,9 +42,11 @@ export function CaricatureCard({
         <h3 className="mt-3 font-display text-2xl font-black leading-tight text-foreground">
           {politician.name}
         </h3>
-        <p className="mt-0.5 text-sm italic text-muted-foreground">
-          {politician.tagline}
-        </p>
+        {politician.tagline ? (
+          <p className="mt-0.5 text-sm italic text-muted-foreground">
+            {politician.tagline}
+          </p>
+        ) : null}
 
         <dl className="mt-3 divide-y divide-border rounded-lg bg-muted/60 px-3">
           {politician.facts.map((f) => (

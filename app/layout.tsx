@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Frank_Ruhl_Libre, Heebo } from "next/font/google";
 import "./globals.css";
+import { SiteHeader } from "@/components/site-header";
 
 // Display — the classic Hebrew newspaper serif, for op-ed headlines.
 const frankRuhl = Frank_Ruhl_Libre({
@@ -31,7 +32,10 @@ export default function RootLayout({
       dir="rtl"
       className={`${frankRuhl.variable} ${heebo.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <SiteHeader />
+        {children}
+      </body>
     </html>
   );
 }

@@ -4,7 +4,6 @@ import { currentUser, markets } from "@/lib/mock-data";
 import { leaderboard } from "@/lib/leaderboard";
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { SiteHeader } from "@/components/site-header";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -27,7 +26,6 @@ export default async function Home({
 
   return (
     <>
-      <SiteHeader />
       <main className="flex-1">
         {/* HERO */}
         <section className="border-b border-border bg-muted">
