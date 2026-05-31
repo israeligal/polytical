@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, afterEach } from "vitest";
 import { buildODataUrl, fetchAll, PARLIAMENT_BASE } from "./odata";
-import type { KnsFaction } from "./odata-types";
+import type { KnsFaction, ODataPage } from "./odata-types";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -31,8 +31,8 @@ describe("buildODataUrl", () => {
 
 describe("fetchAll paging", () => {
   test("follows d.__next until exhausted and concatenates results", async () => {
-    const page1 = { d: { results: [{ FactionID: 1, Name: "a" }], __next: `${PARLIAMENT_BASE}KNS_Faction?%24skiptoken=1` } };
-    const page2 = { d: { results: [{ FactionID: 2, Name: "b" }] } }; // no __next -> stop
+    const page1: ODataPage<KnsFaction> = { d: { results: [{ FactionID: 1, Name: "a" } as KnsFaction], __next: `${PARLIAMENT_BASE}KNS_Faction?%24skiptoken=1` } };
+    const page2: ODataPage<KnsFaction> = { d: { results: [{ FactionID: 2, Name: "b" } as KnsFaction] } }; // no __next -> stop
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page2 });
