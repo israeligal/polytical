@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "one_grant_per_user" ON "transactions" USING btree ("userId") WHERE "transactions"."type" = 'grant';

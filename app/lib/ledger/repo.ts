@@ -33,6 +33,21 @@ export async function lockBalance({ tx, userId }: { tx: Tx; userId: string }): P
   return row.balance;
 }
 
+/**
+ * Locks the user row FOR UPDATE and returns the FULL row (balance + lastFaucetAt).
+ * Take this BEFORE any check-then-act guard (grant idempotency, faucet cooldown)
+ * so concurrent transactions serialize on the row instead of racing a stale read.
+ */
+export async function lockUser({ tx, userId }: { tx: Tx; userId: string }) {
+  const [row] = await tx
+    .select()
+    .from(users)
+    .where(eq(users.id, reqUser(userId)))
+    .for("update");
+  if (!row) throw new MissingUserError();
+  return row;
+}
+
 export async function writeBalance({
   tx,
   userId,
@@ -47,6 +62,22 @@ export async function writeBalance({
   await tx
     .update(users)
     .set({ balance, ...(lastFaucetAt ? { lastFaucetAt } : {}), updatedAt: new Date() })
+    .where(eq(users.id, reqUser(userId)));
+}
+
+/** Sets ONLY lastFaucetAt — keeps balance written exactly once, by applyEntry. */
+export async function setLastFaucetAt({
+  tx,
+  userId,
+  at,
+}: {
+  tx: Tx;
+  userId: string;
+  at: Date;
+}): Promise<void> {
+  await tx
+    .update(users)
+    .set({ lastFaucetAt: at, updatedAt: new Date() })
     .where(eq(users.id, reqUser(userId)));
 }
 

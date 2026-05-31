@@ -1,5 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, jsonb, date, uuid, pgEnum, index, unique,
+  pgTable, text, timestamp, boolean, integer, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique,
 } from "drizzle-orm/pg-core";
 
 // --- Better Auth tables ---
@@ -77,7 +78,11 @@ export const transactions = pgTable(
     refBetId: text("refBetId"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
-  (t) => [index("tx_user_created_idx").on(t.userId, t.createdAt)],
+  (t) => [
+    index("tx_user_created_idx").on(t.userId, t.createdAt),
+    // DB-enforced one-grant-per-user — defense-in-depth behind the lock-first grant logic.
+    uniqueIndex("one_grant_per_user").on(t.userId).where(sql`${t.type} = 'grant'`),
+  ],
 );
 
 // ===================================================================

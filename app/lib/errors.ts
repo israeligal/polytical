@@ -16,3 +16,9 @@ export class MissingUserError extends Error {
     this.name = "MissingUserError";
   }
 }
+export class BalanceOverflowError extends Error {
+  constructor() {
+    super("Balance exceeds maximum");
+    this.name = "BalanceOverflowError";
+  }
+}
