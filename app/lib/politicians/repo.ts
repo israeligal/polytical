@@ -1,5 +1,8 @@
+import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { asc, eq } from "drizzle-orm";
-import { db } from "@/app/lib/db";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { db as defaultDb } from "@/app/lib/db";
+import * as schema from "@/app/lib/schema";
 import { politicians } from "@/app/lib/schema";
 
 // Read-side repo for the politician UI. The `politicians` table is the system
@@ -8,26 +11,39 @@ import { politicians } from "@/app/lib/schema";
 
 export type PoliticianRow = typeof politicians.$inferSelect;
 
+// Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
+// ledger service so these reads are injectable without an `as any`.
+type DB = PgDatabase<
+  PgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
 // Ordered sensibly for a gallery: group by party, then alphabetically by the
 // normalized Hebrew search name (niqqud/finals/particles already stripped).
 const GALLERY_ORDER = [asc(politicians.party), asc(politicians.searchName)] as const;
 
 /** All current MKs, party-then-name ordered (for the full gallery). */
-export async function getAllPoliticians(): Promise<PoliticianRow[]> {
+export async function getAllPoliticians({
+  db = defaultDb,
+}: { db?: DB } = {}): Promise<PoliticianRow[]> {
   return db.select().from(politicians).orderBy(...GALLERY_ORDER);
 }
 
 /** A capped slice of MKs for the homepage "on the field" section. */
 export async function getFeaturedPoliticians({
+  db = defaultDb,
   limit = 12,
-}: { limit?: number } = {}): Promise<PoliticianRow[]> {
+}: { db?: DB; limit?: number } = {}): Promise<PoliticianRow[]> {
   return db.select().from(politicians).orderBy(...GALLERY_ORDER).limit(limit);
 }
 
 /** A single MK by their canonical KNS_Person.PersonID (the route id). */
 export async function getPoliticianByPersonId({
+  db = defaultDb,
   personId,
 }: {
+  db?: DB;
   personId: number;
 }): Promise<PoliticianRow | null> {
   if (!Number.isInteger(personId)) return null;
