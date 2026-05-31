@@ -2,6 +2,7 @@ import type {
   KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsBill, KnsBillInitiator, KnsQuery, KnsCommittee,
 } from "./odata-types";
 import { normalizeSearchName } from "./search-name";
+import { logger } from "@/app/lib/logger";
 
 export interface Prov { sourceUrl: string; fetchedAt: Date }
 
@@ -19,6 +20,12 @@ export function parseODataDate(v: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+/** en-CA yields YYYY-MM-DD; we pin the zone so the epoch instant resolves to its
+ * Asia/Jerusalem wall-clock calendar day (matching the naive ISO branch). */
+const JERUSALEM_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit",
+});
+
 /**
  * YYYY-MM-DD (date-only column) from an OData date string. We slice the
  * wall-clock fields directly off the source (treating it as naive
@@ -27,17 +34,19 @@ export function parseODataDate(v: string | null | undefined): Date | null {
  */
 function toDateOnly(v: string | null | undefined): string | null {
   if (!v) return null;
-  // OData /Date(ms)/ epoch form: derive UTC calendar fields from the instant.
+  // OData /Date(ms)/ epoch form: resolve the instant to its Asia/Jerusalem
+  // wall-clock day (NOT UTC toISOString, which can shift the calendar day) so
+  // it stays consistent with the naive ISO branch below.
   const epoch = /\/Date\((-?\d+)\)\//.exec(v);
   if (epoch) {
     const d = new Date(Number(epoch[1]));
-    return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+    return isNaN(d.getTime()) ? null : JERUSALEM_DAY.format(d);
   }
   // ISO/plain form: take the leading YYYY-MM-DD verbatim (naive wall-clock).
   const iso = /^(\d{4}-\d{2}-\d{2})/.exec(v);
   if (iso) return iso[1];
   const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  return isNaN(d.getTime()) ? null : JERUSALEM_DAY.format(d);
 }
 
 export function buildPositionLabelMap(rows: KnsPosition[]): Map<number, string> {
@@ -77,6 +86,7 @@ interface NormalizeMembersArgs {
   positionLabels: Map<number, string>;
   prov: Prov;
   persons?: KnsPerson[];   // optional Hebrew-name source (KNS_Person)
+  factionNameById?: Map<number, string>; // FactionID -> KNS_Faction.Name (party, by stable id)
 }
 
 /**
@@ -85,7 +95,7 @@ interface NormalizeMembersArgs {
  * Roles = the person's other current rows, labelled via KNS_Position.Description.
  * inKnessetSince = MIN(StartDate) of the person's 54 rows. Faction NULL stays NULL.
  */
-export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [] }: NormalizeMembersArgs): MemberRow[] {
+export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [], factionNameById }: NormalizeMembersArgs): MemberRow[] {
   const current = p2p.filter((r) => r.IsCurrent === true);
   const byPerson = new Map<number, KnsPersonToPosition[]>();
   for (const r of current) {
@@ -104,10 +114,23 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
     const isMK = rows.some((r) => MK_POSITIONS.has(r.PositionID));
     if (!isMK) continue; // roster = 43/61 only
 
+    // Exclude the 911 sentinel ("אין נתונים"): a 911-only person carries no real
+    // faction, so factionId/party stay NULL (matches normalizeFactions' drop).
     const factionRows = rows.filter((r) => r.PositionID === FACTION_MEMBER_POSITION);
-    const factionRow = factionRows.find((r) => r.FactionID != null) ?? null;
+    const factionRow = factionRows.find((r) => r.FactionID != null && r.FactionID !== SENTINEL_FACTION_ID) ?? null;
     const factionId = factionRow?.FactionID ?? null;
-    const party = factionRow?.FactionName ?? null;
+    // Party resolves by stable id through KNS_Faction.Name, never the inline
+    // FactionName string. We warn (not fail) when they disagree, then fall back
+    // to the inline name only if the id is absent from the map.
+    let party: string | null = null;
+    if (factionId != null) {
+      const joined = factionNameById?.get(factionId) ?? null;
+      const inline = factionRow?.FactionName ?? null;
+      if (joined != null && inline != null && joined !== inline) {
+        logger.warn("knesset.normalize.faction_name_mismatch", { factionId, joined, inline });
+      }
+      party = joined ?? inline;
+    }
 
     const startDates = factionRows.map((r) => toDateOnly(r.StartDate)).filter((d): d is string => !!d);
     const inKnessetSince = startDates.length ? startDates.sort()[0] : null; // MIN

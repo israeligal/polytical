@@ -2,7 +2,7 @@ import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
 import { logger } from "@/app/lib/logger";
 import {
-  fetchAll, fetchOknessetCsv, CURRENT_MK_FILTER, PARLIAMENT_BASE, buildODataUrl,
+  fetchAll, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl,
 } from "@/app/lib/knesset/odata";
 import type {
   KnsBill, KnsBillInitiator, KnsCommittee, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsQuery,
@@ -10,6 +10,7 @@ import type {
 import {
   buildPositionLabelMap, normalizeFactions, normalizeCurrentMembers, applyEnglishNames,
   normalizeBills, normalizeBillSponsors, normalizeQueries, normalizeCommittees, normalizeCommitteeMemberships,
+  SENTINEL_FACTION_ID,
 } from "@/app/lib/knesset/normalize";
 import {
   upsertFactions, upsertMembers, upsertBills, upsertBillSponsors, upsertQueries,
@@ -36,23 +37,39 @@ async function ingestFactions(prov: { fetchedAt: Date }) {
 }
 
 async function ingestMembers(prov: { fetchedAt: Date }) {
-  const sourceUrl = buildODataUrl({ entity: "KNS_PersonToPosition", filter: CURRENT_MK_FILTER });
+  // Provenance MUST reproduce the row set actually fetched. We fetch the full
+  // current PersonToPosition set ("IsCurrent eq true") — roster(43/61) + faction(54)
+  // + role rows — NOT the narrower CURRENT_MK_FILTER, so stamp the exact filter used.
+  const MEMBERS_FILTER = "IsCurrent eq true";
+  const sourceUrl = buildODataUrl({ entity: "KNS_PersonToPosition", filter: MEMBERS_FILTER });
   // Roster + faction(54) + role rows: pull all current rows for the involved persons.
   // We fetch the full current PersonToPosition set (small) and the lookup tables.
-  const [p2p, positions, persons] = await Promise.all([
-    fetchAll<KnsPersonToPosition>({ entity: "KNS_PersonToPosition", filter: "IsCurrent eq true" }),
+  const [p2p, positions, persons, factions] = await Promise.all([
+    fetchAll<KnsPersonToPosition>({ entity: "KNS_PersonToPosition", filter: MEMBERS_FILTER }),
     fetchAll<KnsPosition>({ entity: "KNS_Position" }),
     fetchAll<KnsPerson>({ entity: "KNS_Person", filter: "IsCurrent eq true" }),
+    fetchAll<KnsFaction>({ entity: "KNS_Faction" }),
   ]);
   const positionLabels = buildPositionLabelMap(positions);
-  let members = normalizeCurrentMembers({ p2p, positionLabels, persons, prov: { sourceUrl, fetchedAt: prov.fetchedAt } });
+  // Party resolves by stable FactionID through KNS_Faction.Name (never the inline
+  // FactionName); drop the 911 sentinel so it can't seed a bogus party.
+  const factionNameById = new Map<number, string>();
+  for (const f of factions) {
+    if (f.FactionID !== SENTINEL_FACTION_ID && f.Name) factionNameById.set(f.FactionID, f.Name);
+  }
+  let members = normalizeCurrentMembers({ p2p, positionLabels, persons, factionNameById, prov: { sourceUrl, fetchedAt: prov.fetchedAt } });
 
   // Gap-fill English names from Open Knesset, reconciled by PersonID.
+  // TODO(oknesset): the production.oknesset.org pipeline CSV paths now 404 —
+  // re-discover the correct dataset path/host before relying on this enrichment.
   try {
     const { rows: enCsv } = await fetchOknessetCsv("members/mk_individual.csv");
     members = applyEnglishNames(members, enCsv);
   } catch (err) {
-    logger.warn("knesset.ingest.english_names_skipped", { err: String(err) });
+    logger.warn("knesset.ingest.gap_fill_unavailable", {
+      enrichment: "nameEn", reason: "open-knesset CSV unreachable (404)",
+      effect: "nameEn left empty — NOT enriched", err: String(err),
+    });
   }
 
   const n = await upsertMembers({ db, rows: members });
@@ -94,13 +111,18 @@ async function ingestCommittees(prov: { fetchedAt: Date }) {
 // Committee MEMBERSHIP rosters from Open Knesset (OData unreliable here). This is
 // a large pre-joined CSV, so it runs only under --full alongside bills/queries.
 async function ingestCommitteeMemberships(prov: { fetchedAt: Date }) {
+  // TODO(oknesset): the production.oknesset.org pipeline CSV paths now 404 —
+  // re-discover the correct dataset path/host before relying on this enrichment.
   try {
     const { rows: csv, url } = await fetchOknessetCsv("committees/mk_individual_committees.csv");
     const memberships = normalizeCommitteeMemberships(csv, url, prov.fetchedAt);
     const m = await upsertCommitteeMemberships({ db, rows: memberships });
     logger.info("knesset.ingest.entity_done", { entity: "committee_memberships", fetched: csv.length, upserted: m });
   } catch (err) {
-    logger.warn("knesset.ingest.committee_memberships_skipped", { err: String(err) });
+    logger.warn("knesset.ingest.gap_fill_unavailable", {
+      enrichment: "committee_memberships", reason: "open-knesset CSV unreachable (404)",
+      effect: "committee_memberships left empty — NOT enriched", err: String(err),
+    });
   }
 }
 

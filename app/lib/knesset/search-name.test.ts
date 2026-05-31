@@ -33,6 +33,21 @@ test("collapses internal whitespace and drops punctuation", () => {
   expect(normalizeSearchName("מלר-הורוביץ   ירדנה")).toBe("מלר הורוביצ ירדנה");
 });
 
+test("deletes Hebrew geresh (U+05F3) in place — token stays whole", () => {
+  // ג + ׳ (U+05F3) + בארין must collapse to ONE token, not "ג בארינ".
+  expect(normalizeSearchName("ג׳בארין")).toBe("גבארינ");
+});
+
+test("deletes Hebrew gershayim (U+05F4) in place — token stays whole", () => {
+  // ר + ׳ ... using gershayim between letters: stays one token.
+  expect(normalizeSearchName("צ״לי")).toBe("צלי");
+});
+
+test("deletes ASCII apostrophe/quote in place — token stays whole", () => {
+  expect(normalizeSearchName("צ'רלי")).toBe("צרלי");
+  expect(normalizeSearchName(`ג"בארין`)).toBe("גבארינ");
+});
+
 test("is idempotent", () => {
   const once = normalizeSearchName("הַנֵּשִׂיא");
   expect(normalizeSearchName(once)).toBe(once);

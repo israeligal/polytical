@@ -65,6 +65,54 @@ test("normalizeCurrentMembers: party from PositionID-54 row, role from others, d
   expect(yard.party).toBeNull();
 });
 
+test("party resolves via factionNameById join (stable id), not the inline FactionName", () => {
+  const p2p: KnsPersonToPosition[] = [
+    base({ PersonToPositionID: 1, PersonID: 7, PositionID: 43, IsCurrent: true }),
+    // inline FactionName is stale; the join map carries the canonical Name
+    base({ PersonToPositionID: 2, PersonID: 7, PositionID: 54, IsCurrent: true, FactionID: 1095, FactionName: "שם ישן" }),
+  ];
+  const factionNameById = new Map<number, string>([[1095, "התאחדות הספרדים"]]);
+  const [m] = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV, factionNameById });
+  expect(m.factionId).toBe(1095);
+  expect(m.party).toBe("התאחדות הספרדים"); // joined Name, not the inline "שם ישן"
+});
+
+test("party falls back to inline FactionName when the join map lacks the id", () => {
+  const p2p: KnsPersonToPosition[] = [
+    base({ PersonToPositionID: 1, PersonID: 7, PositionID: 43, IsCurrent: true }),
+    base({ PersonToPositionID: 2, PersonID: 7, PositionID: 54, IsCurrent: true, FactionID: 1095, FactionName: "מפלגה" }),
+  ];
+  const [m] = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV, factionNameById: new Map() });
+  expect(m.factionId).toBe(1095);
+  expect(m.party).toBe("מפלגה");
+});
+
+test("sentinel faction 911 yields null factionId/party (911-only person)", () => {
+  const p2p: KnsPersonToPosition[] = [
+    base({ PersonToPositionID: 1, PersonID: 7, PositionID: 43, IsCurrent: true }),
+    base({ PersonToPositionID: 2, PersonID: 7, PositionID: 54, IsCurrent: true, FactionID: 911, FactionName: "אין נתונים" }),
+  ];
+  const [m] = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV, factionNameById: new Map() });
+  expect(m.factionId).toBeNull();
+  expect(m.party).toBeNull();
+});
+
+test("toDateOnly (via inKnessetSince): /Date()/ at Jerusalem midnight keeps the unshifted calendar day", () => {
+  // 2022-11-15T00:00:00 Jerusalem (UTC+2, no DST in November) == 2022-11-14T22:00:00Z.
+  // A naive UTC toISOString() would shift this back to 2022-11-14; the Jerusalem
+  // wall-clock branch must keep it as 2022-11-15 (consistent with the ISO branch).
+  const jerusalemMidnightEpoch = Date.UTC(2022, 10, 14, 22, 0, 0); // 1668463200000
+  const p2p: KnsPersonToPosition[] = [
+    base({ PersonToPositionID: 1, PersonID: 7, PositionID: 43, IsCurrent: true }),
+    base({
+      PersonToPositionID: 2, PersonID: 7, PositionID: 54, IsCurrent: true,
+      FactionID: 1095, FactionName: "x", StartDate: `/Date(${jerusalemMidnightEpoch})/`,
+    }),
+  ];
+  const [m] = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV });
+  expect(m.inKnessetSince).toBe("2022-11-15"); // NOT 2022-11-14
+});
+
 // fixture helper — full KnsPersonToPosition with overridable fields
 function base(over: Partial<KnsPersonToPosition> & Pick<KnsPersonToPosition, "PersonToPositionID" | "PersonID" | "PositionID" | "IsCurrent">): KnsPersonToPosition {
   return {

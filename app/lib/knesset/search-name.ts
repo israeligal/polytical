@@ -3,6 +3,10 @@
 // particle strip. Never used for attribution/market resolution.
 
 const NIQQUD = /[֑-ׇ]/g;                 // cantillation + vowel points (U+0591–U+05C7)
+// Hebrew geresh (U+05F3), gershayim (U+05F4), and ASCII/typographic apostrophe &
+// quote — these sit INSIDE a token (e.g. ג׳בארין, צ'רלי) marking a sound, not a
+// boundary. Delete them in place (don't space-split) so the token stays whole.
+const INTRA_TOKEN_MARKS = /[׳״'"’“”]/g;
 const FINAL_FORMS: Record<string, string> = {
   "ך": "כ", // ך -> כ
   "ם": "מ", // ם -> מ
@@ -37,6 +41,9 @@ function stripLeadingParticle(tok: string): string {
 export function normalizeSearchName(input: string): string {
   if (!input) return "";
   let s = foldFinals(input.normalize("NFKD").replace(NIQQUD, "").toLowerCase());
+  // Delete intra-token marks IN PLACE before the punctuation->space strip, so
+  // ג׳בארין collapses to one token (ג בארינ would be wrong).
+  s = s.replace(INTRA_TOKEN_MARKS, "");
   s = s
     .split(/[\s\-_/]+/)
     .filter(Boolean)
