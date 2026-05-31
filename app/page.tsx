@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Category } from "@/lib/types";
-import { currentUser, markets, politicians } from "@/lib/mock-data";
+import { currentUser, markets } from "@/lib/mock-data";
 import { leaderboard } from "@/lib/leaderboard";
+import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
+import { dbToCard } from "@/app/lib/politicians/adapter";
 import { SiteHeader } from "@/components/site-header";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
@@ -20,6 +22,8 @@ export default async function Home({
   const grid = active
     ? markets.filter((m) => m.category === active)
     : markets.filter((m) => m.id !== featured?.id);
+
+  const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
 
   return (
     <>
@@ -104,19 +108,27 @@ export default async function Home({
           className="scroll-mt-24 border-y border-border bg-muted"
         >
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-            <div className="mb-6 max-w-2xl">
-              <p className="text-sm font-bold text-primary">הקלפים</p>
-              <h2 className="font-display text-3xl font-bold text-foreground">
-                פוליטיקאים על המגרש
-              </h2>
-              <p className="mt-2 text-lg text-muted-foreground">
-                כל פוליטיקאי הוא קלף קריקטורה — עובדות, סטטיסטיקות, והשווקים
-                שסביבו. כל עובדה ממקור רשמי.
-              </p>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="text-sm font-bold text-primary">הקלפים</p>
+                <h2 className="font-display text-3xl font-bold text-foreground">
+                  פוליטיקאים על המגרש
+                </h2>
+                <p className="mt-2 text-lg text-muted-foreground">
+                  כל פוליטיקאי הוא קלף קריקטורה — עובדות, סטטיסטיקות, והשווקים
+                  שסביבו. כל עובדה ממקור רשמי.
+                </p>
+              </div>
+              <Link
+                href="/politicians"
+                className="rounded-lg border-2 border-primary px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+              >
+                כל הפוליטיקאים
+              </Link>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {politicians.map((p) => (
-                <CaricatureCard key={p.id} politician={p} />
+              {featuredPoliticians.map((p) => (
+                <CaricatureCard key={p.id} politician={p} realData />
               ))}
             </div>
           </div>
