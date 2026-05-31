@@ -37,3 +37,6 @@ export const db = drizzle(sharedClient, { schema });
 
 /** The shared postgres.js Sql client (full postgres.js API for scripts/raw SQL). */
 export const sharedSql = sharedClient;
+
+/** The Drizzle DB type (used by the ledger repo/service for tx typing). */
+export type DB = typeof db;

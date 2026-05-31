@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, uuid, pgEnum, index } from "drizzle-orm/pg-core";
 
 // --- Better Auth tables ---
 // Canonical Better Auth Drizzle schema (pg). Generated/maintained to match
@@ -14,6 +14,8 @@ export const users = pgTable("user", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAdmin: boolean("isAdmin").notNull().default(false),
+  balance: integer("balance").notNull().default(0),     // coin balance CACHE; ledger is source of truth
+  lastFaucetAt: timestamp("lastFaucetAt"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -57,3 +59,21 @@ export const verifications = pgTable("verification", {
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
+
+// --- Coin ledger (the money source of truth) ---
+export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund"]);
+
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: txType("type").notNull(),
+    amount: integer("amount").notNull(),          // signed: credits +, debits −
+    balanceAfter: integer("balanceAfter").notNull(),
+    refMarketId: text("refMarketId"),
+    refBetId: text("refBetId"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => [index("tx_user_created_idx").on(t.userId, t.createdAt)],
+);
