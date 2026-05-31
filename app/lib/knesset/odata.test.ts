@@ -42,7 +42,7 @@ describe("fetchAll paging", () => {
     expect(rows.map((r) => r.FactionID)).toEqual([1, 2]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     // page 1 is the built URL; page 2 is the verbatim __next link
-    expect(fetchMock.mock.calls[1][0]).toBe(page2.d.__next ?? `${PARLIAMENT_BASE}KNS_Faction?%24skiptoken=1`);
+    expect(fetchMock.mock.calls[1][0]).toBe(page2.d?.__next ?? `${PARLIAMENT_BASE}KNS_Faction?%24skiptoken=1`);
   });
 
   test("retries once on a 503 then succeeds", async () => {

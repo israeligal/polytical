@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-05-31 — Ingestion shape: 7 stable-id tables, idempotent upsert, refresh cadence
+
+**Decision.** Persist Knesset data in 7 tables (`politicians`, `factions`, `bills`, `bill_sponsors`, `queries`, `committees`, `committee_memberships`), each keyed by a UNIQUE stable Knesset id with `sourceDataset`/`sourceUrl`/`fetchedAt` on every row. Ingest via `scripts/ingest-knesset.ts` (tsx): `assertNonProductionDb()` first, then fetch→normalize→upsert with `onConflict(stableId) do update`, batched 100.
+
+**Refresh cadence.** Roster/factions/roles **daily** (`--only=factions`, `--only=members`); bills/queries **daily–weekly** (`--only=bills`, `--only=queries`); committees **daily** (OData), committee memberships **daily** (Open Knesset `mk_individual_committees.csv`). Schedule via the platform cron once green.
+
+**Bounded default vs `--full`.** `pnpm ingest:knesset` runs the card-critical bound only — `factions`, `members` (the ~120 current MKs + party-via-54 + roles), and the K25 `committees` list. The heavy entities (~7.4k bills, their sponsors, ~1.5k K25 queries, and the bulk committee-membership CSV) run only under `pnpm ingest:knesset:full` (`--full`). A `--only=<entity>` arg always runs that one entity, heavy or not.
+
+**How it feeds product.** Politician cards = plain id joins on `personId` (party, role, `inKnessetSince`, bills via `bill_sponsors`, queries, committee memberships) — the search layer is never in that path. Market-resolution evidence cites the stable-id row + its provenance `sourceUrl`. Discovery ("type a name", admin attach-MK) uses the `GIN(searchName gin_trgm_ops)` index to RANK candidates only; the chosen attribution always re-resolves by `personId`.
+
+**Live verification (2026-05-31, against Neon).** Bounded ingest landed `politicians = 120` (all with party+`factionId` from the 54 path, non-empty `searchName`, full provenance), `factions = 544` (sentinel `FactionID 911` dropped), `committees = 89`. `bills`/`bill_sponsors`/`queries`/`committee_memberships` stay at 0 until `--full`. Live trigram discovery confirmed on Neon (`searchName % 'אביגדור'` → personId 427, sim 0.57).
+
+**Service quirk discovered live.** `ParliamentInfo.svc` now answers **OData v4** (rows under `value`, a RELATIVE `odata.nextLink`), not the v3 shape (`d.results`/`d.__next`) the plan assumed. The client reads both dialects and resolves relative nextLinks against the base. The v4 service caps every page at 100 rows and only emits a `nextLink` when the requested `$top` exceeds that cap, so the client requests a large `$top` to page to exhaustion.
+
+**Deferred.** Current-term (K25) per-MK roll-call votes — no official feed (Votes.svc frozen at K24); see the votes decision below. DOB is editorial (not in OData); `politicians.dob` stays NULL and is never overwritten by re-ingest. English MK names (`nameEn`) come from Open Knesset `mk_individual.csv`; the path returned 404 on this run, so `nameEn` stays NULL until the correct Open Knesset path is wired (gap-fill, warn-and-continue — never blocks the core OData ingest).
+
+---
+
 ## 2026-05-31 — Storage: Neon relational + pg_trgm, no Elasticsearch / no vector DB (v1)
 
 **Decision.** Store all Knesset data in **Neon Postgres (relational)** as the single source of truth, with **`pg_trgm` + `unaccent`** for fuzzy *discovery only*. No Elasticsearch/OpenSearch and no vector DB in v1.
