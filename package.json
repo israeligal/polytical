@@ -13,8 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "ingest:knesset": "tsx scripts/ingest-knesset.ts",
-    "ingest:knesset:full": "tsx scripts/ingest-knesset.ts --full"
+    "ingest:knesset": "tsx --env-file=.env scripts/ingest-knesset.ts",
+    "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

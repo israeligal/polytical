@@ -89,7 +89,19 @@ export interface KnsCommittee {
   LastUpdatedDate: string | null;
 }
 
-/** OData v3 JSON envelope: rows under d.results; paging under d.__next. */
+/**
+ * OData JSON envelope — the ParliamentInfo.svc service answers in BOTH dialects
+ * depending on the negotiated version:
+ *  - v3 (verbose): rows under `d.results`, next page under `d.__next` (absolute).
+ *  - v4 (the shape live as of 2026-05-31): rows under `value`, next page under
+ *    `odata.nextLink` / `@odata.nextLink` (RELATIVE to the service root).
+ * The client reads whichever is present, so both are optional here.
+ */
 export interface ODataPage<T> {
-  d: { results: T[]; __next?: string };
+  // v3
+  d?: { results: T[]; __next?: string };
+  // v4
+  value?: T[];
+  "odata.nextLink"?: string;
+  "@odata.nextLink"?: string;
 }

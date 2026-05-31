@@ -43,13 +43,24 @@ export function buildODataUrl({ entity, filter, top, skip, base = PARLIAMENT_BAS
 interface FetchAllArgs {
   entity: KnsEntity;
   filter?: string;
-  top?: number;             // page size (default 100)
+  top?: number;             // requested page size (default ALL_TOP — see below)
   throttleMs?: number;      // self-throttle between pages (default 250)
   retries?: number;         // retry attempts per page (default 2)
   retryDelayMs?: number;    // backoff base (default 500)
   base?: string;
   maxPages?: number;        // safety cap (default 10000)
 }
+
+/**
+ * The live ParliamentInfo.svc (OData v4) caps every response at 100 rows
+ * server-side. Quirk: if you request `$top=100` and exactly 100 come back, it
+ * does NOT emit `odata.nextLink` (it reads `$top` as "you asked for 100, here
+ * they are"). To get true paging-to-exhaustion we must request a `$top` LARGER
+ * than the server cap — then it returns 100 rows + a nextLink that decrements
+ * the remaining `$top` and carries a `$skiptoken`, repeating until drained.
+ * 100000 is "effectively all" for every entity we ingest (largest is ~7.4k).
+ */
+const ALL_TOP = 100000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -73,13 +84,32 @@ async function fetchPage(url: string, retries: number, retryDelayMs: number): Pr
   }
 }
 
+/** Rows from either dialect: v4 `value` or v3 `d.results`. */
+function pageRows<T>(page: ODataPage<unknown>): T[] {
+  if (Array.isArray(page.value)) return page.value as T[];
+  return (page.d?.results ?? []) as T[];
+}
+
 /**
- * Fetches every page of an entity/filter, following d.__next (OData v3 carries
- * the next page — incl. $skiptoken — as an absolute URL we use verbatim).
- * Self-throttles between pages. Generic T is the row type from odata-types.
+ * Next-page URL from either dialect, resolved to an absolute URL. v3 emits an
+ * absolute `d.__next`; v4 emits a RELATIVE `odata.nextLink` (e.g.
+ * "KNS_Faction?$top=200&$skiptoken=..."), which we resolve against the service
+ * root so the follow-up fetch hits the right host.
+ */
+function pageNextLink(page: ODataPage<unknown>, base: string): string | undefined {
+  const v4 = page["odata.nextLink"] ?? page["@odata.nextLink"];
+  if (v4) return new URL(v4, base).toString();
+  return page.d?.__next; // v3: already absolute
+}
+
+/**
+ * Fetches every page of an entity/filter, following the service's next-page
+ * link until exhausted. Handles BOTH OData dialects (v4 `value`/`odata.nextLink`
+ * — the live shape — and v3 `d.results`/`d.__next`). Self-throttles between
+ * pages. Generic T is the row type from odata-types.
  */
 export async function fetchAll<T>({
-  entity, filter, top = 100, throttleMs = 250, retries = 2, retryDelayMs = 500,
+  entity, filter, top = ALL_TOP, throttleMs = 250, retries = 2, retryDelayMs = 500,
   base = PARLIAMENT_BASE, maxPages = 10000,
 }: FetchAllArgs): Promise<T[]> {
   const out: T[] = [];
@@ -87,10 +117,9 @@ export async function fetchAll<T>({
   let pages = 0;
   while (url && pages < maxPages) {
     const page = await fetchPage(url, retries, retryDelayMs);
-    const rows = (page.d?.results ?? []) as T[];
-    out.push(...rows);
+    out.push(...pageRows<T>(page));
     pages += 1;
-    url = page.d?.__next; // absolute; undefined => done
+    url = pageNextLink(page, base); // undefined => done
     if (url && throttleMs > 0) await sleep(throttleMs);
   }
   logger.info("knesset.odata.fetched", { entity, filter, rows: out.length, pages });
