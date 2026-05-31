@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Ballot } from "@/components/icons";
 import { CoinPill } from "@/components/coin-pill";
-import { currentUser } from "@/lib/mock-data";
+import { FaucetButton } from "@/components/faucet-button";
+import { SignOutButton } from "@/components/auth-buttons";
+import { getSession } from "@/lib/auth";
+import { getOrInitBalance } from "@/app/lib/ledger/service";
 
 const NAV = [
   { href: "/#markets", label: "שווקים" },
@@ -9,7 +12,12 @@ const NAV = [
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const session = await getSession();
+  const user = session?.user ?? null;
+  const balance = user ? await getOrInitBalance({ userId: user.id }) : 0;
+  const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
+
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
       {/* masthead kicker */}
@@ -43,10 +51,23 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <CoinPill amount={currentUser.balance} />
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border">
-            {currentUser.handle[0].toUpperCase()}
-          </span>
+          {user ? (
+            <>
+              <FaucetButton />
+              <CoinPill amount={balance} />
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border">
+                {initial}
+              </span>
+              <SignOutButton />
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+            >
+              התחברות
+            </Link>
+          )}
         </div>
       </div>
     </header>
