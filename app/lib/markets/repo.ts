@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { LedgerTx } from "@/app/lib/ledger/repo";
@@ -188,6 +188,36 @@ export async function listOpenMarkets({
     ? and(eq(markets.status, "open"), eq(markets.category, category))
     : eq(markets.status, "open");
   return db.select().from(markets).where(where).orderBy(sql`${markets.createdAt} desc`);
+}
+
+/** Markets an admin can still act on (open + closed, i.e. not yet settled),
+ *  each with its ordered outcomes — drives the admin resolve/void list. Newest
+ *  first; one query per table (no per-market round-trips). */
+export async function listManageableMarkets({
+  db = defaultDb,
+}: {
+  db?: DB;
+} = {}): Promise<{ market: MarketRow; outcomes: OutcomeRow[] }[]> {
+  const rows = await db
+    .select()
+    .from(markets)
+    .where(inArray(markets.status, ["open", "closed"]))
+    .orderBy(desc(markets.createdAt));
+  if (rows.length === 0) return [];
+  const outs = await db
+    .select()
+    .from(outcomes)
+    .where(
+      inArray(
+        outcomes.marketId,
+        rows.map((m) => m.id),
+      ),
+    )
+    .orderBy(asc(outcomes.ordinal));
+  return rows.map((market) => ({
+    market,
+    outcomes: outs.filter((o) => o.marketId === market.id),
+  }));
 }
 
 /** One market plus its ordered outcomes and featured politician personIds. */
