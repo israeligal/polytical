@@ -16,7 +16,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "ingest:knesset": "tsx --env-file=.env scripts/ingest-knesset.ts",
-    "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full"
+    "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full",
+    "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

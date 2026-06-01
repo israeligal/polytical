@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { markets, marketPoliticians } from "@/lib/mock-data";
+import { getSession } from "@/lib/auth";
 import { formatCoins, totalPool } from "@/lib/format";
+import { getMarketBundle } from "@/app/lib/markets/repo";
+import { bundleToMarket } from "@/app/lib/markets/adapter";
+import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
+import { dbToCard } from "@/app/lib/politicians/adapter";
 import { OddsBar } from "@/components/odds-bar";
 import { BetPanel } from "@/components/bet-panel";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -14,10 +18,26 @@ export default async function MarketPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const market = markets.find((m) => m.id === id);
-  if (!market) notFound();
+  const bundle = await getMarketBundle({ marketId: id });
+  if (!bundle) notFound();
 
-  const pols = marketPoliticians(market);
+  const market = bundleToMarket(bundle);
+  const status = bundle.market.status;
+  const settled = status === "resolved" || status === "voided";
+  const winningOutcome =
+    status === "resolved" && bundle.market.resolvedOutcomeId
+      ? bundle.outcomes.find((o) => o.id === bundle.market.resolvedOutcomeId)
+      : undefined;
+
+  // Real featured MKs by personId (the system of record), mapped to card shape.
+  const pols = (
+    await Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId })))
+  )
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .map(dbToCard);
+
+  const session = await getSession();
+  const isLoggedIn = Boolean(session?.user);
   const volume = totalPool(market.outcomes);
 
   return (
@@ -60,11 +80,17 @@ export default async function MarketPage({
           <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">
             הפוליטיקאים בשוק
           </h2>
-          <div className="grid gap-5 sm:grid-cols-2">
-            {pols.map((p) => (
-              <CaricatureCard key={p.id} politician={p} />
-            ))}
-          </div>
+          {pols.length > 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {pols.map((p) => (
+                <CaricatureCard key={p.id} politician={p} realData />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-muted-foreground">
+              לא שויכו פוליטיקאים לשוק הזה.
+            </p>
+          )}
 
           <h2 className="mb-3 mt-8 inline-flex items-center gap-2 font-display text-xl font-bold text-foreground">
             <ChatBubble className="h-5 w-5 text-primary" />
@@ -76,7 +102,37 @@ export default async function MarketPage({
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <BetPanel market={market} />
+          {settled ? (
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
+              <h3 className="mb-2 font-display text-lg font-bold text-foreground">
+                {status === "voided" ? "השוק בוטל" : "השוק הוכרע"}
+              </h3>
+              {status === "voided" ? (
+                <p className="text-sm text-muted-foreground">
+                  כל ההימורים הוחזרו במלואם.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">התוצאה הזוכה:</p>
+                  <p className="mt-1 text-2xl font-black text-positive">
+                    {winningOutcome?.labelHe ?? "—"}
+                  </p>
+                  {bundle.market.resolutionSourceUrl && (
+                    <a
+                      href={bundle.market.resolutionSourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-block text-sm font-semibold text-primary hover:underline"
+                    >
+                      מקור ההכרעה
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <BetPanel market={market} isLoggedIn={isLoggedIn} />
+          )}
         </aside>
       </div>
     </main>

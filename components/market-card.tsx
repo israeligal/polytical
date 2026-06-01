@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Market } from "@/lib/types";
+import type { Market, Politician } from "@/lib/types";
 import { marketPoliticians } from "@/lib/mock-data";
 import { formatCoins, totalPool } from "@/lib/format";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
@@ -7,9 +7,20 @@ import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { Coin } from "@/components/icons";
 
-/** Feed card (Feature tier): the whole card links to the market; hover lifts. */
-export function MarketCard({ market }: { market: Market }) {
-  const pols = marketPoliticians(market);
+/**
+ * Feed card (Feature tier): the whole card links to the market; hover lifts.
+ * `featured` lets the (real-data) server pages pass resolved MK portraits in;
+ * when omitted it falls back to `marketPoliticians(market)` so mock callers
+ * (Storybook, fixtures) keep working unchanged.
+ */
+export function MarketCard({
+  market,
+  featured,
+}: {
+  market: Market;
+  featured?: Politician[];
+}) {
+  const pols = featured ?? marketPoliticians(market);
   const volume = totalPool(market.outcomes);
 
   return (
