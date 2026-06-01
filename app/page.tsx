@@ -1,9 +1,11 @@
 import Link from "next/link";
-import type { Category } from "@/lib/types";
-import { currentUser, markets } from "@/lib/mock-data";
+import type { Category, Politician } from "@/lib/types";
+import { currentUser } from "@/lib/mock-data";
 import { leaderboard } from "@/lib/leaderboard";
-import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
+import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
+import { getMarketBundle, listOpenMarkets } from "@/app/lib/markets/repo";
+import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -17,10 +19,30 @@ export default async function Home({
 }) {
   const { cat } = await searchParams;
   const active = (cat as Category) || undefined;
-  const featured = !active ? markets.find((m) => m.hot) ?? markets[0] : null;
-  const grid = active
-    ? markets.filter((m) => m.category === active)
-    : markets.filter((m) => m.id !== featured?.id);
+
+  // Real markets from the DB. Each card needs its featured MK portraits, so we
+  // pull each market's bundle (outcomes + personIds), build view models, and
+  // resolve personIds against a single politicians map (one query, no N+1).
+  const marketRows = await listOpenMarkets({ category: active });
+  const bundles = (
+    await Promise.all(marketRows.map((m) => getMarketBundle({ marketId: m.id })))
+  ).filter((b): b is NonNullable<typeof b> => b !== null);
+
+  const polById = new Map<string, Politician>();
+  for (const row of await getAllPoliticians()) {
+    polById.set(String(row.personId), dbToCard(row));
+  }
+  const featuredFor = (personIds: number[]): Politician[] =>
+    personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+
+  const cards = bundles.map((b) => ({
+    market: bundleToMarket(b),
+    featured: featuredFor(b.personIds),
+  }));
+
+  // No category filter → spotlight a hot market in the hero, rest in the grid.
+  const featured = !active ? cards.find((c) => c.market.hot) ?? cards[0] ?? null : null;
+  const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
 
@@ -66,7 +88,7 @@ export default async function Home({
                       השוק החם של היום
                     </span>
                   </p>
-                  <MarketCard market={featured} />
+                  <MarketCard market={featured.market} featured={featured.featured} />
                 </div>
               )}
             </div>
@@ -89,8 +111,8 @@ export default async function Home({
           </div>
           {grid.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {grid.map((m) => (
-                <MarketCard key={m.id} market={m} />
+              {grid.map((c) => (
+                <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
               ))}
             </div>
           ) : (
