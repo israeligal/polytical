@@ -4,7 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { LedgerTx } from "@/app/lib/ledger/repo";
 import * as schema from "@/app/lib/schema";
-import { bets, marketPoliticians, markets, outcomes } from "@/app/lib/schema";
+import { bets, marketPoliticians, markets, outcomes, users } from "@/app/lib/schema";
 
 // Market repository: scope-guarded, tx-aware DB access for the betting service.
 //
@@ -138,6 +138,27 @@ export async function setBetStatus({
   payout: number;
 }): Promise<void> {
   await tx.update(bets).set({ status, payout }).where(eq(bets.id, betId));
+}
+
+/** Bumps a user's forecaster-accuracy counters on a resolve: +1 resolved, and
+ *  +1 win when their top single-outcome stake was on the winning outcome. Rides
+ *  inside the resolveMarket transaction (no coin movement here). */
+export async function bumpUserStats({
+  tx,
+  userId,
+  won,
+}: {
+  tx: Tx;
+  userId: string;
+  won: boolean;
+}): Promise<void> {
+  await tx
+    .update(users)
+    .set({
+      totalResolved: sql`${users.totalResolved} + 1`,
+      totalWins: sql`${users.totalWins} + ${won ? 1 : 0}`,
+    })
+    .where(eq(users.id, userId));
 }
 
 /** Marks a market resolved with its winning outcome + resolution provenance. */
