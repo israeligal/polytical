@@ -1,5 +1,6 @@
 import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
+import { bills } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import {
   fetchAll, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl,
@@ -84,11 +85,32 @@ async function ingestBills(prov: { fetchedAt: Date }) {
   logger.info("knesset.ingest.entity_done", { entity: "bills", fetched: raw.length, upserted: n });
 }
 
+/** The set of bill IDs we actually store (K25), read back from the bills table. */
+async function loadK25BillIds(): Promise<Set<number>> {
+  const rows = await db.select({ billId: bills.billId }).from(bills);
+  return new Set(rows.map((r) => r.billId));
+}
+
 async function ingestBillSponsors(prov: { fetchedAt: Date }) {
-  const sourceUrl = buildODataUrl({ entity: "KNS_BillInitiator" });
-  const raw = await fetchAll<KnsBillInitiator>({ entity: "KNS_BillInitiator" });
-  const n = await upsertBillSponsors({ db, rows: normalizeBillSponsors(raw, { sourceUrl, fetchedAt: prov.fetchedAt }) });
-  logger.info("knesset.ingest.entity_done", { entity: "bill_sponsors", fetched: raw.length, upserted: n });
+  // KNS_BillInitiator spans every Knesset (~170k rows) and has no KnessetNum to
+  // filter on — only BillID. Unscoped, it truncates at the 100k page cap to the
+  // OLDEST rows, which are disjoint from our K25 bills. So: scope the fetch to
+  // `BillID ge min(K25 billIds)` (~57k rows, under the cap) and drop any straggler
+  // row whose bill isn't one we store. Bills must be ingested first.
+  const validBillIds = await loadK25BillIds();
+  if (validBillIds.size === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "bill_sponsors", reason: "bills table empty — run bills first" });
+    return;
+  }
+  const minBillId = Math.min(...validBillIds);
+  const filter = `BillID ge ${minBillId}`;
+  const sourceUrl = buildODataUrl({ entity: "KNS_BillInitiator", filter });
+  const raw = await fetchAll<KnsBillInitiator>({ entity: "KNS_BillInitiator", filter });
+  const rows = normalizeBillSponsors(raw, { sourceUrl, fetchedAt: prov.fetchedAt }, validBillIds);
+  const n = await upsertBillSponsors({ db, rows });
+  logger.info("knesset.ingest.entity_done", {
+    entity: "bill_sponsors", fetched: raw.length, kept: rows.length, upserted: n, minBillId,
+  });
 }
 
 async function ingestQueries(prov: { fetchedAt: Date }) {

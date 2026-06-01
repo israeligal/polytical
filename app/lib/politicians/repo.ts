@@ -69,9 +69,12 @@ export async function getPoliticianActivity({
   db?: DB;
   personId: number;
 }): Promise<PoliticianActivity> {
+  // Join to `bills` so the count only reflects bills we actually store (current
+  // Knesset) — never a stray sponsor row pointing at a bill outside our set.
   const [bc] = await db
     .select({ n: sql<number>`count(distinct ${billSponsors.billId})::int` })
     .from(billSponsors)
+    .innerJoin(bills, eq(bills.billId, billSponsors.billId))
     .where(eq(billSponsors.personId, personId));
   const [qc] = await db
     .select({ n: sql<number>`count(*)::int` })

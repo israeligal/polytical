@@ -36,6 +36,17 @@ test("getPoliticianActivity counts distinct bills + queries and lists recent bil
   expect(a.recentBills.find((b) => b.billId === 2)?.nameHe).toBe("חוק ב");
 });
 
+test("a sponsor row pointing at a bill we don't store is excluded from the count", async () => {
+  // Orphan: references billId 777, which is NOT in the bills table. The join must
+  // drop it so billCount + recentBills only reflect bills we actually hold.
+  await h.db.insert(billSponsors).values({
+    billInitiatorId: 99, billId: 777, personId: 100, isInitiator: true, ...prov,
+  });
+  const a = await getPoliticianActivity({ db: h.db, personId: 100 });
+  expect(a.billCount).toBe(2); // still just bills 1 + 2 — orphan 777 ignored
+  expect(a.recentBills.map((b) => b.billId).sort()).toEqual([1, 2]);
+});
+
 test("an MK with no parliamentary activity returns zeros", async () => {
   const a = await getPoliticianActivity({ db: h.db, personId: 12345 });
   expect(a).toEqual({ billCount: 0, queryCount: 0, recentBills: [] });
