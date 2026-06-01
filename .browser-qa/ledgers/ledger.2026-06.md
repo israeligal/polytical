@@ -2,6 +2,8 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-01 | c2fbd05 | post comment (browser) | ✅ | posted on a market → appears in the thread |
+| 2026-06-01 | c2fbd05 | upvote comment (browser) | ✅ | ▲0 → ▲1; comment_votes PK prevents double-vote; empty post rejected |
 | 2026-06-01 | 38d344e | profile/leaderboard balance-0 (fresh user) | 🔴 | lazy grant raced the stat read on first load; fixed via grant-at-signup hook (38d344e), re-verified |
 | 2026-06-01 | 38d344e | `/profile` portfolio | ✅ | balance/net-worth/rank/accuracy + open positions + history ("כן · 100 · זכית +100") |
 | 2026-06-01 | 38d344e | homepage leaderboard (real) | ✅ | 2 real users ranked by net worth; own row flagged "· אתה" |

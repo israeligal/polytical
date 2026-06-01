@@ -50,6 +50,13 @@
       "when": 1780329657281,
       "tag": "0006_chubby_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780345496304,
+      "tag": "0007_plain_power_pack",
+      "breakpoints": true
     }
   ]
 }

@@ -280,3 +280,25 @@ export const bets = pgTable("bets", {
   status: betStatus("status").notNull().default("open"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [index("bets_market_idx").on(t.marketId), index("bets_user_idx").on(t.userId)]);
+
+// ===================================================================
+// Comments (Phase 4) — per-market discussion. NO coin movement: these
+// tables never touch the ledger. `upvotes` is a cache of COUNT(comment_votes);
+// the composite-PK on comment_votes makes upvoting idempotent (one row per
+// (comment,user) — toggle, never double-count). Admins flip `hidden`.
+// ===================================================================
+
+export const comments = pgTable("comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  upvotes: integer("upvotes").notNull().default(0),  // cache: COUNT(comment_votes)
+  hidden: boolean("hidden").notNull().default(false),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [index("comments_market_idx").on(t.marketId, t.createdAt)]);
+
+export const commentVotes = pgTable("comment_votes", {
+  commentId: uuid("commentId").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+}, (t) => [primaryKey({ columns: [t.commentId, t.userId] })]);
