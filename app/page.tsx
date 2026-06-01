@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Category, Politician } from "@/lib/types";
-import { currentUser } from "@/lib/mock-data";
-import { leaderboard } from "@/lib/leaderboard";
+import { getSession } from "@/lib/auth";
 import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketBundle, listOpenMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
+import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -45,6 +45,31 @@ export default async function Home({
   const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
+
+  // Real leaderboard: top 8 by net worth (handle = display name for now). If the
+  // viewer is logged in but outside the top 8, append their own row so they can
+  // always find themselves. Empty state until there are users to rank.
+  const session = await getSession();
+  const me = session?.user ?? null;
+  const top = await getLeaderboard({ by: "networth", limit: 8 });
+  const topEntries = top.map((e) => ({
+    rank: e.rank,
+    handle: e.name,
+    netWorth: e.netWorth,
+    accuracy: e.accuracy,
+    you: me?.id === e.userId,
+  }));
+  const inTop = me ? top.some((e) => e.userId === me.id) : false;
+  const myStats = me && !inTop ? await getUserStats({ userId: me.id }) : null;
+  const myRow =
+    me && myStats
+      ? {
+          rank: myStats.rank,
+          handle: me.name,
+          netWorth: myStats.netWorth,
+          accuracy: myStats.accuracy,
+        }
+      : null;
 
   return (
     <>
@@ -168,22 +193,22 @@ export default async function Home({
               </h2>
             </div>
           </div>
-          <div className="mx-auto max-w-2xl space-y-2">
-            {leaderboard.map((e) => (
-              <LeaderboardRow key={e.rank} entry={e} />
-            ))}
-            <div className="pt-2">
-              <LeaderboardRow
-                entry={{
-                  rank: currentUser.rank,
-                  handle: currentUser.handle,
-                  netWorth: currentUser.balance,
-                  accuracy: currentUser.accuracy,
-                }}
-                you
-              />
+          {topEntries.length > 0 ? (
+            <div className="mx-auto max-w-2xl space-y-2">
+              {topEntries.map(({ you, ...entry }) => (
+                <LeaderboardRow key={entry.rank} entry={entry} you={you} />
+              ))}
+              {myRow && (
+                <div className="pt-2">
+                  <LeaderboardRow entry={myRow} you />
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <p className="mx-auto max-w-2xl rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
+              עוד אין מספיק פעילות לטבלה. המרו על שוק ראשון כדי לפתוח את הדירוג.
+            </p>
+          )}
         </section>
       </main>
 
