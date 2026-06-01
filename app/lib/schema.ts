@@ -19,6 +19,8 @@ export const users = pgTable("user", {
   isAdmin: boolean("isAdmin").notNull().default(false),
   balance: integer("balance").notNull().default(0),     // coin balance CACHE; ledger is source of truth
   lastFaucetAt: timestamp("lastFaucetAt"),
+  totalResolved: integer("totalResolved").notNull().default(0), // markets the user had a bet in that resolved
+  totalWins: integer("totalWins").notNull().default(0),         // of those, the user's top stake was on the winner
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

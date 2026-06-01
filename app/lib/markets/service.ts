@@ -124,6 +124,27 @@ export async function resolveMarket({
         await repo.setBetStatus({ tx, betId: b.id, status: "lost", payout: 0 });
       }
     }
+    // Forecaster accuracy: a user "won" the market iff their largest single-outcome
+    // stake was on the winning outcome (strict max; ties → not a win). Skip on the
+    // winningPool=0 refund path (nobody backed the winner → no skill signal).
+    if (winner.poolTotal > 0) {
+      const byUser = new Map<string, Map<string, number>>();
+      for (const b of bets) {
+        const m = byUser.get(b.userId) ?? new Map<string, number>();
+        m.set(b.outcomeId, (m.get(b.outcomeId) ?? 0) + b.amount);
+        byUser.set(b.userId, m);
+      }
+      for (const [uid, stakes] of byUser) {
+        let topOutcome: string | null = null;
+        let top = -1;
+        for (const [oid, amt] of stakes)
+          if (amt > top) {
+            top = amt;
+            topOutcome = oid;
+          }
+        await repo.bumpUserStats({ tx, userId: uid, won: topOutcome === winningOutcomeId });
+      }
+    }
     await repo.markResolved({ tx, marketId, winningOutcomeId, sourceUrl, note });
   });
 }

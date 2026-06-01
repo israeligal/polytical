@@ -332,3 +332,64 @@ test("voidMarket on an already-resolved market throws AlreadyResolvedError", asy
     AlreadyResolvedError,
   );
 });
+
+// --- Accuracy stats on resolution ---------------------------------------------
+
+/** A user's accuracy stat columns after a resolve. */
+async function userStats(id: string) {
+  const [u] = await h.db.select().from(users).where(eq(users.id, id));
+  return { totalResolved: u.totalResolved, totalWins: u.totalWins };
+}
+
+test("resolveMarket bumps the winner's stats: totalResolved 1, totalWins 1", async () => {
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  // winner stakes YES (the winning outcome); loser stakes NO.
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 500 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 500 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  expect(await userStats("winner")).toEqual({ totalResolved: 1, totalWins: 1 });
+});
+
+test("resolveMarket bumps a losing-only bettor: totalResolved 1, totalWins 0", async () => {
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 500 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 500 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  expect(await userStats("loser")).toEqual({ totalResolved: 1, totalWins: 0 });
+});
+
+test("resolveMarket: bigger loss than win → totalWins 0 (top stake on the loser)", async () => {
+  // hedger bets a little on the winner (YES) but MORE on the loser (NO);
+  // their top single-outcome stake is on the losing side, so it is not a win.
+  await fundedUser("hedger", 1000);
+  await fundedUser("opp", 1000); // keeps the winning pool non-empty
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "opp", marketId: mId, outcomeId: yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "hedger", marketId: mId, outcomeId: yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "hedger", marketId: mId, outcomeId: noId, amount: 400 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  expect(await userStats("hedger")).toEqual({ totalResolved: 1, totalWins: 0 });
+});
+
+test("voidMarket leaves accuracy stats unchanged", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 250 });
+  await placeBet({ db: h.db, userId: "b", marketId: mId, outcomeId: noId, amount: 750 });
+
+  await voidMarket({ db: h.db, marketId: mId });
+
+  expect(await userStats("a")).toEqual({ totalResolved: 0, totalWins: 0 });
+  expect(await userStats("b")).toEqual({ totalResolved: 0, totalWins: 0 });
+});

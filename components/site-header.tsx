@@ -55,9 +55,19 @@ export async function SiteHeader() {
             <>
               <FaucetButton />
               <CoinPill amount={balance} />
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border">
+              <Link
+                href="/profile"
+                className="hidden text-sm font-semibold text-muted-foreground transition-colors hover:text-primary sm:inline"
+              >
+                פרופיל
+              </Link>
+              <Link
+                href="/profile"
+                aria-label="פרופיל"
+                className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
+              >
                 {initial}
-              </span>
+              </Link>
               <SignOutButton />
             </>
           ) : (

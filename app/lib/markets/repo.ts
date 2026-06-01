@@ -4,7 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { LedgerTx } from "@/app/lib/ledger/repo";
 import * as schema from "@/app/lib/schema";
-import { bets, marketPoliticians, markets, outcomes } from "@/app/lib/schema";
+import { bets, marketPoliticians, markets, outcomes, users } from "@/app/lib/schema";
 
 // Market repository: scope-guarded, tx-aware DB access for the betting service.
 //
@@ -140,6 +140,27 @@ export async function setBetStatus({
   await tx.update(bets).set({ status, payout }).where(eq(bets.id, betId));
 }
 
+/** Bumps a user's forecaster-accuracy counters on a resolve: +1 resolved, and
+ *  +1 win when their top single-outcome stake was on the winning outcome. Rides
+ *  inside the resolveMarket transaction (no coin movement here). */
+export async function bumpUserStats({
+  tx,
+  userId,
+  won,
+}: {
+  tx: Tx;
+  userId: string;
+  won: boolean;
+}): Promise<void> {
+  await tx
+    .update(users)
+    .set({
+      totalResolved: sql`${users.totalResolved} + 1`,
+      totalWins: sql`${users.totalWins} + ${won ? 1 : 0}`,
+    })
+    .where(eq(users.id, userId));
+}
+
 /** Marks a market resolved with its winning outcome + resolution provenance. */
 export async function markResolved({
   tx,
@@ -257,6 +278,53 @@ export async function getUserPositions({
     .from(bets)
     .where(and(eq(bets.userId, userId), eq(bets.marketId, marketId)))
     .orderBy(asc(bets.createdAt));
+}
+
+/** One row in a user's portfolio: their bet plus the market + chosen-outcome
+ *  context the profile page renders (question, status, payout, picked label,
+ *  and whether their pick won). Newest bet first. One join, no per-row reads. */
+export interface PortfolioBet {
+  betId: string;
+  marketId: string;
+  questionHe: string;
+  marketType: (typeof schema.marketType.enumValues)[number];
+  marketStatus: (typeof schema.marketStatus.enumValues)[number];
+  resolvedOutcomeId: string | null;
+  outcomeId: string;
+  outcomeLabelHe: string;
+  amount: number;
+  payout: number;
+  betStatus: BetStatus;
+  createdAt: Date;
+}
+
+export async function getUserBets({
+  db = defaultDb,
+  userId,
+}: {
+  db?: DB;
+  userId: string;
+}): Promise<PortfolioBet[]> {
+  return db
+    .select({
+      betId: bets.id,
+      marketId: bets.marketId,
+      questionHe: markets.questionHe,
+      marketType: markets.type,
+      marketStatus: markets.status,
+      resolvedOutcomeId: markets.resolvedOutcomeId,
+      outcomeId: bets.outcomeId,
+      outcomeLabelHe: outcomes.labelHe,
+      amount: bets.amount,
+      payout: bets.payout,
+      betStatus: bets.status,
+      createdAt: bets.createdAt,
+    })
+    .from(bets)
+    .innerJoin(markets, eq(markets.id, bets.marketId))
+    .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
+    .where(eq(bets.userId, userId))
+    .orderBy(desc(bets.createdAt));
 }
 
 // --- Composite creation (admin/seed): market + outcomes + featured links in one tx ---
