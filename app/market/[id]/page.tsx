@@ -10,6 +10,7 @@ import { OddsBar } from "@/components/odds-bar";
 import { BetPanel } from "@/components/bet-panel";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
+import { CommentThread } from "@/components/comments/comment-thread";
 import { ChatBubble, ChevronForward, Coin } from "@/components/icons";
 
 export default async function MarketPage({
@@ -96,9 +97,11 @@ export default async function MarketPage({
             <ChatBubble className="h-5 w-5 text-primary" />
             דעות חמות
           </h2>
-          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-muted-foreground">
-            התגובות ייפתחו עם ההשקה — כאן יתווכחו על כל שוק.
-          </p>
+          <CommentThread
+            marketId={market.id}
+            viewerId={session?.user?.id}
+            isAdmin={!!session?.user?.isAdmin}
+          />
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
