@@ -42,3 +42,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# browser-qa per-session scratch (durable ledger+coverage ARE tracked)
+.browser-qa/qa-plan.md
+.browser-qa/screenshots/

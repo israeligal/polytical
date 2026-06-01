@@ -57,6 +57,13 @@
       "when": 1780345496304,
       "tag": "0007_plain_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780348798276,
+      "tag": "0008_cold_shadow_king",
+      "breakpoints": true
     }
   ]
 }

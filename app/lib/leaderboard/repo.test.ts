@@ -98,6 +98,8 @@ test("getUserStats returns balance, netWorth, accuracy, totals, and rank", async
     accuracy: 90,
     totalResolved: 10,
     totalWins: 9,
+    streakCount: 0,
+    bestStreak: 0,
     rank: 2,
   });
 
@@ -108,6 +110,8 @@ test("getUserStats returns balance, netWorth, accuracy, totals, and rank", async
     accuracy: 25,
     totalResolved: 4,
     totalWins: 1,
+    streakCount: 0,
+    bestStreak: 0,
     rank: 1,
   });
 
@@ -118,6 +122,8 @@ test("getUserStats returns balance, netWorth, accuracy, totals, and rank", async
     accuracy: 0,
     totalResolved: 0,
     totalWins: 0,
+    streakCount: 0,
+    bestStreak: 0,
     rank: 3,
   });
 });

@@ -24,10 +24,10 @@ const meta = {
   },
   beforeEach: async () => {
     // Reset the shared stub between stories.
-    __faucetMock.result = { ok: true };
+    __faucetMock.result = { ok: true, streak: 1, amount: 200 };
     __faucetMock.delayMs = 300;
     return () => {
-      __faucetMock.result = { ok: true };
+      __faucetMock.result = { ok: true, streak: 1, amount: 200 };
       __faucetMock.delayMs = 300;
     };
   },
@@ -38,26 +38,42 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-/** Clicking shows the pending label, then settles back to the idle label on success. */
+/** Clicking shows the pending label, then surfaces the streak reward on success. */
 export const ClaimSucceeds: Story = {
   beforeEach: async () => {
-    __faucetMock.result = { ok: true };
+    __faucetMock.result = { ok: true, streak: 1, amount: 200 };
     __faucetMock.delayMs = 300;
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const button = canvas.getByRole("button");
-    await expect(button).toHaveTextContent("+200 יומי");
+    await expect(button).toHaveTextContent("בונוס יומי");
 
     await userEvent.click(button);
     // Pending state.
     await expect(button).toHaveAttribute("aria-busy", "true");
 
-    // Settles back to idle, no error message shown.
+    // Settles back to idle and shows the streak reward.
     await waitFor(async () => {
       await expect(button).toHaveAttribute("aria-busy", "false");
     });
-    await expect(button).toHaveTextContent("+200 יומי");
+    await expect(canvas.getByText("🔥 רצף 1 · +200")).toBeInTheDocument();
+  },
+};
+
+/** A longer streak shows the scaled bonus amount. */
+export const StreakBonus: Story = {
+  beforeEach: async () => {
+    __faucetMock.result = { ok: true, streak: 5, amount: 300 };
+    __faucetMock.delayMs = 200;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole("button");
+    await userEvent.click(button);
+    await waitFor(async () => {
+      await expect(canvas.getByText("🔥 רצף 5 · +300")).toBeInTheDocument();
+    });
   },
 };
 

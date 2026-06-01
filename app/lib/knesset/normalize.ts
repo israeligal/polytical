@@ -183,8 +183,21 @@ export interface BillSponsorRow {
   billInitiatorId: number; billId: number; personId: number; isInitiator: boolean;
   ordinal: number | null; sourceDataset: string; sourceUrl: string; fetchedAt: Date;
 }
-export function normalizeBillSponsors(raw: KnsBillInitiator[], prov: Prov): BillSponsorRow[] {
-  return raw.map((r) => ({
+/**
+ * Normalizes initiator rows. When `validBillIds` is given, rows referencing a
+ * bill NOT in that set are dropped — guaranteeing referential integrity against
+ * the (K25-scoped) `bills` table. This matters because KNS_BillInitiator spans
+ * every Knesset (~170k rows) while `bills` holds only the current Knesset; an
+ * unfiltered ingest both blows past the 100k page cap AND seeds orphan rows that
+ * never join, so the recent-bills list renders empty and counts are dishonest.
+ */
+export function normalizeBillSponsors(
+  raw: KnsBillInitiator[],
+  prov: Prov,
+  validBillIds?: ReadonlySet<number>,
+): BillSponsorRow[] {
+  const rows = validBillIds ? raw.filter((r) => validBillIds.has(r.BillID)) : raw;
+  return rows.map((r) => ({
     billInitiatorId: r.BillInitiatorID, billId: r.BillID, personId: r.PersonID,
     isInitiator: r.IsInitiator ?? false, ordinal: r.Ordinal ?? null,
     sourceDataset: "KNS_BillInitiator", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,

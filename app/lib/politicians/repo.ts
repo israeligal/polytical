@@ -1,9 +1,9 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { politicians } from "@/app/lib/schema";
+import { bills, billSponsors, politicians, queries } from "@/app/lib/schema";
 
 // Read-side repo for the politician UI. The `politicians` table is the system
 // of record (120 current MKs, ingested from official Knesset OData). Markets
@@ -53,4 +53,39 @@ export async function getPoliticianByPersonId({
     .where(eq(politicians.personId, personId))
     .limit(1);
   return row ?? null;
+}
+
+export type PoliticianActivity = {
+  billCount: number;
+  queryCount: number;
+  recentBills: { billId: number; nameHe: string }[];
+};
+
+/** An MK's parliamentary activity: bills sponsored, queries submitted, recent bills. */
+export async function getPoliticianActivity({
+  db = defaultDb,
+  personId,
+}: {
+  db?: DB;
+  personId: number;
+}): Promise<PoliticianActivity> {
+  // Join to `bills` so the count only reflects bills we actually store (current
+  // Knesset) — never a stray sponsor row pointing at a bill outside our set.
+  const [bc] = await db
+    .select({ n: sql<number>`count(distinct ${billSponsors.billId})::int` })
+    .from(billSponsors)
+    .innerJoin(bills, eq(bills.billId, billSponsors.billId))
+    .where(eq(billSponsors.personId, personId));
+  const [qc] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(queries)
+    .where(eq(queries.personId, personId));
+  const recentBills = await db
+    .selectDistinct({ billId: bills.billId, nameHe: bills.nameHe })
+    .from(billSponsors)
+    .innerJoin(bills, eq(bills.billId, billSponsors.billId))
+    .where(eq(billSponsors.personId, personId))
+    .orderBy(desc(bills.billId))
+    .limit(6);
+  return { billCount: bc?.n ?? 0, queryCount: qc?.n ?? 0, recentBills };
 }

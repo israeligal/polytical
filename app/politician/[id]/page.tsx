@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
+import { getPoliticianActivity, getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
 import { ChevronForward } from "@/components/icons";
@@ -18,6 +18,7 @@ export default async function PoliticianPage({
   if (!row) notFound();
 
   const politician = dbToCard(row);
+  const activity = await getPoliticianActivity({ personId });
 
   return (
     <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -53,6 +54,44 @@ export default async function PoliticianPage({
               </div>
             ))}
           </dl>
+
+          <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">
+            פעילות פרלמנטרית
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
+              <p className="nums font-display text-3xl font-black text-primary">
+                {activity.billCount}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">הצעות חוק</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
+              <p className="nums font-display text-3xl font-black text-primary">
+                {activity.queryCount}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">שאילתות</p>
+            </div>
+          </div>
+          {activity.recentBills.length > 0 && (
+            <>
+              <h3 className="mb-2 mt-5 text-sm font-bold text-primary">
+                הצעות חוק אחרונות
+              </h3>
+              <ul className="space-y-2">
+                {activity.recentBills.map((b) => (
+                  <li
+                    key={b.billId}
+                    className="rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground"
+                  >
+                    {b.nameHe}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            נתונים ממקור רשמי · הכנסת (OData)
+          </p>
 
           <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">
             השווקים של {politician.name}

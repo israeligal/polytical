@@ -211,6 +211,26 @@ export async function listOpenMarkets({
   return db.select().from(markets).where(where).orderBy(sql`${markets.createdAt} desc`);
 }
 
+/**
+ * The "market of the day": the OPEN market with the most bets (highest activity),
+ * ties broken by newest. Drives the homepage daily-challenge highlight. Returns
+ * null when no market is open. A left join keeps zero-bet markets eligible so a
+ * fresh app with no bets yet still surfaces something.
+ */
+export async function getMarketOfTheDay({
+  db = defaultDb,
+}: { db?: DB } = {}): Promise<MarketRow | null> {
+  const [row] = await db
+    .select({ market: markets, betCount: sql<number>`count(${bets.id})::int` })
+    .from(markets)
+    .leftJoin(bets, eq(bets.marketId, markets.id))
+    .where(eq(markets.status, "open"))
+    .groupBy(markets.id)
+    .orderBy(desc(sql`count(${bets.id})`), desc(markets.createdAt))
+    .limit(1);
+  return row?.market ?? null;
+}
+
 /** Markets an admin can still act on (open + closed, i.e. not yet settled),
  *  each with its ordered outcomes — drives the admin resolve/void list. Newest
  *  first; one query per table (no per-market round-trips). */

@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Ballot } from "@/components/icons";
 import { signUp } from "@/lib/auth-client";
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,9 +17,18 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const { error: err } = await signUp.email({ name, email, password, callbackURL: "/" });
-    setPending(false);
-    if (err) setError(err.message ?? "ההרשמה נכשלה, נסו שוב");
+    // `callbackURL` only drives OAuth / email-verification redirects — the
+    // email/password fetch sets the session cookie but does NOT navigate. So we
+    // navigate ourselves on success, then refresh so the server-rendered header
+    // (a layout Server Component) re-reads the new session + starting grant.
+    const { error: err } = await signUp.email({ name, email, password });
+    if (err) {
+      setPending(false);
+      setError(err.message ?? "ההרשמה נכשלה, נסו שוב");
+      return;
+    }
+    router.push("/");
+    router.refresh();
   }
 
   return (

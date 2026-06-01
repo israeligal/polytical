@@ -1,8 +1,11 @@
 import { expect, test } from "vitest";
 import {
   parseODataDate, buildPositionLabelMap, normalizeFactions, normalizeCurrentMembers,
+  normalizeBillSponsors,
 } from "./normalize";
-import type { KnsFaction, KnsPersonToPosition, KnsPosition } from "./odata-types";
+import type {
+  KnsBillInitiator, KnsFaction, KnsPersonToPosition, KnsPosition,
+} from "./odata-types";
 
 const PROV = { sourceUrl: "https://x", fetchedAt: new Date("2026-05-31T00:00:00Z") };
 
@@ -111,6 +114,25 @@ test("toDateOnly (via inKnessetSince): /Date()/ at Jerusalem midnight keeps the 
   ];
   const [m] = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV });
   expect(m.inKnessetSince).toBe("2022-11-15"); // NOT 2022-11-14
+});
+
+test("normalizeBillSponsors drops rows whose bill isn't in the valid (K25) set", () => {
+  const raw: KnsBillInitiator[] = [
+    { BillInitiatorID: 1, BillID: 1038990, PersonID: 526, IsInitiator: true, Ordinal: 1, LastUpdatedDate: null },
+    { BillInitiatorID: 2, BillID: 17000, PersonID: 526, IsInitiator: false, Ordinal: 2, LastUpdatedDate: null }, // old bill, not in K25
+    { BillInitiatorID: 3, BillID: 1040059, PersonID: 560, IsInitiator: true, Ordinal: 1, LastUpdatedDate: null },
+  ];
+  const validBillIds = new Set([1038990, 1040059]); // 17000 absent
+  const rows = normalizeBillSponsors(raw, PROV, validBillIds);
+  expect(rows.map((r) => r.billId).sort()).toEqual([1038990, 1040059]);
+  expect(rows.some((r) => r.billId === 17000)).toBe(false);
+});
+
+test("normalizeBillSponsors keeps all rows when no valid set is given", () => {
+  const raw: KnsBillInitiator[] = [
+    { BillInitiatorID: 1, BillID: 17000, PersonID: 526, IsInitiator: true, Ordinal: 1, LastUpdatedDate: null },
+  ];
+  expect(normalizeBillSponsors(raw, PROV)).toHaveLength(1);
 });
 
 // fixture helper — full KnsPersonToPosition with overridable fields

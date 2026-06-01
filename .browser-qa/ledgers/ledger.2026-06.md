@@ -2,6 +2,13 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-02 | c5b7ad8 | login/signup redirect after success | 🔴 | callbackURL no-op for email flow → user stranded on form; fixed c5b7ad8 (useRouter push+refresh), both verified → `/` |
+| 2026-06-02 | bcdb818 | `/politician/[id]` activity (data fix) | ✅ | Gafni 283 bills/0 q/6 recent; Tibi 390/83/6; Liberman 301/1/6 — real K25, recent-bills list renders, 0 errors |
+| 2026-06-02 | 8547d36 | faucet streak reward | ✅ | "🔥 רצף 1 · +200"; balance 1000→1200; 2nd claim cooldown held 1200 (no double-pay) |
+| 2026-06-02 | 8547d36 | `/profile` streak cards | ✅ | "רצף נוכחי 1" (flame) + "שיא רצף 1"; 6-card grid, 0 overflow |
+| 2026-06-02 | 8547d36 | homepage market-of-the-day | ✅ | HOT branch "השוק החם של היום" verified; MOTD fallback unit-tested (4 tests) |
+| 2026-06-02 | 8547d36 | homepage desktop + mobile (regression) | ✅ | 0 horizontal overflow; streak reward hidden on 380px (sm:inline); markets+cards+leaderboard render |
+| 2026-06-02 | 8547d36 | `/market/[id]` detail (regression) | ✅ | bet panel + odds + comments thread render, 0 console errors |
 | 2026-06-01 | c2fbd05 | post comment (browser) | ✅ | posted on a market → appears in the thread |
 | 2026-06-01 | c2fbd05 | upvote comment (browser) | ✅ | ▲0 → ▲1; comment_votes PK prevents double-vote; empty post rejected |
 | 2026-06-01 | 38d344e | profile/leaderboard balance-0 (fresh user) | 🔴 | lazy grant raced the stat read on first load; fixed via grant-at-signup hook (38d344e), re-verified |

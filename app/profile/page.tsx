@@ -8,7 +8,7 @@ import { getUserBets, getMarketBundle, type PortfolioBet } from "@/app/lib/marke
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CoinPill } from "@/components/coin-pill";
 import { OddsBar } from "@/components/odds-bar";
-import { Trophy } from "@/components/icons";
+import { Flame, Trophy } from "@/components/icons";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -78,6 +78,21 @@ export default async function ProfilePage() {
             <span className="block text-xs text-muted-foreground">
               {stats?.totalWins ?? 0}/{stats?.totalResolved ?? 0} שווקים
             </span>
+          </StatCard>
+          <StatCard label="רצף נוכחי">
+            <span className="inline-flex items-center gap-1.5">
+              <Flame className="h-5 w-5 text-accent" />
+              <span className="nums text-2xl font-black text-foreground">
+                {stats?.streakCount ?? 0}
+              </span>
+            </span>
+            <span className="block text-xs text-muted-foreground">ימים ברצף</span>
+          </StatCard>
+          <StatCard label="שיא רצף">
+            <span className="nums text-2xl font-black text-foreground">
+              {stats?.bestStreak ?? 0}
+            </span>
+            <span className="block text-xs text-muted-foreground">הרצף הארוך ביותר</span>
           </StatCard>
         </div>
       </section>

@@ -3,7 +3,7 @@ import type { Category, Politician } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, listOpenMarkets } from "@/app/lib/markets/repo";
+import { getMarketBundle, getMarketOfTheDay, listOpenMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { CategoryRail } from "@/components/category-rail";
@@ -40,8 +40,15 @@ export default async function Home({
     featured: featuredFor(b.personIds),
   }));
 
-  // No category filter → spotlight a hot market in the hero, rest in the grid.
-  const featured = !active ? cards.find((c) => c.market.hot) ?? cards[0] ?? null : null;
+  // No category filter → spotlight a market in the hero, rest in the grid.
+  // Preference: an admin-flagged `hot` market, else the data-driven "market of
+  // the day" (the open market with the most bets), else the newest. The badge
+  // reflects which rule chose it.
+  const motd = !active ? await getMarketOfTheDay() : null;
+  const hotCard = !active ? cards.find((c) => c.market.hot) ?? null : null;
+  const motdCard = motd ? cards.find((c) => c.market.id === motd.id) ?? null : null;
+  const featured = !active ? hotCard ?? motdCard ?? cards[0] ?? null : null;
+  const featuredIsHot = !!featured && featured === hotCard;
   const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
@@ -110,7 +117,7 @@ export default async function Home({
                 <div>
                   <p className="mb-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">
-                      השוק החם של היום
+                      {featuredIsHot ? "השוק החם של היום" : "שוק היום · הכי פעיל"}
                     </span>
                   </p>
                   <MarketCard market={featured.market} featured={featured.featured} />
