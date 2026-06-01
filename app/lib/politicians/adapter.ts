@@ -49,7 +49,7 @@ export function dbToCard(row: PoliticianRow): Politician {
   const facts: PoliticianFact[] = [
     { label: "סיעה", value: party },
     { label: "תפקיד", value: role },
-    ...(sinceYear ? [{ label: "בכנסת מאז", value: sinceYear }] : []),
+    ...(sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
   ];
 
   return {

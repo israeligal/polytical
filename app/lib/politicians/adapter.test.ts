@@ -42,7 +42,7 @@ test("dbToCard maps a fully-populated row to the front-end Politician shape", ()
   expect(card.facts).toEqual([
     { label: "סיעה", value: "מפלגה" },
     { label: "תפקיד", value: "שר" },
-    { label: "בכנסת מאז", value: "2015" },
+    { label: "בסיעה מאז", value: "2015" },
   ]);
   expect(card.imageUrl).toBeUndefined();
 });
@@ -55,7 +55,7 @@ test("null party/role/inKnessetSince fall back; the 'since' fact is dropped", ()
   expect(card.role).toBe("חבר/ת הכנסת");
   expect(card.cat).toBeGreaterThanOrEqual(1);
   expect(card.cat).toBeLessThanOrEqual(8);
-  // Only the two always-present facts; no "בכנסת מאז" row.
+  // Only the two always-present facts; no "בסיעה מאז" row.
   expect(card.facts).toEqual([
     { label: "סיעה", value: "ללא סיעה" },
     { label: "תפקיד", value: "חבר/ת הכנסת" },
