@@ -2,7 +2,10 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-01 `8649d61` | 1 | 5/5 |
+| [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
+| [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
+| [politician-activity](#politician-activity) | 2026-06-02 `bcdb818` | 1 | 4/4 |
+| [market-of-the-day](#market-of-the-day) | 2026-06-02 `8547d36` | 1 | 2/3 |
 | [browse-politicians](#browse-politicians) | 2026-06-01 `8649d61` | 1 | 4/4 |
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
@@ -10,18 +13,67 @@
 
 ## auth-signup-grant-faucet
 
-**What it is:** A new visitor signs up (email/password), receives the 1,000-coin starting stack, and claims the daily faucet.
+**What it is:** A new visitor signs up (email/password), receives the 1,000-coin starting stack, and claims the daily faucet. An existing user logs back in.
 
-**Last walked:** 2026-06-01 `8649d61`. **Walks:** 1. **Coverage:** 5/5
+**Last walked:** 2026-06-02 `c5b7ad8`. **Walks:** 2. **Coverage:** 7/7
 
 **Steps:**
 - ✅ `/signup` email/password form submits (real keyboard input)
-- ✅ session established; `proxy.ts` redirects `/signup` → `/` when logged in
-- ✅ starting grant: header shows `1,000` via lazy `getOrInitBalance`
+- ✅ signup success NAVIGATES to `/` logged-in (fixed c5b7ad8 — was stranded on form; callbackURL is a no-op for the email fetch flow)
+- ✅ login success NAVIGATES to `/` logged-in (same fix; verified by log-out → log-in)
+- ✅ session established; `proxy.ts` redirects `/signup`,`/login` → `/` when already logged in
+- ✅ starting grant: header shows `1,000` via grant-at-signup hook
 - ✅ faucet claim: `1,000 → 1,200`; balance revalidates in the shared (layout) header
 - ✅ faucet cooldown: 2nd claim blocked ("כבר קיבלתם היום — חזרו מחר"), balance held at 1,200
 
-**Known gaps:** login (existing-user) path + sign-out not walked this pass.
+**Notable history:**
+- `c5b7ad8` (2026-06-02): login+signup now navigate on success (useRouter push+refresh); previously the session cookie was set but the user stayed on the form.
+
+**Known gaps:** sign-out flow not explicitly walked (logout used as a setup step, worked); wrong-password error copy not re-walked this pass.
+
+## daily-streak
+
+**What it is:** A returning user claims the daily faucet, building a consecutive-day streak that scales the payout; misses reset it. Streak shows on the header reward + profile.
+
+**Last walked:** 2026-06-02 `8547d36`. **Walks:** 1. **Coverage:** 4/4
+
+**Steps:**
+- ✅ claim shows reward "🔥 רצף 1 · +200" beside the faucet button; balance `1,000 → 1,200`
+- ✅ 2nd claim within cooldown blocked; balance held at 1,200 (no double-pay, no double-increment)
+- ✅ `/profile` "רצף נוכחי 1" (flame) + "שיא רצף 1" stat cards render in the 6-card grid (no overflow)
+- ✅ reward text hidden on mobile (380px, `sm:inline`) — no header crowding
+
+**Known gaps:** multi-day streak advance (day 2 → +225) + reset-after-gap only unit-tested (driving real wall-clock days in a browser isn't practical); bonus cap at day 8 unit-tested.
+
+## politician-activity
+
+**What it is:** On a politician's page, see their real current-Knesset parliamentary activity — bills sponsored, queries submitted, and recent bill names.
+
+**Last walked:** 2026-06-02 `bcdb818`. **Walks:** 1. **Coverage:** 4/4
+
+**Steps:**
+- ✅ "פעילות פרלמנטרית" section renders with two stat cards (bills + queries)
+- ✅ real K25 counts: Gafni 283 bills / 0 queries; Tibi 390 / 83; Liberman 301 / 1
+- ✅ "הצעות חוק אחרונות" lists 6 real bill names (e.g. "הצעת חוק מס ערך מוסף…")
+- ✅ source note "נתונים ממקור רשמי · הכנסת (OData)"; 0 console errors across 3 MKs
+
+**Notable history:**
+- `bcdb818` (2026-06-02): scoped bill-sponsor ingest to K25 + join `bills` for the count — the recent-bills list was empty for every MK before (sponsor rows were truncated to a disjoint old-Knesset ID range).
+
+**Known gaps:** an MK with zero bills AND zero queries (the "all zeros, no recent list" branch) not browser-walked (unit-tested in activity.test.ts).
+
+## market-of-the-day
+
+**What it is:** The homepage hero spotlights a daily market — an admin-flagged hot market, else the most-active open market.
+
+**Last walked:** 2026-06-02 `8547d36`. **Walks:** 1. **Coverage:** 2/3
+
+**Steps:**
+- ✅ HOT branch: badge "השוק החם של היום" on the hero, links to a real open market
+- ✅ hero card renders odds + politicians, desktop + mobile, no overflow
+- ❌ MOTD-fallback branch ("שוק היום · הכי פעיל") not browser-walked — current seed always has a `hot` market, so the fallback never triggers; `getMarketOfTheDay` is unit-tested (4 tests: busiest open / ignores non-open / zero-bet fresh / null when none open)
+
+**Known gaps:** the no-hot-market fallback needs a seed without any `hot` flag to surface in-browser.
 
 ## browse-politicians
 
