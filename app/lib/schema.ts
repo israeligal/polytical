@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique,
+  pgTable, text, timestamp, boolean, integer, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique, primaryKey,
 } from "drizzle-orm/pg-core";
 
 // --- Better Auth tables ---
@@ -225,3 +225,56 @@ export const committeeMemberships = pgTable(
     index("committee_memberships_committee_idx").on(t.committeeId),
   ],
 );
+
+// ===================================================================
+// Markets & parimutuel betting (Phase 2). All coin movement still flows
+// through the append-only ledger (`transactions` + applyEntry); these
+// tables hold market state + the per-outcome pool caches + bet records.
+// ===================================================================
+
+export const marketStatus = pgEnum("market_status", ["draft", "open", "closed", "resolved", "voided"]);
+export const marketType = pgEnum("market_type", ["binary", "multi"]);
+export const betStatus = pgEnum("bet_status", ["open", "won", "lost", "refunded"]);
+
+export const markets = pgTable("markets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  questionHe: text("questionHe").notNull(),
+  descriptionHe: text("descriptionHe"),
+  category: text("category").notNull(),                 // Category union, stored as text
+  type: marketType("type").notNull().default("binary"),
+  status: marketStatus("status").notNull().default("open"),
+  hot: boolean("hot").notNull().default(false),
+  openAt: timestamp("openAt").notNull().defaultNow(),
+  closeAt: timestamp("closeAt").notNull(),
+  resolvedOutcomeId: uuid("resolvedOutcomeId"),
+  resolutionSourceUrl: text("resolutionSourceUrl"),
+  resolutionNote: text("resolutionNote"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdBy: text("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export const outcomes = pgTable("outcomes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  labelHe: text("labelHe").notNull(),
+  poolTotal: integer("poolTotal").notNull().default(0), // cache: Σ bet amounts on this outcome
+  cat: integer("cat"),                                  // categorical color slot (multi)
+  ordinal: integer("ordinal").notNull().default(0),
+});
+
+export const marketPoliticians = pgTable("market_politicians", {
+  marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  personId: integer("personId").notNull(),              // → politicians.personId
+}, (t) => [primaryKey({ columns: [t.marketId, t.personId] })]);
+
+export const bets = pgTable("bets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
+  outcomeId: uuid("outcomeId").notNull().references(() => outcomes.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  payout: integer("payout").notNull().default(0),
+  status: betStatus("status").notNull().default("open"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [index("bets_market_idx").on(t.marketId), index("bets_user_idx").on(t.userId)]);

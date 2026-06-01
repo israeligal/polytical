@@ -8,5 +8,8 @@ config({ path: ".env" });
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
-  test: { environment: "node", include: ["**/*.test.ts"], pool: "forks" },
+  // testTimeout raised above the 5s default: every integration test replays the
+  // full Drizzle migration chain on a fresh PGlite instance, and under `forks`
+  // parallelism the cold first-replay of the (growing) chain can exceed 5s.
+  test: { environment: "node", include: ["**/*.test.ts"], pool: "forks", testTimeout: 30000 },
 });
