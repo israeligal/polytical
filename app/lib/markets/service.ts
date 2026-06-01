@@ -6,6 +6,7 @@ import { applyEntry } from "@/app/lib/ledger/service";
 import { MIN_BET } from "@/app/lib/economy";
 import * as schema from "@/app/lib/schema";
 import {
+  AlreadyResolvedError,
   BelowMinBetError,
   InvalidOutcomeError,
   MarketClosedError,
@@ -63,5 +64,95 @@ export async function placeBet({
     });
     await repo.incOutcomePool({ tx, outcomeId, delta: amount });
     return { betId: bet.id };
+  });
+}
+
+/** Resolves a market to its winning outcome and settles every open bet in one tx.
+ *  Final-odds parimutuel: winners split the ENTIRE pot —
+ *  `payout = floor(total × yourStake / winningPool)`. If the winning pool is empty
+ *  (nobody bet it) there are no winners, so every open bet is refunded in full
+ *  (no divide-by-zero). Lock ordering is market-row FIRST (getMarketForUpdate →
+ *  FOR UPDATE), THEN each user via applyEntry — concurrent bets block on the
+ *  market lock and cannot race the settlement. */
+export async function resolveMarket({
+  db = defaultDb,
+  marketId,
+  winningOutcomeId,
+  sourceUrl,
+  note,
+}: {
+  db?: DB;
+  marketId: string;
+  winningOutcomeId: string;
+  sourceUrl?: string;
+  note?: string;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
+    if (!market) throw new MarketNotFoundError();
+    if (market.status === "resolved" || market.status === "voided")
+      throw new AlreadyResolvedError();
+    const outs = await repo.listOutcomes({ tx, marketId });
+    const winner = outs.find((o) => o.id === winningOutcomeId);
+    if (!winner) throw new InvalidOutcomeError();
+    const total = outs.reduce((s, o) => s + o.poolTotal, 0);
+    const bets = await repo.listOpenBets({ tx, marketId });
+    for (const b of bets) {
+      if (winner.poolTotal === 0) {
+        // No winners → refund all (avoids divide-by-zero).
+        await applyEntry({
+          tx,
+          userId: b.userId,
+          type: "refund",
+          amount: b.amount,
+          refMarketId: marketId,
+          refBetId: b.id,
+        });
+        await repo.setBetStatus({ tx, betId: b.id, status: "refunded", payout: b.amount });
+      } else if (b.outcomeId === winningOutcomeId) {
+        const payout = Math.floor((total * b.amount) / winner.poolTotal);
+        await applyEntry({
+          tx,
+          userId: b.userId,
+          type: "payout",
+          amount: payout,
+          refMarketId: marketId,
+          refBetId: b.id,
+        });
+        await repo.setBetStatus({ tx, betId: b.id, status: "won", payout });
+      } else {
+        await repo.setBetStatus({ tx, betId: b.id, status: "lost", payout: 0 });
+      }
+    }
+    await repo.markResolved({ tx, marketId, winningOutcomeId, sourceUrl, note });
+  });
+}
+
+/** Voids a market: refunds every open bet in full and marks it voided. Same
+ *  market-first lock ordering as resolveMarket. */
+export async function voidMarket({
+  db = defaultDb,
+  marketId,
+}: {
+  db?: DB;
+  marketId: string;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
+    if (!market) throw new MarketNotFoundError();
+    if (market.status === "resolved" || market.status === "voided")
+      throw new AlreadyResolvedError();
+    for (const b of await repo.listOpenBets({ tx, marketId })) {
+      await applyEntry({
+        tx,
+        userId: b.userId,
+        type: "refund",
+        amount: b.amount,
+        refMarketId: marketId,
+        refBetId: b.id,
+      });
+      await repo.setBetStatus({ tx, betId: b.id, status: "refunded", payout: b.amount });
+    }
+    await repo.markVoided({ tx, marketId });
   });
 }

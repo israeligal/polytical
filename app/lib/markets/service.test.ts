@@ -4,13 +4,14 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, markets, outcomes, bets, transactions } from "@/app/lib/schema";
 import { STARTING_STACK, MIN_BET } from "@/app/lib/economy";
 import {
+  AlreadyResolvedError,
   BelowMinBetError,
   InsufficientFundsError,
   MarketClosedError,
   InvalidOutcomeError,
 } from "@/app/lib/errors";
-import { grantStartingStack, getBalance } from "@/app/lib/ledger/service";
-import { placeBet } from "./service";
+import { applyEntry, grantStartingStack, getBalance } from "@/app/lib/ledger/service";
+import { placeBet, resolveMarket, voidMarket } from "./service";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -162,4 +163,172 @@ test("placeBet on an outcome from another market throws InvalidOutcomeError", as
   ).rejects.toBeInstanceOf(InvalidOutcomeError);
   expect(await getBalance({ db: h.db, userId: UID })).toBe(STARTING_STACK);
   expect((await h.db.select().from(bets)).length).toBe(0);
+});
+
+// --- Resolution & void ---------------------------------------------------------
+
+/** Creates a user funded to `balance` coins via a single `grant` ledger entry,
+ *  so test stakes can exceed the 1000 starting stack (PRD pools reach 10000). */
+async function fundedUser(id: string, balance: number) {
+  await h.db.insert(users).values({ id, name: id, email: `${id}@x.co` });
+  await h.db.transaction(async (tx) => {
+    await applyEntry({ tx, userId: id, type: "grant", amount: balance });
+  });
+}
+
+/** Seeds an open market with YES/NO outcomes and returns its ids. */
+async function seedMarket() {
+  const [m] = await h.db
+    .insert(markets)
+    .values({
+      questionHe: "האם הקואליציה תשרוד?",
+      category: "coalition",
+      status: "open",
+      closeAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+    })
+    .returning({ id: markets.id });
+  const outs = await h.db
+    .insert(outcomes)
+    .values([
+      { marketId: m.id, labelHe: "כן", ordinal: 0 },
+      { marketId: m.id, labelHe: "לא", ordinal: 1 },
+    ])
+    .returning({ id: outcomes.id });
+  return { marketId: m.id, yesId: outs[0].id, noId: outs[1].id };
+}
+
+test("resolveMarket pays the PRD worked example: YES 7000 / NO 3000, resolve NO", async () => {
+  // Three bettors stage pools YES=7000, NO=3000 (the PRD §6 worked example).
+  await fundedUser("yesGuy", 7000);
+  await fundedUser("noSmall", 1000); // the 300-on-NO worked-example bettor
+  await fundedUser("noBig", 3000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+
+  await placeBet({ db: h.db, userId: "yesGuy", marketId: mId, outcomeId: yesId, amount: 7000 });
+  await placeBet({ db: h.db, userId: "noSmall", marketId: mId, outcomeId: noId, amount: 300 });
+  await placeBet({ db: h.db, userId: "noBig", marketId: mId, outcomeId: noId, amount: 2700 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: noId });
+
+  // total=10000, winningPool=3000. floor(10000×300/3000)=1000.
+  const [smallBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "noSmall"), eq(bets.marketId, mId)));
+  expect(smallBet.status).toBe("won");
+  expect(smallBet.payout).toBe(1000);
+  // noSmall staked 300 of 1000, then credited 1000 → 1000 - 300 + 1000 = 1700.
+  expect(await getBalance({ db: h.db, userId: "noSmall" })).toBe(1700);
+
+  // noBig: floor(10000×2700/3000)=9000.
+  const [bigBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "noBig"), eq(bets.marketId, mId)));
+  expect(bigBet.status).toBe("won");
+  expect(bigBet.payout).toBe(9000);
+  // noBig staked 2700 of 3000, then credited 9000 → 3000 - 2700 + 9000 = 9300.
+  expect(await getBalance({ db: h.db, userId: "noBig" })).toBe(9300);
+
+  // YES bettor lost: bet lost, payout 0, no credit (balance is the leftover 0).
+  const [yesBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "yesGuy"), eq(bets.marketId, mId)));
+  expect(yesBet.status).toBe("lost");
+  expect(yesBet.payout).toBe(0);
+  expect(await getBalance({ db: h.db, userId: "yesGuy" })).toBe(0);
+
+  // No payout ledger row for the loser.
+  const yesPayouts = (await h.db.select().from(transactions)).filter(
+    (r) => r.userId === "yesGuy" && r.type === "payout",
+  );
+  expect(yesPayouts.length).toBe(0);
+
+  // Market is resolved with the winning outcome recorded.
+  const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(mkt.status).toBe("resolved");
+  expect(mkt.resolvedOutcomeId).toBe(noId);
+  expect(mkt.resolvedAt).not.toBeNull();
+
+  // Winners' payouts are funded entirely by the losing pool: total in = total out.
+  expect(smallBet.payout + bigBet.payout).toBe(10000);
+});
+
+test("resolveMarket with an empty winning pool refunds every bet in full", async () => {
+  // Everyone bet YES; resolve NO (winningPool=0) → no divide-by-zero, refund all.
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 400 });
+  await placeBet({ db: h.db, userId: "b", marketId: mId, outcomeId: yesId, amount: 600 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: noId });
+
+  // Both bets refunded in full; balances restored to pre-bet.
+  for (const [id, stake] of [["a", 400], ["b", 600]] as const) {
+    const [bet] = await h.db
+      .select()
+      .from(bets)
+      .where(and(eq(bets.userId, id), eq(bets.marketId, mId)));
+    expect(bet.status).toBe("refunded");
+    expect(bet.payout).toBe(stake);
+    expect(await getBalance({ db: h.db, userId: id })).toBe(1000);
+  }
+
+  const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(mkt.status).toBe("resolved");
+});
+
+test("voidMarket refunds every open bet and marks the market voided", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 250 });
+  await placeBet({ db: h.db, userId: "b", marketId: mId, outcomeId: noId, amount: 750 });
+
+  await voidMarket({ db: h.db, marketId: mId });
+
+  for (const [id, stake] of [["a", 250], ["b", 750]] as const) {
+    const [bet] = await h.db
+      .select()
+      .from(bets)
+      .where(and(eq(bets.userId, id), eq(bets.marketId, mId)));
+    expect(bet.status).toBe("refunded");
+    expect(bet.payout).toBe(stake);
+    expect(await getBalance({ db: h.db, userId: id })).toBe(1000);
+    // The refund is a ledger entry of type refund for the stake.
+    const refunds = (await h.db.select().from(transactions)).filter(
+      (r) => r.userId === id && r.type === "refund",
+    );
+    expect(refunds.length).toBe(1);
+    expect(refunds[0].amount).toBe(stake);
+  }
+
+  const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(mkt.status).toBe("voided");
+});
+
+test("resolveMarket on an already-resolved market throws AlreadyResolvedError", async () => {
+  await fundedUser("a", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 100 });
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  await expect(
+    resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: noId }),
+  ).rejects.toBeInstanceOf(AlreadyResolvedError);
+});
+
+test("voidMarket on an already-resolved market throws AlreadyResolvedError", async () => {
+  await fundedUser("a", 1000);
+  const { marketId: mId, yesId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 100 });
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  await expect(voidMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(
+    AlreadyResolvedError,
+  );
 });
