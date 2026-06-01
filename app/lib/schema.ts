@@ -21,6 +21,8 @@ export const users = pgTable("user", {
   lastFaucetAt: timestamp("lastFaucetAt"),
   totalResolved: integer("totalResolved").notNull().default(0), // markets the user had a bet in that resolved
   totalWins: integer("totalWins").notNull().default(0),         // of those, the user's top stake was on the winner
+  streakCount: integer("streakCount").notNull().default(0),     // consecutive-day faucet claims (48h grace)
+  bestStreak: integer("bestStreak").notNull().default(0),       // longest streak ever reached
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

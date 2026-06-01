@@ -32,6 +32,8 @@ export interface UserStats {
   accuracy: number; // 0–100
   totalResolved: number;
   totalWins: number;
+  streakCount: number; // current consecutive-day faucet streak
+  bestStreak: number; // longest streak ever reached
   rank: number; // 1-based, by net worth
 }
 
@@ -108,6 +110,8 @@ export async function getUserStats({
       accuracy: accuracyExpr,
       totalResolved: users.totalResolved,
       totalWins: users.totalWins,
+      streakCount: users.streakCount,
+      bestStreak: users.bestStreak,
     })
     .from(users)
     .where(eq(users.id, userId));

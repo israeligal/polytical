@@ -7,10 +7,10 @@
  * `FaucetButton` component is still exercised. The story drives the two
  * outcomes by toggling `__faucetMock`.
  */
-type FaucetResult = { ok: boolean; message?: string };
+type FaucetResult = { ok: boolean; message?: string; streak?: number; amount?: number };
 
 export const __faucetMock: { result: FaucetResult; delayMs: number } = {
-  result: { ok: true },
+  result: { ok: true, streak: 1, amount: 200 },
   delayMs: 600,
 };
 

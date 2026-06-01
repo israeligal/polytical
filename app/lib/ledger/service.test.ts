@@ -2,7 +2,9 @@ import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, transactions } from "@/app/lib/schema";
-import { STARTING_STACK, DAILY_FAUCET, FAUCET_COOLDOWN_MS } from "@/app/lib/economy";
+import {
+  STARTING_STACK, DAILY_FAUCET, FAUCET_COOLDOWN_MS, STREAK_BONUS_PER_DAY, STREAK_BONUS_DAYS,
+} from "@/app/lib/economy";
 import { FaucetCooldownError, InsufficientFundsError } from "@/app/lib/errors";
 import { applyEntry, grantStartingStack, claimDailyFaucet, getBalance } from "./service";
 
@@ -25,17 +27,54 @@ test("grantStartingStack credits 1000 once and is idempotent", async () => {
   expect(rows[0].balanceAfter).toBe(STARTING_STACK);
 });
 
-test("claimDailyFaucet adds 200, blocks within 24h, allows after", async () => {
+test("claimDailyFaucet adds 200, blocks within 24h, allows after (day-2 keeps streak → +225)", async () => {
   await grantStartingStack({ db: h.db, userId: UID });
-  await claimDailyFaucet({ db: h.db, userId: UID });
+  const first = await claimDailyFaucet({ db: h.db, userId: UID });
+  expect(first).toMatchObject({ streak: 1, amount: DAILY_FAUCET });
   expect(await getBalance({ db: h.db, userId: UID })).toBe(STARTING_STACK + DAILY_FAUCET);
   await expect(claimDailyFaucet({ db: h.db, userId: UID })).rejects.toBeInstanceOf(FaucetCooldownError);
+  // 25h later: past the 24h cooldown but inside the 48h grace → streak advances to 2.
   await h.db
     .update(users)
     .set({ lastFaucetAt: new Date(Date.now() - 25 * 3600 * 1000) })
     .where(eq(users.id, UID));
-  await claimDailyFaucet({ db: h.db, userId: UID });
-  expect(await getBalance({ db: h.db, userId: UID })).toBe(STARTING_STACK + 2 * DAILY_FAUCET);
+  const second = await claimDailyFaucet({ db: h.db, userId: UID });
+  expect(second).toMatchObject({ streak: 2, amount: DAILY_FAUCET + STREAK_BONUS_PER_DAY });
+  expect(await getBalance({ db: h.db, userId: UID })).toBe(
+    STARTING_STACK + DAILY_FAUCET + (DAILY_FAUCET + STREAK_BONUS_PER_DAY),
+  );
+});
+
+test("streak resets to 1 after a gap longer than the grace window", async () => {
+  await grantStartingStack({ db: h.db, userId: UID });
+  await claimDailyFaucet({ db: h.db, userId: UID }); // streak 1
+  // Advance two claims within grace to reach streak 3.
+  await h.db.update(users).set({ lastFaucetAt: new Date(Date.now() - 25 * 3600 * 1000) }).where(eq(users.id, UID));
+  await claimDailyFaucet({ db: h.db, userId: UID }); // streak 2
+  await h.db.update(users).set({ lastFaucetAt: new Date(Date.now() - 25 * 3600 * 1000) }).where(eq(users.id, UID));
+  const third = await claimDailyFaucet({ db: h.db, userId: UID }); // streak 3
+  expect(third.streak).toBe(3);
+  // Now a 3-day gap (> 48h grace) → chain breaks, restart at 1; bestStreak holds at 3.
+  await h.db.update(users).set({ lastFaucetAt: new Date(Date.now() - 3 * 24 * 3600 * 1000) }).where(eq(users.id, UID));
+  const reset = await claimDailyFaucet({ db: h.db, userId: UID });
+  expect(reset).toMatchObject({ streak: 1, amount: DAILY_FAUCET });
+  const [u] = await h.db.select().from(users).where(eq(users.id, UID));
+  expect(u.streakCount).toBe(1);
+  expect(u.bestStreak).toBe(3); // best never decreases
+});
+
+test("faucet bonus scales with streak and caps at day 8 (+175)", async () => {
+  await grantStartingStack({ db: h.db, userId: UID });
+  let last: Awaited<ReturnType<typeof claimDailyFaucet>> | null = null;
+  for (let day = 1; day <= 10; day++) {
+    if (day > 1) {
+      await h.db.update(users).set({ lastFaucetAt: new Date(Date.now() - 25 * 3600 * 1000) }).where(eq(users.id, UID));
+    }
+    last = await claimDailyFaucet({ db: h.db, userId: UID });
+  }
+  expect(last!.streak).toBe(10);
+  // day 8+ caps the bonus at STREAK_BONUS_DAYS * per-day.
+  expect(last!.amount).toBe(DAILY_FAUCET + STREAK_BONUS_DAYS * STREAK_BONUS_PER_DAY);
 });
 
 test("overdraft is rejected and rolls back (no row, balance unchanged)", async () => {

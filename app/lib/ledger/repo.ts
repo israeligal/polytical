@@ -81,6 +81,30 @@ export async function setLastFaucetAt({
     .where(eq(users.id, reqUser(userId)));
 }
 
+/**
+ * Records a faucet claim's streak bookkeeping (timestamp + current/best streak)
+ * in one statement. Balance is NOT touched here — applyEntry remains the sole
+ * balance writer. Runs under the same FOR-UPDATE lock as the cooldown check.
+ */
+export async function setFaucetClaim({
+  tx,
+  userId,
+  at,
+  streak,
+  bestStreak,
+}: {
+  tx: Tx;
+  userId: string;
+  at: Date;
+  streak: number;
+  bestStreak: number;
+}): Promise<void> {
+  await tx
+    .update(users)
+    .set({ lastFaucetAt: at, streakCount: streak, bestStreak, updatedAt: new Date() })
+    .where(eq(users.id, reqUser(userId)));
+}
+
 export async function insertEntry({
   tx,
   userId,
