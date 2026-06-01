@@ -1,0 +1,5 @@
+# Per-session scratch — only ledgers/ + coverage/ are durable history.
+qa-plan.md
+_*.png
+qa-in-progress/
+fixes-in-progress/
