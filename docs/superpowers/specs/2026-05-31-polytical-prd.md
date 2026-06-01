@@ -8,7 +8,7 @@
 | **Date** | 2026-05-31 |
 | **Owner** | Gal (gireddit@gmail.com) |
 | **Scope of this doc** | v1 (MVP) requirements + the architecture/design decisions that bound it |
-| **Stack** | Next.js 16 · React 19 · Tailwind v4 · Neon Postgres · Drizzle · Auth.js · Vercel Blob · Vercel |
+| **Stack** | Next.js 16 · React 19 · Tailwind v4 · Neon Postgres · Drizzle · Better Auth · Vercel Blob · Vercel |
 
 ---
 
@@ -187,7 +187,7 @@ This **rewards early conviction on the underdog**: getting onto the eventually-c
 
 - **App:** Next.js 16 (App Router) + React 19; Server Components for reads, Server Actions / Route Handlers for mutations (bets, resolve, comments). *(Next.js 16 has breaking changes vs. prior versions — confirm App Router conventions against `node_modules/next/dist/docs/` at implementation time.)*
 - **DB:** **Neon Postgres** + **Drizzle ORM**. Bet placement and resolution run in **DB transactions** for atomicity and to prevent negative balances / double-pays.
-- **Auth:** **Auth.js (NextAuth)** with Google + email, Neon-backed sessions; `is_admin` flag gates admin routes.
+- **Auth:** **Better Auth** (Drizzle adapter) with Google + email, Neon-backed sessions; `is_admin` flag gates admin routes. Auth tables live in the same Drizzle schema (generated via `@better-auth/cli`).
 - **Assets:** AI caricatures stored in **Vercel Blob**, referenced by URL.
 - **Odds freshness (v1):** optimistic update on bet + periodic client refetch (SWR poll) on market detail; **true push is P1** (e.g., Postgres `LISTEN/NOTIFY` + a websocket layer, or a managed pub/sub).
 - **Hosting:** Vercel. **Timezone:** all display in Asia/Jerusalem; store UTC.
@@ -226,7 +226,7 @@ This **rewards early conviction on the underdog**: getting onto the eventually-c
 
 ## 16. Timeline & Phasing (suggested)
 
-1. **Foundation** — schema + Drizzle migrations, Auth.js, coin ledger, starting stack, faucet, RTL/Hebrew shell + design-system tokens.
+1. **Foundation** — schema + Drizzle migrations, Better Auth, coin ledger, starting stack, faucet, RTL/Hebrew shell + design-system tokens.
 2. **Markets core** — admin create, feed + filters, market detail, place bet, live odds (poll).
 3. **Resolution** — close/resolve/void, atomic payouts, accuracy + net-worth updates, ledger.
 4. **Cards + content** — politician model, AI caricature pipeline, gallery + detail, market↔politician links, sourced facts.

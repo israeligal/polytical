@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780257431771,
+      "tag": "0000_even_zombie",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780258192662,
+      "tag": "0001_known_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780259094296,
+      "tag": "0002_broad_maggott",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780259871958,
+      "tag": "0003_knesset_search_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780262632175,
+      "tag": "0004_careless_pepper_potts",
+      "breakpoints": true
+    }
+  ]
+}

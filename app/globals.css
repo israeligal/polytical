@@ -1,26 +1,148 @@
+/*
+ * Polytical — Design System token layer  ("Ballot & Ink")
+ * Color space: OKLCH only. Never commit a hex value to this file. Convert at https://oklch.com.
+ *
+ * Two layers:
+ *   @theme inline  — maps tokens to Tailwind v4 utilities (bg-primary, text-foreground, font-display, ...)
+ *   :root          — the semantic token VALUES (OKLCH)
+ *
+ * Components reference ONLY the @theme utilities, never the raw :root values.
+ * Full rationale + usage rules: docs/design/design-system-spec.md
+ *
+ * Personality: a satirical political op-ed page that's secretly a game —
+ * fact-grounded and credible, witty and irreverent through its caricatures.
+ * Light-only in v1 (the editorial "paper" aesthetic is inherently light).
+ */
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
+  /* Typography — display = Frank Ruhl Libre (Hebrew op-ed serif), sans = Heebo (UI/data) */
+  --font-display: var(--font-frank-ruhl), "Frank Ruhl Libre", Georgia, serif;
+  --font-sans: var(--font-heebo), "Heebo", system-ui, -apple-system, sans-serif;
+
+  /* Base */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+
+  /* Primary — ballot blue (actions, links, active, overline labels, focus) */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+
+  /* Accent — gold (coins, hot/trending/featured highlights). FILLS ONLY, never body text. */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-hover: var(--accent-hover);
+
+  /* Muted — subdued section backgrounds, input fills, captions */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Structure */
+  --color-border: var(--border);
+  --color-ring: var(--primary);
+
+  /* Outcomes — reserved EXCLUSIVELY for market semantics (never decorative) */
+  --color-positive: var(--positive);              /* YES · up · gain · win */
+  --color-positive-foreground: var(--positive-foreground);
+  --color-positive-soft: var(--positive-soft);    /* bar track / chip backgrounds */
+  --color-negative: var(--negative);              /* NO · down · loss */
+  --color-negative-foreground: var(--negative-foreground);
+  --color-negative-soft: var(--negative-soft);
+
+  /* Feedback */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Categorical — parties & multi-option outcomes. No inherent meaning; assign from data. */
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
+  --color-cat-6: var(--cat-6);
+  --color-cat-7: var(--cat-7);
+  --color-cat-8: var(--cat-8);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Base — warm "ballot paper", near-black warm ink */
+  --background: oklch(0.985 0.008 85);
+  --foreground: oklch(0.25 0.012 75);
+  --card: oklch(0.995 0.004 90);            /* near-white, lifts off the cream background */
+
+  /* Primary — ballot blue */
+  --primary: oklch(0.47 0.16 258);
+  --primary-foreground: oklch(0.99 0.005 250);
+  --primary-hover: oklch(0.42 0.16 258);    /* base L − 0.05 */
+
+  /* Accent — gold (coins / hot / featured) */
+  --accent: oklch(0.78 0.14 80);
+  --accent-foreground: oklch(0.28 0.03 75); /* ink on gold */
+  --accent-hover: oklch(0.73 0.14 80);
+
+  /* Muted */
+  --muted: oklch(0.955 0.01 85);
+  --muted-foreground: oklch(0.46 0.02 80);
+
+  /* Structure */
+  --border: oklch(0.89 0.012 82);           /* warm hairline rule */
+
+  /* Outcomes */
+  --positive: oklch(0.56 0.13 152);
+  --positive-foreground: oklch(0.99 0.01 150);
+  --positive-soft: oklch(0.93 0.045 152);
+  --negative: oklch(0.56 0.19 28);
+  --negative-foreground: oklch(0.99 0.01 28);
+  --negative-soft: oklch(0.93 0.05 28);
+
+  /* Feedback */
+  --destructive: oklch(0.55 0.20 27);
+  --destructive-foreground: oklch(0.99 0.005 27);
+
+  /* Categorical (parties / multi-option) */
+  --cat-1: oklch(0.55 0.16 258);            /* blue */
+  --cat-2: oklch(0.60 0.12 200);            /* teal */
+  --cat-3: oklch(0.58 0.14 152);            /* green */
+  --cat-4: oklch(0.75 0.14 85);             /* gold */
+  --cat-5: oklch(0.65 0.16 50);             /* orange */
+  --cat-6: oklch(0.57 0.19 25);             /* red */
+  --cat-7: oklch(0.55 0.15 305);            /* purple */
+  --cat-8: oklch(0.62 0.16 350);            /* magenta */
+}
+
+/* ----- Base layer ----------------------------------------------------------
+   RTL + Hebrew baseline. NOTE: Hebrew does NOT take Latin-style negative
+   letter-spacing or uppercase — both are forbidden (see spec §5). */
+@layer base {
+  body {
+    background-color: var(--background);
+    /* Faint paper grain baked as a background layer (behind all content). */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;            /* Hebrew reads better with slightly more leading */
+    letter-spacing: normal;      /* never negative-track Hebrew */
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Editorial default: headlines are the op-ed serif. Components may opt to
+     font-sans for dense UI labels. */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  /* Numeric data (odds %, coins, payouts) aligns with tabular figures. */
+  .nums { font-variant-numeric: tabular-nums; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Smooth-scroll only during focused in-page anchor jumps, accessibility-gated. */
+@media (prefers-reduced-motion: no-preference) {
+  html:focus-within { scroll-behavior: smooth; }
 }
