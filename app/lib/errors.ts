@@ -28,3 +28,6 @@ export class MarketClosedError extends Error { constructor() { super("Market is 
 export class InvalidOutcomeError extends Error { constructor() { super("Outcome not in market"); this.name = "InvalidOutcomeError"; } }
 export class AlreadyResolvedError extends Error { constructor() { super("Market already resolved/voided"); this.name = "AlreadyResolvedError"; } }
 export class NotAdminError extends Error { constructor() { super("Admin only"); this.name = "NotAdminError"; } }
+export class EmptyCommentError extends Error { constructor() { super("Comment is empty"); this.name = "EmptyCommentError"; } }
+export class CommentTooLongError extends Error { constructor() { super("Comment too long"); this.name = "CommentTooLongError"; } }
+export class CommentNotFoundError extends Error { constructor() { super("Comment not found"); this.name = "CommentNotFoundError"; } }
