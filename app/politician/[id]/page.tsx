@@ -10,8 +10,12 @@ import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketsForPolitician } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
+import { CollectButton } from "@/components/collect-button";
 import { MarketCard } from "@/components/market-card";
 import { ChevronForward } from "@/components/icons";
+import { getSession } from "@/lib/auth";
+import { isOwned } from "@/app/lib/cards/service";
+import { COLLECT_COST } from "@/app/lib/economy";
 
 export default async function PoliticianPage({
   params,
@@ -27,6 +31,11 @@ export default async function PoliticianPage({
 
   const politician = dbToCard(row);
   const activity = await getPoliticianActivity({ personId });
+
+  // Collection affordance — only for a signed-in user; anonymous visitors see
+  // the card without a collect button (the action would reject them anyway).
+  const session = await getSession();
+  const owned = session?.user ? await isOwned({ userId: session.user.id, personId }) : false;
 
   // Markets that feature this MK → the same view-model the homepage cards use.
   // Featured portraits resolve against one politicians map (no N+1), mirroring
@@ -54,6 +63,18 @@ export default async function PoliticianPage({
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="lg:sticky lg:top-24 lg:self-start">
           <CaricatureCard politician={politician} realData />
+          {session?.user ? (
+            <div className="mt-4">
+              <CollectButton personId={personId} owned={owned} cost={COLLECT_COST} />
+            </div>
+          ) : (
+            <Link
+              href="/login?callbackUrl=%2Fcollection"
+              className="mt-4 block rounded-full border border-border px-4 py-2.5 text-center text-sm font-bold text-muted-foreground transition-colors hover:text-primary"
+            >
+              התחברו כדי לאסוף את הקלף
+            </Link>
+          )}
         </div>
 
         <div>

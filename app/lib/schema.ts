@@ -23,6 +23,10 @@ export const users = pgTable("user", {
   totalWins: integer("totalWins").notNull().default(0),         // of those, the user's top stake was on the winner
   streakCount: integer("streakCount").notNull().default(0),     // consecutive-day faucet claims (48h grace)
   bestStreak: integer("bestStreak").notNull().default(0),       // longest streak ever reached
+  // --- Identity / onboarding (Phase 2) ---
+  handle: text("handle").unique(),       // @-handle (3–20 [a-z0-9_]); nullable — Postgres treats multiple NULLs as distinct, so legacy rows are fine
+  arena: text("arena"),                  // the user's chosen focus — a CATEGORIES key, stored as text
+  onboardedAt: timestamp("onboardedAt"), // null = onboarding gate not yet cleared
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -68,7 +72,7 @@ export const verifications = pgTable("verification", {
 });
 
 // --- Coin ledger (the money source of truth) ---
-export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund"]);
+export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund", "collect"]);
 
 export const transactions = pgTable(
   "transactions",
@@ -360,4 +364,23 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_created_idx").on(t.userId, t.createdAt),
   // Partial index → unread count is O(unread), not a full per-user scan.
   index("notifications_user_unread_idx").on(t.userId).where(sql`${t.read} = false`),
+]);
+
+// ===================================================================
+// Card collection (Phase 2) — the collectible hook. Spending `collect` coins
+// (a ledger row, like any coin movement) buys permanent ownership of an MK's
+// caricature card. personId references politicians.personId by STABLE id (no
+// FK — resolve by canonical id, never fuzzy); the unique(userId, personId)
+// index is BOTH the one-card-per-user ownership invariant AND the idempotency
+// backstop that rolls back the debit on a concurrent double-collect.
+// ===================================================================
+
+export const cardCollections = pgTable("card_collections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  personId: integer("personId").notNull(), // → politicians.personId (no FK; resolve by id)
+  collectedAt: timestamp("collectedAt").notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("card_collections_user_person_uq").on(t.userId, t.personId),
+  index("card_collections_user_idx").on(t.userId),
 ]);

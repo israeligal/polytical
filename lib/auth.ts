@@ -36,9 +36,15 @@ export const auth = betterAuth({
   },
 
   // `isAdmin` lives on the user table and gates admin routes (PRD P0).
+  // handle/arena/onboardedAt drive the onboarding gate — they MUST be declared
+  // here or they won't surface on session.user and proxy.ts can't read them.
+  // input:false → set only via our server services, never client-writable.
   user: {
     additionalFields: {
       isAdmin: { type: "boolean", defaultValue: false, input: false },
+      handle: { type: "string", required: false, input: false },
+      arena: { type: "string", required: false, input: false },
+      onboardedAt: { type: "date", required: false, input: false },
     },
   },
 
@@ -92,4 +98,13 @@ export type Session = typeof auth.$Infer.Session;
 export async function getSession() {
   const { headers } = await import("next/headers");
   return auth.api.getSession({ headers: await headers() });
+}
+
+/** Force a DB-backed session read, re-issuing the (5-min) cookie cache. Call
+ *  after a server-side write to user fields the proxy/header gate on — e.g.
+ *  onboardedAt — so the refreshed cookie reflects it immediately and the
+ *  onboarding gate doesn't bounce a just-finished user against a stale cookie. */
+export async function refreshSession() {
+  const { headers } = await import("next/headers");
+  return auth.api.getSession({ headers: await headers(), query: { disableCookieCache: true } });
 }

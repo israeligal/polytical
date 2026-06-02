@@ -3,7 +3,7 @@ import type { Politician } from "@/lib/types";
 import { marketsForPolitician } from "@/lib/mock-data";
 import { rarityForRole, suitForCat, RARITY_HE, RARITY_TEXT, RARITY_BORDER } from "@/lib/rarity";
 import { PoliticianPortrait } from "@/components/politician-portrait";
-import { ChevronForward, Crest, Gem } from "@/components/icons";
+import { ChevronForward, Crest, Gem, Lock } from "@/components/icons";
 
 /**
  * The collectible caricature card — the hero artifact of the product.
@@ -12,21 +12,32 @@ import { ChevronForward, Crest, Gem } from "@/components/icons";
  * shows a neutral "קלף שחקן" badge instead of calling `marketsForPolitician`.
  * Mock-driven callers (homepage markets, market detail) omit it and keep the
  * live "X שווקים פעילים" count — so existing behavior is untouched.
+ *
+ * `owned` (defaults true) drives the collection gallery: an un-owned card renders
+ * dimmed + desaturated with a lock chip, so all existing call sites stay untouched.
  */
 export function CaricatureCard({
   politician,
   realData = false,
+  owned = true,
 }: {
   politician: Politician;
   realData?: boolean;
+  owned?: boolean;
 }) {
   const count = realData ? 0 : marketsForPolitician(politician.id).length;
   const rarity = rarityForRole(politician.role);
   const suit = suitForCat(politician.cat);
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-card border-[2.5px] bg-card shadow-3 ${RARITY_BORDER[rarity]} ${rarity === "legendary" ? "shadow-glow-gold" : ""}`}
+      className={`relative flex flex-col overflow-hidden rounded-card border-[2.5px] bg-card shadow-3 ${RARITY_BORDER[rarity]} ${rarity === "legendary" && owned ? "shadow-glow-gold" : ""} ${owned ? "" : "opacity-65 grayscale"}`}
     >
+      {!owned && (
+        <span className="absolute end-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-background/85 px-2.5 py-1 font-accent text-[11px] font-extrabold text-muted-foreground backdrop-blur-sm">
+          <Lock className="h-3.5 w-3.5" />
+          לא נאסף
+        </span>
+      )}
       {/* rarity-tinted header: gem + tier on the start, faction crest on the end */}
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <span className={`inline-flex items-center gap-1.5 font-accent text-[11px] font-extrabold ${RARITY_TEXT[rarity]}`}>

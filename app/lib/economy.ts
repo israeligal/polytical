@@ -18,3 +18,7 @@ export function faucetAmountForStreak(streak: number): number {
   const bonusDays = Math.min(Math.max(streak - 1, 0), STREAK_BONUS_DAYS);
   return DAILY_FAUCET + bonusDays * STREAK_BONUS_PER_DAY;
 }
+
+// --- Card collection (Phase 2) ---
+/** Coins spent to permanently collect a politician's caricature card. */
+export const COLLECT_COST = 250;
