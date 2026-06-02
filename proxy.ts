@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
 // Markets feed (/) and most pages are public. These require a session:
-const PROTECTED_ROUTES = ["/profile", "/admin"];
+const PROTECTED_ROUTES = ["/profile", "/admin", "/notifications"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 export async function proxy(req: NextRequest) {

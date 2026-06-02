@@ -3,6 +3,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as repo from "@/app/lib/markets/repo";
 import { applyEntry } from "@/app/lib/ledger/service";
+import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
 import { MIN_BET } from "@/app/lib/economy";
 import * as schema from "@/app/lib/schema";
 import {
@@ -97,6 +98,9 @@ export async function resolveMarket({
     if (!winner) throw new InvalidOutcomeError();
     const total = outs.reduce((s, o) => s + o.poolTotal, 0);
     const bets = await repo.listOpenBets({ tx, marketId });
+    // Notification events accumulate here and emit (in this same tx) after the
+    // market is marked resolved — so the "you won" notice is atomic with the payout.
+    const events: NotificationEvent[] = [];
     for (const b of bets) {
       if (winner.poolTotal === 0) {
         // No winners → refund all (avoids divide-by-zero).
@@ -120,10 +124,14 @@ export async function resolveMarket({
           refBetId: b.id,
         });
         await repo.setBetStatus({ tx, betId: b.id, status: "won", payout });
+        events.push({ type: "bet_won", userId: b.userId, marketId, betId: b.id, questionHe: market.questionHe, payout });
       } else {
         await repo.setBetStatus({ tx, betId: b.id, status: "lost", payout: 0 });
       }
     }
+    // One "market resolved" notice per distinct participant (winners + losers).
+    for (const uid of new Set(bets.map((b) => b.userId)))
+      events.push({ type: "market_resolved", userId: uid, marketId, questionHe: market.questionHe });
     // Forecaster accuracy: a user "won" the market iff their largest single-outcome
     // stake was on the winning outcome (strict max; ties → not a win). Skip on the
     // winningPool=0 refund path (nobody backed the winner → no skill signal).
@@ -146,6 +154,7 @@ export async function resolveMarket({
       }
     }
     await repo.markResolved({ tx, marketId, winningOutcomeId, sourceUrl, note });
+    await emitNotifications({ tx, events });
   });
 }
 

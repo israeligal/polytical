@@ -6,6 +6,8 @@ import { getMarketBundle } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
+import { getCelebrations } from "@/app/lib/bets/service";
+import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { OddsBar } from "@/components/odds-bar";
 import { BetPanel } from "@/components/bet-panel";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -40,9 +42,15 @@ export default async function MarketPage({
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
   const volume = totalPool(market.outcomes);
+  // One-time win/loss celebration for this market's resolved bet (first view).
+  const celebrations =
+    settled && session?.user
+      ? await getCelebrations({ userId: session.user.id, marketId: id })
+      : [];
 
   return (
     <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <CelebrationHost bets={celebrations} />
       <Link
         href="/#markets"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"

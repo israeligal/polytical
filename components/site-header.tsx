@@ -2,9 +2,11 @@ import Link from "next/link";
 import { PolyticalLogo } from "@/components/icons";
 import { CoinPill } from "@/components/coin-pill";
 import { FaucetButton } from "@/components/faucet-button";
+import { NotificationBell } from "@/components/notification-bell";
 import { SignOutButton } from "@/components/auth-buttons";
 import { getSession } from "@/lib/auth";
 import { getOrInitBalance } from "@/app/lib/ledger/service";
+import { getUnreadCount } from "@/app/lib/notifications/service";
 
 const NAV = [
   { href: "/#markets", label: "שווקים" },
@@ -17,6 +19,7 @@ export async function SiteHeader() {
   const session = await getSession();
   const user = session?.user ?? null;
   const balance = user ? await getOrInitBalance({ userId: user.id }) : 0;
+  const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
@@ -47,6 +50,7 @@ export async function SiteHeader() {
             <>
               <FaucetButton />
               <CoinPill amount={balance} />
+              <NotificationBell unreadCount={unread} />
               <Link
                 href="/profile"
                 className="hidden text-sm font-semibold text-muted-foreground transition-colors hover:text-primary sm:inline"

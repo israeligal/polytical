@@ -71,6 +71,13 @@
       "when": 1780379881861,
       "tag": "0009_unknown_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780413642775,
+      "tag": "0010_melted_demogoblin",
+      "breakpoints": true
     }
   ]
 }
