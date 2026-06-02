@@ -72,7 +72,7 @@ export const verifications = pgTable("verification", {
 });
 
 // --- Coin ledger (the money source of truth) ---
-export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund", "collect"]);
+export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund", "collect", "season_reward"]);
 
 export const transactions = pgTable(
   "transactions",
@@ -259,8 +259,16 @@ export const markets = pgTable("markets", {
   resolutionNote: text("resolutionNote"),
   resolvedAt: timestamp("resolvedAt"),
   createdBy: text("createdBy").references(() => users.id),
+  // unaccent/normalized question text for discovery-only fuzzy search (mirrors
+  // politicians.searchName). Written via normalizeSearchName on every create
+  // path; the trigram GIN index below is declared in-schema so `db:push`
+  // creates AND preserves it (a hand-written migration index gets dropped by a
+  // later push, since push diffs against the schema).
+  searchText: text("searchText").notNull().default(""),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-});
+}, (t) => [
+  index("markets_searchtext_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
+]);
 
 export const outcomes = pgTable("outcomes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -383,4 +391,49 @@ export const cardCollections = pgTable("card_collections", {
 }, (t) => [
   uniqueIndex("card_collections_user_person_uq").on(t.userId, t.personId),
   index("card_collections_user_idx").on(t.userId),
+]);
+
+// ===================================================================
+// Seasons (Phase 3) — time-boxed reward tracks for retention. Progress is the
+// net Shekoins won in the season window, computed LIVE from the ledger (no
+// tally column, no cron). A user CLAIMS a tier on demand once their progress
+// reaches its goal; the claim credits `season_reward` coins (a ledger row, via
+// applyEntry) and is terminal — a later dip below goal never revokes it.
+// ===================================================================
+
+export const seasonStatus = pgEnum("season_status", ["active", "ended"]);
+
+export const seasons = pgTable("seasons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nameHe: text("nameHe").notNull(),
+  startAt: timestamp("startAt").notNull(),
+  endAt: timestamp("endAt").notNull(),
+  status: seasonStatus("status").notNull().default("active"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [
+  // At most one active season at a time (partial unique) — the writer also guards.
+  uniqueIndex("seasons_one_active_uq").on(t.status).where(sql`${t.status} = 'active'`),
+]);
+
+export const seasonRewardTiers = pgTable("season_reward_tiers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  seasonId: uuid("seasonId").notNull().references(() => seasons.id, { onDelete: "cascade" }),
+  ordinal: integer("ordinal").notNull(),       // tier order within the season (1..n)
+  nameHe: text("nameHe").notNull(),
+  goalAmount: integer("goalAmount").notNull(), // net Shekoins won to unlock the tier
+  rewardAmount: integer("rewardAmount").notNull(), // coins credited on claim
+}, (t) => [
+  uniqueIndex("season_reward_tiers_season_ordinal_uq").on(t.seasonId, t.ordinal),
+]);
+
+export const seasonRewardClaims = pgTable("season_reward_claims", {
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tierId: uuid("tierId").notNull().references(() => seasonRewardTiers.id, { onDelete: "cascade" }),
+  seasonId: uuid("seasonId").notNull().references(() => seasons.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),         // coins credited (snapshot of tier.rewardAmount)
+  claimedAt: timestamp("claimedAt").notNull().defaultNow(),
+}, (t) => [
+  // One claim per (user, tier) — the idempotency invariant behind AlreadyClaimedError.
+  primaryKey({ columns: [t.userId, t.tierId] }),
+  index("season_reward_claims_user_idx").on(t.userId),
 ]);

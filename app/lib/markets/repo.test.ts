@@ -1,7 +1,8 @@
 import { beforeEach, afterEach, expect, test } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, markets, outcomes, bets, marketPoliticians } from "@/app/lib/schema";
-import { getMarketOfTheDay, getMarketsForPolitician, createMarket } from "./repo";
+import { getMarketOfTheDay, getMarketsForPolitician, createMarket, searchMarkets } from "./repo";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -107,4 +108,23 @@ test("createMarket joins an existing tx when passed one (atomic with a caller's 
   // The whole composite rolled back — no market, no link leaked.
   expect((await h.db.select().from(markets)).length).toBe(0);
   expect((await h.db.select().from(marketPoliticians)).length).toBe(0);
+});
+
+test("createMarket populates the normalized searchText; searchMarkets finds it", async () => {
+  const { marketId } = await createMarket({
+    db: h.db,
+    questionHe: "האם הקואליציה תשרוד את מושב הקיץ?",
+    category: "coalition",
+    closeAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+    outcomes: [{ labelHe: "כן", ordinal: 0 }, { labelHe: "לא", ordinal: 1 }],
+  });
+  const [row] = await h.db.select().from(markets).where(eq(markets.id, marketId));
+  expect(row.searchText).toContain("קואליציה"); // normalized, non-empty
+
+  const hits = await searchMarkets({ db: h.db, q: "קואליציה" });
+  expect(hits.map((m) => m.id)).toContain(marketId);
+
+  // A draft market is not discoverable.
+  await h.db.update(markets).set({ status: "draft" }).where(eq(markets.id, marketId));
+  expect(await searchMarkets({ db: h.db, q: "קואליציה" })).toEqual([]);
 });

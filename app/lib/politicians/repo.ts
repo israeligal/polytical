@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
@@ -36,6 +36,32 @@ export async function getFeaturedPoliticians({
   limit = 12,
 }: { db?: DB; limit?: number } = {}): Promise<PoliticianRow[]> {
   return db.select().from(politicians).orderBy(...GALLERY_ORDER).limit(limit);
+}
+
+/**
+ * Discovery search over MKs by normalized Hebrew name. ILIKE on the
+ * already-normalized `searchName` column (niqqud/finals/particles stripped),
+ * trigram-index-assisted — discovery only, never attribution. `q` is normalized
+ * by the caller (search service) with the same normalizeSearchName, so the
+ * needle and column are in the same space. Party then name order.
+ */
+export async function searchPoliticians({
+  db = defaultDb,
+  q,
+  limit = 24,
+}: {
+  db?: DB;
+  q: string;
+  limit?: number;
+}): Promise<PoliticianRow[]> {
+  const needle = q.trim();
+  if (!needle) return [];
+  return db
+    .select()
+    .from(politicians)
+    .where(and(eq(politicians.active, true), sql`${politicians.searchName} ILIKE ${"%" + needle + "%"}`))
+    .orderBy(...GALLERY_ORDER)
+    .limit(limit);
 }
 
 /** A single MK by their canonical KNS_Person.PersonID (the route id). */

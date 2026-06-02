@@ -5,6 +5,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { LedgerTx } from "@/app/lib/ledger/repo";
 import * as schema from "@/app/lib/schema";
 import { bets, marketPoliticians, markets, outcomes, users } from "@/app/lib/schema";
+import { normalizeSearchName } from "@/app/lib/knesset/search-name";
 
 // Market repository: scope-guarded, tx-aware DB access for the betting service.
 //
@@ -380,7 +381,18 @@ export async function createMarket({
   const run = async (exec: Tx): Promise<{ marketId: string }> => {
     const [market] = await exec
       .insert(markets)
-      .values({ questionHe, descriptionHe, category, type, hot, closeAt, createdBy })
+      // searchText kept in lockstep with the question on every create path
+      // (admin + suggestion-approval both route through here) — discovery-only.
+      .values({
+        questionHe,
+        descriptionHe,
+        category,
+        type,
+        hot,
+        closeAt,
+        createdBy,
+        searchText: normalizeSearchName(questionHe),
+      })
       .returning({ id: markets.id });
 
     if (outcomeInputs.length > 0) {
@@ -442,4 +454,35 @@ export async function getMarketsForPolitician({
     outcomes: outs.filter((o) => o.marketId === market.id),
     personIds: allLinks.filter((l) => l.marketId === market.id).map((l) => l.personId),
   }));
+}
+
+/**
+ * Discovery search over markets by normalized question text. Matches the
+ * already-normalized `searchText` column with ILIKE (index-assisted by the
+ * trigram GIN index); ILIKE-for-discovery is sanctioned by CLAUDE.md (NOT
+ * attribution). Drafts + voided markets are excluded — only live/settled
+ * markets are findable. `hot` then newest first. Caller passes a normalized `q`.
+ */
+export async function searchMarkets({
+  db = defaultDb,
+  q,
+  limit = 20,
+}: {
+  db?: DB;
+  q: string;
+  limit?: number;
+}): Promise<MarketRow[]> {
+  const needle = q.trim();
+  if (!needle) return [];
+  return db
+    .select()
+    .from(markets)
+    .where(
+      and(
+        inArray(markets.status, ["open", "closed", "resolved"]),
+        sql`${markets.searchText} ILIKE ${"%" + needle + "%"}`,
+      ),
+    )
+    .orderBy(desc(markets.hot), desc(markets.createdAt))
+    .limit(limit);
 }
