@@ -7,6 +7,7 @@ import type { OnboardingState } from "@/app/lib/onboarding/repo";
 import { lockUser } from "@/app/lib/ledger/repo";
 import { CATEGORIES } from "@/lib/categories";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
+import { isUniqueViolation } from "@/app/lib/pg-errors";
 import {
   AlreadyOnboardedError,
   HandleRequiredError,
@@ -24,11 +25,6 @@ function requireValidHandle(raw: string): string {
   const h = normalizeHandle(raw);
   if (!HANDLE_RE.test(h)) throw new InvalidHandleError();
   return h;
-}
-
-/** Postgres unique-violation (23505) — narrowed from unknown, no cast to any. */
-function isUniqueViolation(e: unknown): boolean {
-  return typeof e === "object" && e !== null && "code" in e && e.code === "23505";
 }
 
 /** Live availability check for the wizard's handle step. Returns a structured

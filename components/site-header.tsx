@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PolyticalLogo } from "@/components/icons";
+import { PolyticalLogo, Search } from "@/components/icons";
 import { CoinPill } from "@/components/coin-pill";
 import { FaucetButton } from "@/components/faucet-button";
 import { NotificationBell } from "@/components/notification-bell";
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/#markets", label: "שווקים" },
   { href: "/#politicians", label: "פוליטיקאים" },
   { href: "/collection", label: "האוסף" },
+  { href: "/seasons", label: "עונה" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
   { href: "/suggest", label: "הציעו שוק" },
 ];
@@ -47,6 +48,13 @@ export async function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/search"
+            aria-label="חיפוש"
+            className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Search className="h-5 w-5" />
+          </Link>
           {user ? (
             <>
               <FaucetButton />
