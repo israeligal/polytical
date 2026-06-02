@@ -5,6 +5,7 @@ import * as schema from "@/app/lib/schema";
 import * as repo from "@/app/lib/suggestions/repo";
 import type { SuggestionStatus, SuggestionView } from "@/app/lib/suggestions/repo";
 import { createMarket } from "@/app/lib/markets/repo";
+import { emitNotifications } from "@/app/lib/notifications/service";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { CATEGORIES } from "@/lib/categories";
 import {
@@ -129,6 +130,10 @@ export async function approveSuggestion({
     });
 
     await repo.markReviewed({ tx, id: suggestionId, status: "approved", reviewerId, marketId });
+    await emitNotifications({
+      tx,
+      events: [{ type: "suggestion_approved", userId: s.userId, suggestionId, marketId, questionHe: s.questionHe }],
+    });
     return { marketId };
   });
 }
@@ -154,6 +159,10 @@ export async function rejectSuggestion({
       status: "rejected",
       reviewerId,
       reviewNote: note?.trim() || null,
+    });
+    await emitNotifications({
+      tx,
+      events: [{ type: "suggestion_rejected", userId: s.userId, suggestionId, questionHe: s.questionHe, note }],
     });
   });
 }

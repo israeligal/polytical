@@ -12,6 +12,8 @@ import { CoinPill } from "@/components/coin-pill";
 import { OddsBar } from "@/components/odds-bar";
 import { StatusChip } from "@/components/status-chip";
 import { EmptyState } from "@/components/empty-state";
+import { getCelebrations } from "@/app/lib/bets/service";
+import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { Flame, Trophy } from "@/components/icons";
 
 export default async function ProfilePage() {
@@ -21,10 +23,11 @@ export default async function ProfilePage() {
   // callbackUrl) so a direct hit without a session still lands on login → back.
   if (!user) redirect("/login?callbackUrl=%2Fprofile");
 
-  const [stats, allBets, mySuggestions] = await Promise.all([
+  const [stats, allBets, mySuggestions, celebrations] = await Promise.all([
     getUserStats({ userId: user.id }),
     getUserBets({ userId: user.id }),
     getMySuggestions({ userId: user.id }),
+    getCelebrations({ userId: user.id }),
   ]);
 
   const open = allBets.filter((b) => b.betStatus === "open");
@@ -45,6 +48,7 @@ export default async function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <CelebrationHost bets={celebrations} />
       {/* HEADER + STAT CARDS */}
       <section className="mb-8">
         <div className="flex items-center gap-4">

@@ -280,6 +280,7 @@ export const bets = pgTable("bets", {
   amount: integer("amount").notNull(),
   payout: integer("payout").notNull().default(0),
   status: betStatus("status").notNull().default("open"),
+  seenAt: timestamp("seenAt"),   // null until the user first views the RESOLVED bet → one-time win/loss celebration
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [index("bets_market_idx").on(t.marketId), index("bets_user_idx").on(t.userId)]);
 
@@ -328,3 +329,35 @@ export const marketSuggestions = pgTable("market_suggestions", {
   marketId: uuid("marketId").references(() => markets.id, { onDelete: "set null" }), // set on approve
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [index("market_suggestions_status_idx").on(t.status, t.createdAt)]);
+
+// ===================================================================
+// Notifications (Phase 1) — a display-only event log. Rows are emitted INSIDE
+// the transaction that produced the event (resolveMarket / approve-rejectSuggestion)
+// so they commit/roll back atomically with it. NO coin movement; ref* columns
+// carry NO FK (mirrors transactions.refMarketId) so a later market delete can't
+// cascade-wipe history and emit stays cheap inside the hot resolve tx.
+// ===================================================================
+
+export const notificationType = pgEnum("notification_type", [
+  "bet_won",
+  "market_resolved",
+  "suggestion_approved",
+  "suggestion_rejected",
+]);
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: notificationType("type").notNull(),
+  titleHe: text("titleHe").notNull(),
+  bodyHe: text("bodyHe").notNull(),
+  refMarketId: uuid("refMarketId"),       // display-only links; no FK
+  refBetId: uuid("refBetId"),
+  refSuggestionId: uuid("refSuggestionId"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [
+  index("notifications_user_created_idx").on(t.userId, t.createdAt),
+  // Partial index → unread count is O(unread), not a full per-user scan.
+  index("notifications_user_unread_idx").on(t.userId).where(sql`${t.read} = false`),
+]);

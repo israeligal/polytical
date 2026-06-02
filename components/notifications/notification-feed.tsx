@@ -1,0 +1,95 @@
+"use client";
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { markNotificationReadAction, markAllReadAction } from "@/app/actions/notifications";
+import { EmptyState } from "@/components/empty-state";
+
+const dateFmt = new Intl.DateTimeFormat("he-IL", {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export interface FeedItem {
+  id: string;
+  type: "bet_won" | "market_resolved" | "suggestion_approved" | "suggestion_rejected";
+  titleHe: string;
+  bodyHe: string;
+  refMarketId: string | null;
+  read: boolean;
+  createdAtIso: string;
+}
+
+// Left-accent color per type: wins/approvals mint, rejections coral, resolved neutral.
+const ACCENT: Record<FeedItem["type"], string> = {
+  bet_won: "border-s-positive",
+  suggestion_approved: "border-s-positive",
+  suggestion_rejected: "border-s-negative",
+  market_resolved: "border-s-border",
+};
+
+export function NotificationFeed({ items }: { items: FeedItem[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  function open(item: FeedItem) {
+    startTransition(async () => {
+      if (!item.read) await markNotificationReadAction({ id: item.id });
+      router.push(item.refMarketId ? `/market/${item.refMarketId}` : "/profile");
+    });
+  }
+
+  function readAll() {
+    startTransition(async () => {
+      await markAllReadAction();
+      router.refresh();
+    });
+  }
+
+  if (items.length === 0) {
+    return <EmptyState>אין התראות עדיין. הימרו על שוק כדי להתחיל.</EmptyState>;
+  }
+
+  const hasUnread = items.some((i) => !i.read);
+
+  return (
+    <div className="space-y-3">
+      {hasUnread && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={readAll}
+            disabled={pending}
+            className="font-accent text-sm font-bold text-blue transition-colors hover:text-foreground disabled:opacity-60"
+          >
+            סמנו הכל כנקרא
+          </button>
+        </div>
+      )}
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => open(item)}
+              className={`flex w-full flex-col items-start gap-1 rounded-card border border-border border-s-4 ${ACCENT[item.type]} bg-card px-4 py-3 text-start transition-colors hover:bg-raised ${
+                item.read ? "" : "ring-1 ring-blue/30"
+              }`}
+            >
+              <span className="flex w-full items-center justify-between gap-2">
+                <span className="font-bold text-foreground">{item.titleHe}</span>
+                {!item.read && <span className="h-2 w-2 shrink-0 rounded-full bg-blue" />}
+              </span>
+              <span className="text-sm text-muted-foreground">{item.bodyHe}</span>
+              <time dateTime={item.createdAtIso} className="font-accent text-xs text-muted-foreground">
+                {dateFmt.format(new Date(item.createdAtIso))}
+              </time>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
