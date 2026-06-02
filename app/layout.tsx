@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Secular_One, Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { ServiceWorkerRegistration } from "@/components/pwa/sw-register";
+import { PwaInstall } from "@/components/pwa/pwa-install";
 
 // Display — Secular One: heavy Hebrew display face for headlines + big odds.
 const secularOne = Secular_One({
@@ -25,7 +27,28 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: "פוליטיקל — שוק הניחושים של הפוליטיקה הישראלית",
   description:
-    "נחשו מה יקרה בפוליטיקה הישראלית, הִמְרו במטבעות משחק על אירועים והחלטות, ואספו קלפי קריקטורה של הפוליטיקאים. בלי כסף אמיתי — רק על הכבוד.",
+    "נחשו מה יקרה בפוליטיקה הישראלית, הִמְרו בנקודות משחק על אירועים והחלטות, ואספו קלפי קריקטורה של הפוליטיקאים. בלי כסף אמיתי — רק על הכבוד.",
+  // Installed-app look on iOS (without this, Add-to-Home-Screen renders in Safari chrome).
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "פוליטיקל",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+    shortcut: "/icons/favicon-32.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B1020",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // iOS notch / safe-area handling
 };
 
 export default function RootLayout({
@@ -42,6 +65,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <SiteHeader />
         {children}
+        <ServiceWorkerRegistration />
+        <PwaInstall />
       </body>
     </html>
   );
