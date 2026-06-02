@@ -24,8 +24,8 @@ export async function SiteHeader() {
       {/* masthead kicker */}
       <div className="bg-foreground text-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-1 text-xs sm:px-6 lg:px-8">
-          <span className="opacity-90">מהדורת הבוקר · בלי כסף אמיתי, רק על הכבוד</span>
-          <span className="hidden opacity-70 sm:inline">פוליטיקל · Polytical</span>
+          <span>מהדורת הבוקר · בלי כסף אמיתי, רק על הכבוד</span>
+          <span className="hidden opacity-90 sm:inline">פוליטיקל · Polytical</span>
         </div>
       </div>
 
@@ -44,7 +44,7 @@ export async function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
-              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              className="inline-flex items-center py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
             >
               {n.label}
             </Link>
@@ -67,7 +67,7 @@ export async function SiteHeader() {
                 aria-label="פרופיל"
                 className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
               >
-                {initial}
+                <span aria-hidden="true">{initial}</span>
               </Link>
               <SignOutButton />
             </>

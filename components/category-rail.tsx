@@ -3,7 +3,7 @@ import type { Category } from "@/lib/types";
 import { CATEGORIES } from "@/lib/categories";
 
 const base =
-  "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors";
+  "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 py-1.5 text-sm font-semibold transition-colors";
 const on = "bg-primary text-primary-foreground";
 const off = "bg-muted text-muted-foreground hover:text-foreground";
 

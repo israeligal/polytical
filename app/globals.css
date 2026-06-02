@@ -140,9 +140,32 @@
 
   /* Numeric data (odds %, coins, payouts) aligns with tabular figures. */
   .nums { font-variant-numeric: tabular-nums; }
+
+  /* Keyboard focus is visible app-wide (WCAG 2.4.7). Most controls only ship
+     hover styles; this gives every focusable element a ring in the brand color.
+     Mouse clicks (:focus without :focus-visible) stay ring-free. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Smooth-scroll only during focused in-page anchor jumps, accessibility-gated. */
 @media (prefers-reduced-motion: no-preference) {
   html:focus-within { scroll-behavior: smooth; }
+}
+
+/* Honor reduced-motion globally: neutralize the card/button hover-lifts and the
+   odds-bar width transitions for users with vestibular sensitivity (WCAG 2.3.3),
+   without removing the components' final visual states. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

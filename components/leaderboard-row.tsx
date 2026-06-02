@@ -17,7 +17,10 @@ export function LeaderboardRow({
       <span className="nums w-7 text-center text-lg font-black text-muted-foreground">
         {entry.rank}
       </span>
-      <span className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border">
+      <span
+        aria-hidden="true"
+        className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border"
+      >
         {entry.handle[0]?.toUpperCase() ?? "?"}
       </span>
       <span className="flex-1 truncate font-semibold text-foreground">

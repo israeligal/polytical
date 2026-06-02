@@ -52,13 +52,18 @@ export function BetPanel({
     }
     setMessage(null);
     startTransition(async () => {
-      const res = await placeBetAction({
-        marketId: market.id,
-        outcomeId: selected.id,
-        amount: stake,
-      });
-      setOk(res.ok);
-      setMessage(res.ok ? "ההימור נרשם!" : res.message ?? "שגיאה");
+      try {
+        const res = await placeBetAction({
+          marketId: market.id,
+          outcomeId: selected.id,
+          amount: stake,
+        });
+        setOk(res.ok);
+        setMessage(res.ok ? "ההימור נרשם!" : res.message ?? "שגיאה");
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
+      }
     });
   }
 

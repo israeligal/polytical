@@ -27,11 +27,15 @@ export function CommentForm({ marketId }: { marketId: string }) {
     if (!canSubmit) return;
     setMessage(null);
     startTransition(async () => {
-      const res = await postCommentAction({ marketId, body });
-      if (res.ok) {
-        setBody("");
-      } else {
-        setMessage(res.message ?? "שגיאה");
+      try {
+        const res = await postCommentAction({ marketId, body });
+        if (res.ok) {
+          setBody("");
+        } else {
+          setMessage(res.message ?? "שגיאה");
+        }
+      } catch {
+        setMessage("אירעה שגיאה — נסו שוב");
       }
     });
   }

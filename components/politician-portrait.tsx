@@ -31,6 +31,8 @@ export function PoliticianPortrait({
 }) {
   return (
     <div
+      role="img"
+      aria-label={`קריקטורה של ${politician.name}`}
       className={`relative grid place-items-center overflow-hidden bg-gradient-to-br ${catFrom[politician.cat]} to-foreground/75 ring-1 ring-foreground/10 ${SIZE[size]}`}
     >
       {/* halftone dots — currentColor via the utility, no raw color literal */}
@@ -41,7 +43,7 @@ export function PoliticianPortrait({
           backgroundSize: "6px 6px",
         }}
       />
-      <span className="relative font-display font-black leading-none text-card">
+      <span aria-hidden="true" className="relative font-display font-black leading-none text-card">
         {initials(politician.name)}
       </span>
       {size === "card" && (

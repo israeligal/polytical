@@ -10,6 +10,8 @@ import { categoryLabel } from "@/lib/categories";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CoinPill } from "@/components/coin-pill";
 import { OddsBar } from "@/components/odds-bar";
+import { StatusChip } from "@/components/status-chip";
+import { EmptyState } from "@/components/empty-state";
 import { Flame, Trophy } from "@/components/icons";
 
 export default async function ProfilePage() {
@@ -46,7 +48,10 @@ export default async function ProfilePage() {
       {/* HEADER + STAT CARDS */}
       <section className="mb-8">
         <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-muted font-display text-2xl font-black text-foreground ring-1 ring-border">
+          <span
+            aria-hidden="true"
+            className="grid h-14 w-14 place-items-center rounded-full bg-muted font-display text-2xl font-black text-foreground ring-1 ring-border"
+          >
             {initial}
           </span>
           <div>
@@ -139,13 +144,13 @@ export default async function ProfilePage() {
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center text-muted-foreground">
+          <EmptyState>
             אין לך פוזיציות פתוחות.{" "}
             <Link href="/#markets" className="font-semibold text-primary hover:underline">
               בחרו שוק להמר עליו
             </Link>
             .
-          </p>
+          </EmptyState>
         )}
       </section>
 
@@ -178,9 +183,7 @@ export default async function ProfilePage() {
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center text-muted-foreground">
-            עוד לא הוכרעו אצלך הימורים.
-          </p>
+          <EmptyState>עוד לא הוכרעו אצלך הימורים.</EmptyState>
         )}
       </section>
 
@@ -214,7 +217,7 @@ export default async function ProfilePage() {
                     <p className="truncate font-semibold text-foreground">{s.questionHe}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {categoryLabel(s.category as Parameters<typeof categoryLabel>[0])}
+                    {categoryLabel(s.category)}
                     {s.reviewNote ? <> · {s.reviewNote}</> : null}
                   </p>
                 </div>
@@ -223,13 +226,13 @@ export default async function ProfilePage() {
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center text-muted-foreground">
+          <EmptyState>
             עוד לא הצעת שווקים.{" "}
             <Link href="/suggest" className="font-semibold text-primary hover:underline">
               הציעו את הראשון
             </Link>
             .
-          </p>
+          </EmptyState>
         )}
       </section>
     </main>
@@ -238,14 +241,12 @@ export default async function ProfilePage() {
 
 function SuggestionStatusBadge({ status }: { status: "pending" | "approved" | "rejected" }) {
   const map = {
-    pending: { he: "ממתין", cls: "bg-muted text-foreground" },
-    approved: { he: "אושר", cls: "bg-positive-soft text-positive" },
-    rejected: { he: "נדחה", cls: "bg-negative-soft text-negative" },
+    pending: { he: "ממתין", tone: "neutral" },
+    approved: { he: "אושר", tone: "positive" },
+    rejected: { he: "נדחה", tone: "negative" },
   } as const;
-  const { he, cls } = map[status];
-  return (
-    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${cls}`}>{he}</span>
-  );
+  const { he, tone } = map[status];
+  return <StatusChip tone={tone}>{he}</StatusChip>;
 }
 
 function StatCard({ label, children }: { label: string; children: React.ReactNode }) {
@@ -261,22 +262,22 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
 function HistoryResult({ bet }: { bet: PortfolioBet }) {
   if (bet.betStatus === "won") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-positive-soft px-3 py-1 text-sm font-bold text-positive">
+      <StatusChip tone="positive" className="text-sm">
         זכית
         <span className="nums">+{formatCoins(bet.payout)}</span>
-      </span>
+      </StatusChip>
     );
   }
   if (bet.betStatus === "refunded") {
     return (
-      <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-3 py-1 text-sm font-bold text-muted-foreground">
+      <StatusChip tone="neutral" className="text-sm">
         הוחזר
-      </span>
+      </StatusChip>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-negative-soft px-3 py-1 text-sm font-bold text-negative">
+    <StatusChip tone="negative" className="text-sm">
       הפסדת
-    </span>
+    </StatusChip>
   );
 }

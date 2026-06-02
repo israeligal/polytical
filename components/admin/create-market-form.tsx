@@ -54,23 +54,28 @@ export function CreateMarketForm({
 
     setMessage(null);
     startTransition(async () => {
-      const res = await createMarketAction({
-        questionHe: String(fd.get("questionHe") ?? ""),
-        descriptionHe: String(fd.get("descriptionHe") ?? ""),
-        category: String(fd.get("category") ?? ""),
-        type,
-        hot,
-        closeAt: String(fd.get("closeAt") ?? ""),
-        outcomeLabels: outcomes,
-        personIds,
-      });
-      setOk(res.ok);
-      setMessage(res.message ?? (res.ok ? "השוק נוצר" : "שגיאה"));
-      if (res.ok) {
-        form.reset();
-        setOutcomes(["כן", "לא"]);
-        setType("binary");
-        setHot(false);
+      try {
+        const res = await createMarketAction({
+          questionHe: String(fd.get("questionHe") ?? ""),
+          descriptionHe: String(fd.get("descriptionHe") ?? ""),
+          category: String(fd.get("category") ?? ""),
+          type,
+          hot,
+          closeAt: String(fd.get("closeAt") ?? ""),
+          outcomeLabels: outcomes,
+          personIds,
+        });
+        setOk(res.ok);
+        setMessage(res.message ?? (res.ok ? "השוק נוצר" : "שגיאה"));
+        if (res.ok) {
+          form.reset();
+          setOutcomes(["כן", "לא"]);
+          setType("binary");
+          setHot(false);
+        }
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
       }
     });
   }
@@ -157,6 +162,7 @@ export function CreateMarketForm({
                 value={o}
                 onChange={(e) => setOutcome(i, e.target.value)}
                 className={FIELD}
+                aria-label={`תוצאה ${i + 1}`}
                 placeholder={`תוצאה ${i + 1}`}
               />
               {outcomes.length > 2 && (

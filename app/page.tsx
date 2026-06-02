@@ -8,6 +8,7 @@ import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
+import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
 import { LeaderboardRow } from "@/components/leaderboard-row";
 import { Trophy } from "@/components/icons";
@@ -148,9 +149,7 @@ export default async function Home({
               ))}
             </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
-              אין שווקים פתוחים בקטגוריה הזו כרגע.
-            </p>
+            <EmptyState>אין שווקים פתוחים בקטגוריה הזו כרגע.</EmptyState>
           )}
         </section>
 
@@ -178,11 +177,15 @@ export default async function Home({
                 כל הפוליטיקאים
               </Link>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredPoliticians.map((p) => (
-                <CaricatureCard key={p.id} politician={p} realData />
-              ))}
-            </div>
+            {featuredPoliticians.length > 0 ? (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredPoliticians.map((p) => (
+                  <CaricatureCard key={p.id} politician={p} realData />
+                ))}
+              </div>
+            ) : (
+              <EmptyState>הקלפים בדרך — חזרו בקרוב.</EmptyState>
+            )}
           </div>
         </section>
 
@@ -212,9 +215,9 @@ export default async function Home({
               )}
             </div>
           ) : (
-            <p className="mx-auto max-w-2xl rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
+            <EmptyState className="mx-auto max-w-2xl">
               עוד אין מספיק פעילות לטבלה. המרו על שוק ראשון כדי לפתוח את הדירוג.
-            </p>
+            </EmptyState>
           )}
         </section>
       </main>

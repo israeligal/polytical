@@ -2,7 +2,9 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
-| 2026-06-02 | a7135e3 | suggest → approve → market (full lifecycle) | ✅ | propose (pre-fill ?person=526) → pending → admin approve (atomic open כן/לא market linked to MK) → renders on /politician/526 → profile "אושר"+link |
+| 2026-06-02 | (phase8) | Hebrew 404 (not-found.tsx) | ✅ | /politician/abc + /market/<bad> → on-brand "הדף לא נמצא" in-layout (was Next English default) |
+| 2026-06-02 | (phase8) | global focus-visible ring | 🔴 | first wrote var(--ring) (undefined) → ring silently dropped; fixed to var(--color-ring), re-verified 2px solid primary on Tab |
+| 2026-06-02 | (phase8) | politician page after a11y/tap-target changes | ✅ | portrait role=img+aria-label, 0 overflow, activity intact, 0 console errors |
 | 2026-06-02 | a7135e3 | suggestion reject path | ✅ | reject w/ note → queue 0 → profile shows "נדחה" + note; terminal |
 | 2026-06-02 | a7135e3 | admin gate (re-login refreshes isAdmin) | ✅ | promote in DB + sign out/in (cookieCache 5min) → /admin loads; non-pending queue empty-state |
 | 2026-06-02 | a7135e3 | approve past-closeAt guard (review fix) | ✅ | service ClosePastError + action msg + min/dir=ltr on datetime inputs; unit-tested |
