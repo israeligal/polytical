@@ -19,7 +19,8 @@
     "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full",
     "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts",
     "seed:season": "tsx --env-file=.env scripts/seed-season.ts",
-    "backfill:market-search": "tsx --env-file=.env scripts/backfill-market-search.ts"
+    "backfill:market-search": "tsx --env-file=.env scripts/backfill-market-search.ts",
+    "backfill:politician-search": "tsx --env-file=.env scripts/backfill-politician-search.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

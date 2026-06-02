@@ -7,6 +7,7 @@ import type { SeasonRow } from "@/app/lib/seasons/repo";
 import { applyEntry } from "@/app/lib/ledger/service";
 import { lockUser } from "@/app/lib/ledger/repo";
 import { isUniqueViolation } from "@/app/lib/pg-errors";
+import { isUuid } from "@/app/lib/ids";
 import {
   AlreadyClaimedError,
   AnotherSeasonActiveError,
@@ -40,8 +41,8 @@ export interface SeasonBoard {
 
 /**
  * The full season board for a (possibly anonymous) viewer. Returns null when
- * there's no active season. Progress is the user's live net winnings this season
- * (0 for anonymous / net-losers); each tier's state is derived, not stored:
+ * there's no active season. Progress is the Shekoins the user has WAGERED this
+ * season (0 for anonymous); each tier's state is derived, not stored:
  * claimed > claimable (reached + season live) > locked.
  */
 export async function getSeasonBoard({
@@ -58,7 +59,7 @@ export async function getSeasonBoard({
   const ended = season.status === "ended" || Date.now() >= season.endAt.getTime();
 
   const rawProgress = userId
-    ? await repo.getSeasonNetWinnings({ db, userId, startAt: season.startAt, endAt: season.endAt })
+    ? await repo.getSeasonWagered({ db, userId, startAt: season.startAt, endAt: season.endAt })
     : 0;
   const progress = Math.max(0, rawProgress);
 
@@ -110,6 +111,10 @@ export async function claimTier({
   userId: string;
   tierId: string;
 }): Promise<{ balanceAfter: number; amount: number }> {
+  // Guard the id format up front: a malformed tierId would otherwise reach the
+  // `uuid` column and raise a raw 22P02 driver error. A valid-but-unknown id is
+  // handled below (lockTier → null → TierNotFoundError).
+  if (!isUuid(tierId)) throw new TierNotFoundError();
   return db.transaction(async (tx) => {
     await lockUser({ tx, userId }); // lock the user first so concurrent claims serialize
     const tier = await repo.lockTier({ tx, tierId });
@@ -123,7 +128,7 @@ export async function claimTier({
 
     if (await repo.isClaimed({ tx, userId, tierId })) throw new AlreadyClaimedError();
 
-    const progress = await repo.getSeasonNetWinnings({
+    const progress = await repo.getSeasonWagered({
       tx,
       userId,
       startAt: seasonRow.startAt,

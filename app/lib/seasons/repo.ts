@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
@@ -51,13 +51,19 @@ export async function getSeasonTiers({
 }
 
 /**
- * Net Shekoins won in the season window — computed LIVE from the ledger, not a
- * tally column. Sums signed transaction amounts of betting types (payout/refund
- * credits +, bet debits −) created within [startAt, endAt]. grant/faucet/collect/
- * season_reward are excluded so progress reflects forecasting skill, not handouts.
- * May be negative (net loser); the caller/UI clamps at 0 for the bar.
+ * Shekoins WAGERED in the season window — computed LIVE from the ledger, not a
+ * tally column. Sums the (negative) `bet` debits created within [startAt, endAt]
+ * and negates them to a positive volume. grant/faucet/collect/season_reward and
+ * the payout/refund credits are excluded — only money put at risk counts.
+ *
+ * (This replaced a "net winnings" metric: winnings only rise on a resolved-market
+ * payout, but markets close months out and resolution is admin-only, so a normal
+ * player could never move the bar within a season — every tier was unreachable.
+ * Wagered volume rewards engagement and is reachable through normal play; bounded
+ * by the coins a player can acquire, ~1000 + daily faucet over the season.)
+ * Always >= 0.
  */
-export async function getSeasonNetWinnings({
+export async function getSeasonWagered({
   db,
   tx,
   userId,
@@ -72,17 +78,17 @@ export async function getSeasonNetWinnings({
 }): Promise<number> {
   const conn = tx ?? db ?? defaultDb;
   const [row] = await conn
-    .select({ net: sql<number>`COALESCE(SUM(${transactions.amount}), 0)::int` })
+    .select({ wagered: sql<number>`COALESCE(-SUM(${transactions.amount}), 0)::int` })
     .from(transactions)
     .where(
       and(
         eq(transactions.userId, reqUser(userId)),
-        inArray(transactions.type, ["payout", "refund", "bet"]),
+        eq(transactions.type, "bet"),
         gte(transactions.createdAt, startAt),
         lte(transactions.createdAt, endAt),
       ),
     );
-  return row?.net ?? 0;
+  return row?.wagered ?? 0;
 }
 
 /** The tierIds the user has already claimed in a season. */

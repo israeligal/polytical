@@ -10,6 +10,7 @@ import {
   AnotherSeasonActiveError,
   InvalidSeasonError,
   SeasonEndedError,
+  TierNotFoundError,
   TierNotReachedError,
 } from "@/app/lib/errors";
 
@@ -38,20 +39,21 @@ beforeEach(async () => {
 });
 afterEach(async () => h.close());
 
-test("progress sums only in-window betting ledger (payout/refund minus bet); handouts excluded", async () => {
+test("progress = Shekoins WAGERED in-window (bet debits); payouts + handouts + out-of-window excluded", async () => {
   await seedSeason([{ nameHe: "א", goalAmount: 100, rewardAmount: 50 }]);
-  await ledger("payout", 600, new Date()); // +600 in window
-  await ledger("bet", -100, new Date()); // -100 in window
-  await ledger("faucet", 200, new Date()); // excluded (handout)
-  await ledger("payout", 9999, new Date(START.getTime() - 1000)); // before window → excluded
+  await ledger("bet", -600, new Date()); // wagered 600 in window
+  await ledger("bet", -100, new Date()); // wagered 100 in window
+  await ledger("payout", 9999, new Date()); // a WIN does not count as wagering → excluded
+  await ledger("faucet", 200, new Date()); // handout → excluded
+  await ledger("bet", -5000, new Date(START.getTime() - 1000)); // before window → excluded
 
   const board = await getSeasonBoard({ db: h.db, userId: UID });
-  expect(board?.progress).toBe(500); // 600 - 100
+  expect(board?.progress).toBe(700); // 600 + 100
 });
 
 test("claimTier credits the reward exactly once and is idempotent", async () => {
-  const s = await seedSeason([{ nameHe: "א", goalAmount: 500, rewardAmount: 200 }]);
-  await ledger("payout", 600, new Date()); // progress 600 ≥ 500
+  await seedSeason([{ nameHe: "א", goalAmount: 500, rewardAmount: 200 }]);
+  await ledger("bet", -600, new Date()); // wagered 600 ≥ 500
 
   const board = await getSeasonBoard({ db: h.db, userId: UID });
   const tier = board!.tiers[0];
@@ -73,44 +75,41 @@ test("claimTier credits the reward exactly once and is idempotent", async () => 
   // Second claim rejected; no double credit.
   await expect(claimTier({ db: h.db, userId: UID, tierId: tier.id })).rejects.toBeInstanceOf(AlreadyClaimedError);
   expect(await getBalance({ db: h.db, userId: UID })).toBe(1200);
-  void s;
 });
 
 test("claiming a tier whose goal isn't reached throws TierNotReachedError", async () => {
-  const board0 = await (async () => {
-    await seedSeason([{ nameHe: "א", goalAmount: 1000, rewardAmount: 200 }]);
-    await ledger("payout", 300, new Date()); // progress 300 < 1000
-    return getSeasonBoard({ db: h.db, userId: UID });
-  })();
+  await seedSeason([{ nameHe: "א", goalAmount: 1000, rewardAmount: 200 }]);
+  await ledger("bet", -300, new Date()); // wagered 300 < 1000
+  const board0 = await getSeasonBoard({ db: h.db, userId: UID });
   const tier = board0!.tiers[0];
   expect(tier.state).toBe("locked");
   await expect(claimTier({ db: h.db, userId: UID, tierId: tier.id })).rejects.toBeInstanceOf(TierNotReachedError);
 });
 
+test("claimTier with a malformed (non-UUID) tierId throws TierNotFoundError (no raw driver error)", async () => {
+  await seedSeason([{ nameHe: "א", goalAmount: 100, rewardAmount: 50 }]);
+  await expect(claimTier({ db: h.db, userId: UID, tierId: "not-a-uuid" })).rejects.toBeInstanceOf(TierNotFoundError);
+});
+
 test("an ended season can't be claimed", async () => {
-  const board = await (async () => {
-    await seedSeason([{ nameHe: "א", goalAmount: 100, rewardAmount: 50 }]);
-    await ledger("payout", 600, new Date());
-    return getSeasonBoard({ db: h.db, userId: UID });
-  })();
+  await seedSeason([{ nameHe: "א", goalAmount: 100, rewardAmount: 50 }]);
+  await ledger("bet", -600, new Date());
+  const board = await getSeasonBoard({ db: h.db, userId: UID });
   const tierId = board!.tiers[0].id;
   await endSeason({ db: h.db });
   await expect(claimTier({ db: h.db, userId: UID, tierId })).rejects.toBeInstanceOf(SeasonEndedError);
 });
 
-test("a dip below goal after claiming never revokes the claim (terminal)", async () => {
-  const board = await (async () => {
-    await seedSeason([{ nameHe: "א", goalAmount: 500, rewardAmount: 200 }]);
-    await ledger("payout", 600, new Date());
-    return getSeasonBoard({ db: h.db, userId: UID });
-  })();
+test("a claimed tier stays claimed as more wagering happens (terminal)", async () => {
+  await seedSeason([{ nameHe: "א", goalAmount: 500, rewardAmount: 200 }]);
+  await ledger("bet", -600, new Date());
+  const board = await getSeasonBoard({ db: h.db, userId: UID });
   const tierId = board!.tiers[0].id;
   await claimTier({ db: h.db, userId: UID, tierId });
-  // Simulate later losses dropping net winnings below the goal.
-  await ledger("bet", -400, new Date());
+  await ledger("bet", -400, new Date()); // more wagering (progress only grows)
   const after = await getSeasonBoard({ db: h.db, userId: UID });
-  expect(after!.progress).toBe(200); // 600 - 400
-  expect(after!.tiers[0].state).toBe("claimed"); // still claimed, not revoked
+  expect(after!.progress).toBe(1000); // 600 + 400 wagered
+  expect(after!.tiers[0].state).toBe("claimed"); // terminal — stays claimed
 });
 
 test("createSeason rejects a second active season and non-increasing goals", async () => {
