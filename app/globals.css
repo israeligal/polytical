@@ -37,7 +37,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-hover: var(--accent-hover);
-  --color-gold: var(--accent);          /* alias for currency emphasis */
+  --color-gold: var(--gold);            /* text-safe currency emphasis (decoupled from the bright fill so gold reads on white) */
 
   /* Muted — subdued sections, captions */
   --color-muted: var(--muted);
@@ -86,21 +86,99 @@
   --radius-md: 12px;
   --radius-sm: 8px;
 
-  /* Elevation (deep shadows) + accent glows */
-  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.55);
-  --shadow-glow-mint: 0 0 24px rgba(0, 224, 164, 0.45);
-  --shadow-glow-coral: 0 0 24px rgba(255, 77, 109, 0.45);
-  --shadow-glow-gold: 0 0 22px rgba(255, 194, 61, 0.5);
+  /* Elevation + accent glows — routed through theme vars so they soften on light
+     and deepen on dark. (glow-mint/coral keep their utility names but resolve to
+     the theme's positive/negative glow: blue/red on light, mint/coral on dark.) */
+  --shadow-1: var(--elev-1);
+  --shadow-2: var(--elev-2);
+  --shadow-3: var(--elev-3);
+  --shadow-glow-mint: var(--glow-positive);
+  --shadow-glow-coral: var(--glow-negative);
+  --shadow-glow-gold: var(--glow-gold);
 
   /* Motion easings */
   --ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/*
+ * DEFAULT = light "Israeli" theme: white canvas, techelet BLUE = YES/primary,
+ * RED = NO, gold kept for Shekoins/celebration. Dark "trading floor" lives under
+ * [data-theme="dark"] and is opt-in via the header toggle (cookie-persisted; the
+ * root layout sets data-theme server-side so there's no flash).
+ */
 :root {
-  /* Canvas — deep "trading floor" navy (surfaces step UP) */
+  /* Canvas — clean white (surfaces separated by border + soft shadow) */
+  --background: #ffffff;
+  --bg-sunken: #eef2f8;   /* inputs / wells */
+  --bg-800: #f3f6fb;
+  --card: #ffffff;
+  --bg-raised: #f5f8fc;
+  --bg-overlay: #ffffff;
+  --border: #dce4f0;
+  --line-soft: #e9eef6;
+  --bg-radial: radial-gradient(120% 80% at 50% -8%, rgba(0, 56, 184, 0.05), transparent 55%);
+  --header-bg: rgba(255, 255, 255, 0.72); /* translucent sticky header over the canvas */
+
+  /* Text — near-black navy ink on white */
+  --foreground: #0f1830;
+  --muted-foreground: #51607a;
+  --text-low: #8793a8;
+
+  /* Primary = techelet blue (YES / confirm / action) */
+  --primary: #0038b8;
+  --primary-foreground: #ffffff;
+  --primary-hover: #002e99;
+
+  /* Accent = gold. `--accent` is the bright FILL; `--gold` is a darker text-safe
+     gold so Shekoin amounts stay legible on white. */
+  --accent: #e8a300;
+  --accent-foreground: #1a1200; /* dark ink on gold fills */
+  --accent-hover: #cc8f00;
+  --gold: #9a6b00;
+
+  /* Muted section surface */
+  --muted: #f3f6fb;
+
+  /* Outcomes — BLUE = YES, RED = NO */
+  --positive: #0038b8;
+  --positive-foreground: #ffffff;
+  --positive-soft: #e4ebfa;
+  --negative: #d92d20;
+  --negative-foreground: #ffffff;
+  --negative-soft: #fde8e6;
+
+  /* Info / special */
+  --blue: #2563eb;
+  --purple: #7c3aed;
+
+  /* Rarity tiers (legible on white) */
+  --rarity-common: #6b7280;
+  --rarity-rare: #2563eb;
+  --rarity-epic: #7c3aed;
+  --rarity-legendary: #b07d00;
+
+  /* Categorical (parties / multi-option) — saturated enough to read on white */
+  --cat-1: #2563eb; /* blue */
+  --cat-2: #0d9488; /* teal */
+  --cat-3: #0284c7; /* sky */
+  --cat-4: #b45309; /* amber */
+  --cat-5: #ea580c; /* orange */
+  --cat-6: #dc2626; /* red */
+  --cat-7: #7c3aed; /* purple */
+  --cat-8: #c026d3; /* magenta */
+
+  /* Elevation (soft gray) + glows (blue/red/gold, gentle on white) */
+  --elev-1: 0 1px 2px rgba(16, 24, 48, 0.06), 0 1px 3px rgba(16, 24, 48, 0.10);
+  --elev-2: 0 6px 16px rgba(16, 24, 48, 0.10);
+  --elev-3: 0 16px 40px rgba(16, 24, 48, 0.14);
+  --glow-positive: 0 0 22px rgba(0, 56, 184, 0.22);
+  --glow-negative: 0 0 22px rgba(217, 45, 32, 0.20);
+  --glow-gold: 0 0 18px rgba(232, 163, 0, 0.30);
+}
+
+/* Dark "trading floor" — opt-in via the toggle (data-theme="dark"). */
+[data-theme="dark"] {
   --background: #0b1020;
   --bg-sunken: #080c1a;
   --bg-800: #121831;
@@ -109,60 +187,67 @@
   --bg-overlay: #2b3563;
   --border: #2e3a66;
   --line-soft: #20284c;
+  --bg-radial: radial-gradient(120% 80% at 50% -10%, rgba(91, 141, 239, 0.08), transparent 60%);
+  --header-bg: rgba(11, 16, 32, 0.72);
 
-  /* Text */
-  --foreground: #f5f7ff; /* text-hi */
-  --muted-foreground: #a9b2d6; /* text-mid */
+  --foreground: #f5f7ff;
+  --muted-foreground: #a9b2d6;
   --text-low: #6b76a3;
 
-  /* Primary = mint (YES / confirm / action) */
+  /* Primary = mint */
   --primary: #00e0a4;
-  --primary-foreground: #07112b; /* dark ink on mint */
+  --primary-foreground: #07112b;
   --primary-hover: #06b888;
 
-  /* Accent = gold (Shekoins / hot / celebration) */
+  /* Accent = gold (bright on dark; text + fill share the value) */
   --accent: #ffc23d;
-  --accent-foreground: #07112b; /* dark ink on gold */
+  --accent-foreground: #07112b;
   --accent-hover: #e8a623;
+  --gold: #ffc23d;
 
-  /* Muted section surface */
   --muted: #121831;
 
-  /* Outcomes */
-  --positive: #00e0a4; /* mint */
+  /* Outcomes — mint = YES, coral = NO (dark) */
+  --positive: #00e0a4;
   --positive-foreground: #07112b;
   --positive-soft: #0c3f3a;
-  --negative: #ff4d6d; /* coral */
+  --negative: #ff4d6d;
   --negative-foreground: #07112b;
   --negative-soft: #3a1626;
 
-  /* Info / special */
   --blue: #5b8def;
   --purple: #b36bff;
 
-  /* Rarity tiers */
   --rarity-common: #8a93b8;
   --rarity-rare: #3fa9f5;
   --rarity-epic: #b36bff;
   --rarity-legendary: #ffc23d;
 
-  /* Categorical (parties / multi-option) — vivid on dark */
-  --cat-1: #5b8def; /* blue */
-  --cat-2: #00e0a4; /* mint */
-  --cat-3: #3fa9f5; /* sky */
-  --cat-4: #ffc23d; /* gold */
-  --cat-5: #ff9f45; /* orange */
-  --cat-6: #ff4d6d; /* coral */
-  --cat-7: #b36bff; /* purple */
-  --cat-8: #f56bc4; /* magenta */
+  --cat-1: #5b8def;
+  --cat-2: #00e0a4;
+  --cat-3: #3fa9f5;
+  --cat-4: #ffc23d;
+  --cat-5: #ff9f45;
+  --cat-6: #ff4d6d;
+  --cat-7: #b36bff;
+  --cat-8: #f56bc4;
+
+  /* Elevation (deep black) + accent glows (mint/coral/gold) */
+  --elev-1: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --elev-3: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --glow-positive: 0 0 24px rgba(0, 224, 164, 0.45);
+  --glow-negative: 0 0 24px rgba(255, 77, 109, 0.45);
+  --glow-gold: 0 0 22px rgba(255, 194, 61, 0.5);
 }
 
 /* ----- Base layer ---------------------------------------------------------- */
 @layer base {
   body {
     background-color: var(--background);
-    /* Subtle radial lift at the top so the dark canvas isn't flat. */
-    background-image: radial-gradient(120% 80% at 50% -10%, rgba(91, 141, 239, 0.08), transparent 60%);
+    /* Subtle radial lift so the canvas isn't flat — theme-aware (faint techelet
+       on white, navy-blue on the dark canvas). */
+    background-image: var(--bg-radial);
     background-attachment: fixed;
     color: var(--foreground);
     font-family: var(--font-sans);

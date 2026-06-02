@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Secular_One, Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { THEME_COOKIE, type Theme } from "@/lib/theme";
 import { ServiceWorkerRegistration } from "@/components/pwa/sw-register";
 import { PwaInstall } from "@/components/pwa/pwa-install";
 
@@ -45,21 +47,26 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B1020",
+  // Light is the default canvas; the browser chrome matches white.
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // iOS notch / safe-area handling
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read the persisted theme server-side so the correct palette is in the first
+  // paint — no flash. Default is light; only an explicit "dark" cookie opts out.
+  const theme: Theme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
   return (
     <html
       lang="he"
       dir="rtl"
+      data-theme={theme}
       className={`${secularOne.variable} ${heebo.variable} ${rubik.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">

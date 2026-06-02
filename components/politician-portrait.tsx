@@ -38,20 +38,22 @@ export function PoliticianPortrait({
         background: `radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--cat-${politician.cat}) 34%, var(--card)), #0a0f20)`,
       }}
     >
-      {/* faint halftone dots */}
+      {/* faint halftone dots — the dome is intentionally dark artwork in BOTH
+          themes, so its overlaid text/dots are always light (not theme-foreground,
+          which would go dark-on-dark in light mode). */}
       <div
-        className="absolute inset-0 text-foreground/10"
+        className="absolute inset-0 text-white/10"
         style={{
           backgroundImage: "radial-gradient(currentColor 1px, transparent 1.3px)",
           backgroundSize: "6px 6px",
         }}
       />
-      <span aria-hidden="true" className="relative font-display leading-none text-foreground/90">
+      <span aria-hidden="true" className="relative font-display leading-none text-white/90">
         {initials(politician.name)}
       </span>
       {size === "card" && (
         <span
-          className="absolute bottom-1.5 end-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 font-accent text-[10px] font-bold text-foreground"
+          className="absolute bottom-1.5 end-1.5 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 font-accent text-[10px] font-bold text-white"
           style={{ backgroundColor: "rgba(8,12,26,.7)" }}
         >
           <Sparkle className="h-2.5 w-2.5" />
