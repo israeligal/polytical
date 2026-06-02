@@ -27,7 +27,7 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: "פוליטיקל — שוק הניחושים של הפוליטיקה הישראלית",
   description:
-    "נחשו מה יקרה בפוליטיקה הישראלית, הִמְרו בנקודות משחק על אירועים והחלטות, ואספו קלפי קריקטורה של הפוליטיקאים. בלי כסף אמיתי — רק על הכבוד.",
+    "נחשו מה יקרה בפוליטיקה הישראלית, הִמְרו בשקוינים על אירועים והחלטות, ואספו קלפי קריקטורה של הפוליטיקאים. בלי כסף אמיתי — רק על הכבוד.",
   // Installed-app look on iOS (without this, Add-to-Home-Screen renders in Safari chrome).
   appleWebApp: {
     capable: true,
