@@ -21,21 +21,27 @@ function foldFinals(s: string): string {
 }
 
 /**
- * Strips a SINGLE leading particle from one token, but only when:
- *  - the token is long enough (>= 5) that the stem stays a plausible >= 4-char
- *    word (so short surnames like שלום / מלר keep their first letter), AND
- *  - the next char is itself NOT a particle.
- * The second guard keeps the function IDEMPOTENT: a stripped remainder never
- * again begins with a strippable particle, so re-normalizing is a no-op.
- * (Distinguishing "ה as definite article" from "ה as root-initial" is lexical
- * and undecidable without a dictionary; this is a deliberately conservative
- * discovery-only heuristic — attribution always uses the stable id.)
+ * Strips a CHAIN of leading particles down to the stem, peeling one particle at
+ * a time while the remaining stem stays a plausible word (>= 4 chars). This
+ * collapses stacked clitics like the definite-article + preposition: both
+ * "הבחירות" (ה+ב+חירות) and "בחירות" (ב+חירות) reduce to the same "חירות", so a
+ * query typed WITH the definite article still matches the indexed stem. (The old
+ * single-strip version left "הבחירות" untouched when the 2nd char was also a
+ * particle, silently breaking those searches.) Short surnames like שלום / מלר
+ * keep their first letter. Idempotent: it loops to a fixpoint (a fully-stripped
+ * stem has no leading particle), so re-normalizing is a no-op.
+ * (Distinguishing a particle ה from a root-initial ה is lexical and undecidable
+ * without a dictionary; this is a deliberately aggressive discovery-only
+ * heuristic applied identically to the query AND the index — attribution always
+ * uses the stable id.)
  */
 function stripLeadingParticle(tok: string): string {
-  if (tok.length >= 5 && LEADING_PARTICLES.has(tok[0]) && !LEADING_PARTICLES.has(tok[1])) {
-    return foldFinals(tok.slice(1)); // re-fold a now-exposed final letter
+  let t = tok;
+  // Peel while: long enough that the stem stays >= 4 chars, and the head is a particle.
+  while (t.length >= 5 && LEADING_PARTICLES.has(t[0])) {
+    t = t.slice(1);
   }
-  return tok;
+  return foldFinals(t); // re-fold a now-exposed final letter
 }
 
 export function normalizeSearchName(input: string): string {

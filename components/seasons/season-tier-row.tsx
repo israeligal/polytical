@@ -76,7 +76,7 @@ export function SeasonTierRow({
           {nameHe}
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <span className="nums">{formatCoins(goalAmount)}</span> שקוינים רווח נקי
+          <span className="nums">{formatCoins(goalAmount)}</span> שקוינים בהימורים
           <span className="text-muted-foreground/50">·</span>
           <span className="inline-flex items-center gap-1 font-bold text-gold">
             <Shekoin className="h-4 w-4" />+{formatCoins(rewardAmount)}

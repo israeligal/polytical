@@ -4,7 +4,9 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as repo from "@/app/lib/comments/repo";
 import type { CommentView } from "@/app/lib/comments/repo";
 import * as schema from "@/app/lib/schema";
-import { EmptyCommentError, CommentTooLongError } from "@/app/lib/errors";
+import { EmptyCommentError, CommentTooLongError, CommentNotFoundError } from "@/app/lib/errors";
+import { isForeignKeyViolation } from "@/app/lib/pg-errors";
+import { isUuid } from "@/app/lib/ids";
 
 // Comments service. NO coin movement — comments never touch the ledger. Mirrors
 // the markets service's driver-agnostic `db` injection so the same code runs on
@@ -60,7 +62,15 @@ export async function toggleCommentUpvote({
   commentId: string;
   userId: string;
 }): Promise<{ upvoted: boolean }> {
-  return repo.toggleUpvote({ db, commentId, userId });
+  // Guard a malformed id (would hit the uuid column → raw 22P02); translate the
+  // FK violation a valid-but-unknown id raises on insert → clean domain error.
+  if (!isUuid(commentId)) throw new CommentNotFoundError();
+  try {
+    return await repo.toggleUpvote({ db, commentId, userId });
+  } catch (e) {
+    if (isForeignKeyViolation(e)) throw new CommentNotFoundError();
+    throw e;
+  }
 }
 
 /** Hides a comment (admin moderation). */
