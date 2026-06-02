@@ -10,6 +10,7 @@ const NAV = [
   { href: "/#markets", label: "שווקים" },
   { href: "/#politicians", label: "פוליטיקאים" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
+  { href: "/suggest", label: "הציעו שוק" },
 ];
 
 export async function SiteHeader() {

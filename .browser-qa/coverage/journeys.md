@@ -2,6 +2,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [community-suggestion](#community-suggestion) | 2026-06-02 `a7135e3` | 1 | 6/6 |
 | [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
 | [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
 | [politician-activity](#politician-activity) | 2026-06-02 `bcdb818` | 1 | 4/4 |
@@ -10,6 +11,25 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+## community-suggestion
+
+**What it is:** A user proposes a market; an admin approves it (a real market is created + linked) or rejects it with a note; the proposer tracks status on their profile and the approved market surfaces on the related politician's page.
+
+**Last walked:** 2026-06-02 `a7135e3`. **Walks:** 1. **Coverage:** 6/6
+
+**Steps:**
+- ✅ `/suggest` (gated; `?person=526` pre-selects the MK) — question + category + politician; submit → "ההצעה נשלחה לבדיקה — תודה!", form clears
+- ✅ profile "ההצעות שלי" shows the proposal as ממתין (pending)
+- ✅ admin `/admin` "הצעות מהקהל" queue lists it with proposer + related MK
+- ✅ approve (future closeAt) → ATOMIC: open binary כן/לא market created + linked to personId 526 + suggestion → approved (verified in DB); queue → 0
+- ✅ approved market renders on `/politician/526` (placeholder gone); profile shows אושר + market link
+- ✅ reject with note → terminal; profile shows נדחה + the note
+
+**Notable history:**
+- `a7135e3` (2026-06-02): review fixes — reject past closeAt (ClosePastError); getMarketsForPolitician filtered to `open`.
+
+**Known gaps:** rate-limit (5/10min) not browser-exhausted (unit-tested); admin promotion in this walk used a DB flip + re-login (cookieCache 5min) rather than a real admin-grant UI (none exists).
 
 ## auth-signup-grant-faucet
 

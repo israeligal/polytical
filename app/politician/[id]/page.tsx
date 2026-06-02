@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPoliticianActivity, getPoliticianByPersonId } from "@/app/lib/politicians/repo";
+import type { Politician } from "@/lib/types";
+import {
+  getAllPoliticians,
+  getPoliticianActivity,
+  getPoliticianByPersonId,
+} from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
+import { getMarketsForPolitician } from "@/app/lib/markets/repo";
+import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
+import { MarketCard } from "@/components/market-card";
 import { ChevronForward } from "@/components/icons";
 
 export default async function PoliticianPage({
@@ -19,6 +27,19 @@ export default async function PoliticianPage({
 
   const politician = dbToCard(row);
   const activity = await getPoliticianActivity({ personId });
+
+  // Markets that feature this MK → the same view-model the homepage cards use.
+  // Featured portraits resolve against one politicians map (no N+1), mirroring
+  // app/page.tsx so each card can show every MK it touches, not just this one.
+  const marketBundles = await getMarketsForPolitician({ personId });
+  const polById = new Map<string, Politician>();
+  for (const p of await getAllPoliticians()) polById.set(String(p.personId), dbToCard(p));
+  const featuredFor = (ids: number[]): Politician[] =>
+    ids.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+  const marketCards = marketBundles.map((b) => ({
+    market: bundleToMarket(b),
+    featured: featuredFor(b.personIds),
+  }));
 
   return (
     <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -93,18 +114,35 @@ export default async function PoliticianPage({
             נתונים ממקור רשמי · הכנסת (OData)
           </p>
 
-          <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">
-            השווקים של {politician.name}
-          </h2>
-          <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center">
-            <p className="font-display text-lg font-bold text-foreground">
-              שווקים בקרוב
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              עוד לא נפתחו שווקים סביב {politician.name}. בקרוב תוכלו לנחש על
-              ההחלטות והאירועים שלו/ה.
-            </p>
+          <div className="mb-3 mt-8 flex items-center justify-between gap-3">
+            <h2 className="font-display text-xl font-bold text-foreground">
+              השווקים של {politician.name}
+            </h2>
+            <Link
+              href={`/suggest?person=${personId}`}
+              className="shrink-0 rounded-full border border-primary px-3 py-1 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+            >
+              הציעו שוק
+            </Link>
           </div>
+          {marketCards.length > 0 ? (
+            <div className="grid gap-4">
+              {marketCards.map((c) => (
+                <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center">
+              <p className="font-display text-lg font-bold text-foreground">עדיין אין שווקים</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                עוד לא נפתחו שווקים סביב {politician.name}.{" "}
+                <Link href={`/suggest?person=${personId}`} className="font-bold text-primary hover:underline">
+                  היו הראשונים להציע אחד
+                </Link>
+                .
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>

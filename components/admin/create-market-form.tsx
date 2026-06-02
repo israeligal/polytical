@@ -7,6 +7,13 @@ const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 const LABEL = "mb-1 block text-sm font-bold text-foreground";
 
+/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
+function nowLocalInput(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
 /**
  * Functional-plain admin form to create a market: question, optional description,
  * category, type (binary/multi), hot flag, close date, 2+ outcome labels, and
@@ -101,7 +108,15 @@ export function CreateMarketForm({
           <label className={LABEL} htmlFor="closeAt">
             מועד סגירה
           </label>
-          <input id="closeAt" name="closeAt" type="datetime-local" required className={FIELD} />
+          <input
+            id="closeAt"
+            name="closeAt"
+            type="datetime-local"
+            dir="ltr"
+            min={nowLocalInput()}
+            required
+            className={FIELD}
+          />
         </div>
       </div>
 

@@ -59,6 +59,9 @@ export async function createMarketAction({
 
   const close = new Date(closeAt);
   if (Number.isNaN(close.getTime())) return { ok: false, message: "מועד סגירה לא תקין" };
+  // A market is born `open` and nothing auto-closes it, so a past closeAt would
+  // mint a market that can never accept a bet. Reject it at both creation paths.
+  if (close.getTime() <= Date.now()) return { ok: false, message: "מועד הסגירה חייב להיות בעתיד" };
 
   const session = await getSession();
 

@@ -2,8 +2,11 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
 import { listManageableMarkets } from "@/app/lib/markets/repo";
+import { listSuggestions } from "@/app/lib/suggestions/service";
+import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { CreateMarketForm } from "@/components/admin/create-market-form";
 import { MarketAdminRow } from "@/components/admin/market-admin-row";
+import { SuggestionReviewRow } from "@/components/admin/suggestion-review-row";
 
 // Minimal admin console (Server Component). The `/admin` route is gated by
 // proxy.ts (requires a session); here we additionally redirect non-admins, and
@@ -15,6 +18,11 @@ export default async function AdminPage() {
   if (!session.user.isAdmin) redirect("/");
 
   const manageable = await listManageableMarkets();
+  const pendingSuggestions = await listSuggestions({ status: "pending" });
+  const nameByPersonId = new Map<number, string>();
+  if (pendingSuggestions.some((s) => s.personId != null)) {
+    for (const p of await getAllPoliticians()) nameByPersonId.set(p.personId, p.nameHe);
+  }
 
   return (
     <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -32,6 +40,31 @@ export default async function AdminPage() {
         <CreateMarketForm
           categories={CATEGORIES.map((c) => ({ key: c.key, he: c.he }))}
         />
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-3 font-display text-xl font-bold text-foreground">
+          הצעות מהקהל ({pendingSuggestions.length})
+        </h2>
+        {pendingSuggestions.length > 0 ? (
+          <div className="space-y-4">
+            {pendingSuggestions.map((s) => (
+              <SuggestionReviewRow
+                key={s.id}
+                suggestionId={s.id}
+                questionHe={s.questionHe}
+                categoryHe={categoryLabel(s.category as Parameters<typeof categoryLabel>[0])}
+                proposerName={s.proposerName}
+                personName={s.personId != null ? nameByPersonId.get(s.personId) ?? null : null}
+                createdAtIso={s.createdAt.toISOString()}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
+            אין הצעות הממתינות לבדיקה.
+          </p>
+        )}
       </section>
 
       <section>

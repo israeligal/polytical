@@ -64,6 +64,13 @@
       "when": 1780348798276,
       "tag": "0008_cold_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780379881861,
+      "tag": "0009_unknown_skaar",
+      "breakpoints": true
     }
   ]
 }
