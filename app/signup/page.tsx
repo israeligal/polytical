@@ -27,7 +27,9 @@ export default function SignUpPage() {
       setError(err.message ?? "ההרשמה נכשלה, נסו שוב");
       return;
     }
-    router.push("/");
+    // New accounts land in the onboarding wizard (handle + arena) — the proxy
+    // gate would funnel them here anyway; navigating directly avoids a flash.
+    router.push("/onboarding");
     router.refresh();
   }
 

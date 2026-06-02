@@ -2,6 +2,10 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-02 | 46f0770 | onboarding gate (signup→/onboarding) | ✅ | P2: fresh signup forced to /onboarding; onboarded user reverse-bounced /onboarding→/ |
+| 2026-06-02 | 46f0770 | onboarding wizard (handle→arena→finish) | ✅ | P2: live availability invalid"ab"→valid"qa_player_p2 פנוי ✓"; arena ביטחון; finish→/ (gate cleared, refreshSession) |
+| 2026-06-02 | 46f0770 | collect card (◈250 debit) | ✅ | P2: collect משה גפני → header 1,000→750, button→"הקלף באוסף שלכם"; ins-funds+double-collect unit-tested |
+| 2026-06-02 | 46f0770 | /collection gallery | ✅ | P2: progress 1/120, owned bright + 119 grayscale-locked "לא נאסף" chips; "באוסף" filter → 1 card; 0 console errors |
 | 2026-06-02 | (phase8) | Hebrew 404 (not-found.tsx) | ✅ | /politician/abc + /market/<bad> → on-brand "הדף לא נמצא" in-layout (was Next English default) |
 | 2026-06-02 | (phase8) | global focus-visible ring | 🔴 | first wrote var(--ring) (undefined) → ring silently dropped; fixed to var(--color-ring), re-verified 2px solid primary on Tab |
 | 2026-06-02 | (phase8) | politician page after a11y/tap-target changes | ✅ | portrait role=img+aria-label, 0 overflow, activity intact, 0 console errors |
