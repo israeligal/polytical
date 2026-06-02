@@ -8,7 +8,7 @@ import { SeasonTierRow } from "@/components/seasons/season-tier-row";
 
 export const metadata = {
   title: "העונה · פוליטיקל",
-  description: "צברו רווחים נקיים בעונה הנוכחית ותבעו פרסים בכל דרגה.",
+  description: "צברו שקוינים בהימורים בעונה הנוכחית ותבעו פרסים בכל דרגה.",
 };
 
 // Public season board — anonymous visitors see the tiers + countdown (progress 0
@@ -69,7 +69,7 @@ export default async function SeasonsPage() {
         {/* progress */}
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="font-accent text-xs font-bold text-muted-foreground">הרווח הנקי שלכם</span>
+            <span className="font-accent text-xs font-bold text-muted-foreground">השקוינים שהימרתם העונה</span>
             <span className="nums font-display text-2xl text-gold">{formatCoins(progress)}</span>
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-background">
@@ -87,7 +87,7 @@ export default async function SeasonsPage() {
             href="/login?callbackUrl=%2Fseasons"
             className="mt-4 inline-block rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
           >
-            התחברו כדי לצבור רווחים
+            התחברו כדי לצבור התקדמות
           </Link>
         )}
       </section>
@@ -108,7 +108,7 @@ export default async function SeasonsPage() {
         ))}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        הרווח הנקי מחושב מההימורים שלכם בחלון העונה (זכיות פחות סכומי הימור). פרס שנתבע נשאר שלכם.
+        ההתקדמות נמדדת לפי סך השקוינים שהימרתם בחלון העונה. פרס שנתבע נשאר שלכם.
       </p>
     </main>
   );

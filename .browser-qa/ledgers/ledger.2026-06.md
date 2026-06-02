@@ -5,6 +5,9 @@
 | 2026-06-02 | 849c33d | light Israeli theme (default) | ✅ | white bg, BLUE=כן / RED=לא odds bars, blue CTAs, gold coins+hot badge; header/portrait/pill theme-fixed; 0 console errors |
 | 2026-06-02 | 849c33d | dark toggle (Sun/Moon) | ✅ | click moon → dark "trading floor" (mint=כן/coral=לא) instantly, no flash; cookie-persisted; click sun → back to light |
 | 2026-06-02 | 849c33d | multi-persona dogfood (7 accts) | ⚠️ | money/ledger invariants ALL held across 45+ adversarial probes; leaderboard now populated; 5 bugs found (1 HIGH season-unreachable, see dogfood-fixes) |
+| 2026-06-02 | 27bd4fc | season reachability fix (wagered metric) | ✅ | logged in as dogfood highroller → /seasons progress 610 (was stuck 0), 2 tiers claimable; claimed tier1 → balance 140→190 (reward 50), terminal "נתבע ✓"; 0 errors |
+| 2026-06-02 | 27bd4fc | definite-article search fix | ✅ | vs Neon: "הבחירות"→1 market, "הליברמן"→1 MK (were 0); bare forms still 1; backfilled 4 markets + 11 politicians |
+| 2026-06-02 | 27bd4fc | SQLSTATE leak fixes (claimTier/upvote) | ✅ | bad-uuid tierId → TierNotFoundError; missing/bad comment id → CommentNotFoundError (unit-tested; pgErrorCode walks .cause) |
 | 2026-06-02 | c36fc23 | global search (/search) | ✅ | P3: "נתניהו"→1 politician; "קואליציה"→1 market card (hot+odds+portrait); header search icon; 0 errors |
 | 2026-06-02 | c36fc23 | seasons board (anonymous) | ✅ | P3: banner "עונת הפתיחה" + countdown 29d + progress 0 + 4 tiers נעול w/ Shekoin rewards; gold glow |
 | 2026-06-02 | c36fc23 | season tier claim (◈ credit) | ✅ | P3: progress 150→tier1 claimable→claim→balance 1,000→1,050; DB: 1 reward(50)+1 claim, no double-credit; terminal "נתבע ✓" |

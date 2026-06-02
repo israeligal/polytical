@@ -2,7 +2,7 @@ import { beforeEach, afterEach, expect, test } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, markets, comments, commentVotes } from "@/app/lib/schema";
-import { EmptyCommentError, CommentTooLongError } from "@/app/lib/errors";
+import { EmptyCommentError, CommentTooLongError, CommentNotFoundError } from "@/app/lib/errors";
 import { hideComment } from "@/app/lib/comments/service";
 import {
   postComment,
@@ -138,6 +138,17 @@ test("getComments orders by upvotes desc, then recency desc", async () => {
 
   const list = await getComments({ db: h.db, marketId, viewerId: UID });
   expect(list.map((x) => x.id)).toEqual([b.id, a.id, c.id]);
+});
+
+test("toggling upvote on a missing/malformed comment id throws CommentNotFoundError (no raw SQL error)", async () => {
+  // Malformed id (would hit the uuid column → raw 22P02).
+  await expect(toggleCommentUpvote({ db: h.db, commentId: "not-a-uuid", userId: UID })).rejects.toBeInstanceOf(
+    CommentNotFoundError,
+  );
+  // Valid-format but unknown id (FK violation on the vote insert → translated).
+  await expect(
+    toggleCommentUpvote({ db: h.db, commentId: "00000000-0000-0000-0000-000000000000", userId: UID }),
+  ).rejects.toBeInstanceOf(CommentNotFoundError);
 });
 
 test("with no viewerId, mineUpvoted is false even for upvoted comments", async () => {
