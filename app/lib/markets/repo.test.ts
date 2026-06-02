@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, expect, test } from "vitest";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, markets, outcomes, bets } from "@/app/lib/schema";
-import { getMarketOfTheDay } from "./repo";
+import { users, markets, outcomes, bets, marketPoliticians } from "@/app/lib/schema";
+import { getMarketOfTheDay, getMarketsForPolitician, createMarket } from "./repo";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -67,4 +67,42 @@ test("getMarketOfTheDay surfaces a zero-bet open market (fresh app)", async () =
 test("getMarketOfTheDay returns null when nothing is open", async () => {
   await newMarket("הוכרע", "resolved");
   expect(await getMarketOfTheDay({ db: h.db })).toBeNull();
+});
+
+test("getMarketsForPolitician returns only markets featuring the MK, as bundles", async () => {
+  const mine = await newMarket("שוק על ח״כ 100");
+  const other = await newMarket("שוק על מישהו אחר");
+  await h.db.insert(marketPoliticians).values([
+    { marketId: mine.marketId, personId: 100 },
+    { marketId: other.marketId, personId: 200 },
+  ]);
+
+  const bundles = await getMarketsForPolitician({ db: h.db, personId: 100 });
+  expect(bundles.length).toBe(1);
+  expect(bundles[0].market.id).toBe(mine.marketId);
+  expect(bundles[0].personIds).toEqual([100]);
+  expect(bundles[0].outcomes.map((o) => o.labelHe)).toEqual(["כן"]);
+
+  expect(await getMarketsForPolitician({ db: h.db, personId: 999 })).toEqual([]);
+});
+
+test("createMarket joins an existing tx when passed one (atomic with a caller's tx)", async () => {
+  // Proves the tx-aware refactor: createMarket inside a rolled-back tx leaves nothing.
+  await expect(
+    h.db.transaction(async (tx) => {
+      await createMarket({
+        tx,
+        questionHe: "שוק בתוך טרנזקציה",
+        category: "coalition",
+        type: "binary",
+        closeAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        outcomes: [{ labelHe: "כן", ordinal: 0 }, { labelHe: "לא", ordinal: 1 }],
+        personIds: [100],
+      });
+      throw new Error("rollback");
+    }),
+  ).rejects.toThrow("rollback");
+  // The whole composite rolled back — no market, no link leaked.
+  expect((await h.db.select().from(markets)).length).toBe(0);
+  expect((await h.db.select().from(marketPoliticians)).length).toBe(0);
 });

@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth";
 import { formatCoins } from "@/lib/format";
 import { getUserStats } from "@/app/lib/leaderboard/repo";
 import { getUserBets, getMarketBundle, type PortfolioBet } from "@/app/lib/markets/repo";
+import { getMySuggestions } from "@/app/lib/suggestions/service";
+import { categoryLabel } from "@/lib/categories";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CoinPill } from "@/components/coin-pill";
 import { OddsBar } from "@/components/odds-bar";
@@ -17,9 +19,10 @@ export default async function ProfilePage() {
   // callbackUrl) so a direct hit without a session still lands on login → back.
   if (!user) redirect("/login?callbackUrl=%2Fprofile");
 
-  const [stats, allBets] = await Promise.all([
+  const [stats, allBets, mySuggestions] = await Promise.all([
     getUserStats({ userId: user.id }),
     getUserBets({ userId: user.id }),
+    getMySuggestions({ userId: user.id }),
   ]);
 
   const open = allBets.filter((b) => b.betStatus === "open");
@@ -180,7 +183,68 @@ export default async function ProfilePage() {
           </p>
         )}
       </section>
+
+      {/* MY SUGGESTIONS */}
+      <section className="mt-10">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-2xl font-bold text-foreground">ההצעות שלי</h2>
+          <Link
+            href="/suggest"
+            className="shrink-0 rounded-full border border-primary px-3 py-1 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+          >
+            הציעו שוק
+          </Link>
+        </div>
+        {mySuggestions.length > 0 ? (
+          <ul className="space-y-2">
+            {mySuggestions.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  {s.marketId ? (
+                    <Link
+                      href={`/market/${s.marketId}`}
+                      className="block truncate font-semibold text-foreground hover:text-primary"
+                    >
+                      {s.questionHe}
+                    </Link>
+                  ) : (
+                    <p className="truncate font-semibold text-foreground">{s.questionHe}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {categoryLabel(s.category as Parameters<typeof categoryLabel>[0])}
+                    {s.reviewNote ? <> · {s.reviewNote}</> : null}
+                  </p>
+                </div>
+                <SuggestionStatusBadge status={s.status} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center text-muted-foreground">
+            עוד לא הצעת שווקים.{" "}
+            <Link href="/suggest" className="font-semibold text-primary hover:underline">
+              הציעו את הראשון
+            </Link>
+            .
+          </p>
+        )}
+      </section>
     </main>
+  );
+}
+
+function SuggestionStatusBadge({ status }: { status: "pending" | "approved" | "rejected" }) {
+  const map = {
+    pending: { he: "ממתין", cls: "bg-muted text-foreground" },
+    approved: { he: "אושר", cls: "bg-positive-soft text-positive" },
+    rejected: { he: "נדחה", cls: "bg-negative-soft text-negative" },
+  } as const;
+  const { he, cls } = map[status];
+  return (
+    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${cls}`}>{he}</span>
   );
 }
 

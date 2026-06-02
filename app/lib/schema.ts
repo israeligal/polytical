@@ -304,3 +304,27 @@ export const commentVotes = pgTable("comment_votes", {
   commentId: uuid("commentId").notNull().references(() => comments.id, { onDelete: "cascade" }),
   userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
 }, (t) => [primaryKey({ columns: [t.commentId, t.userId] })]);
+
+// ===================================================================
+// Community market suggestions (Phase 7) — the "community" half of the
+// admin+community model. A user proposes a market; an admin reviews. Approval
+// creates a real market (reusing repo.createMarket in the SAME tx) and links it
+// here via `marketId`. A reviewed row is terminal — never re-reviewed. NO coin
+// movement: this table never touches the ledger.
+// ===================================================================
+
+export const suggestionStatus = pgEnum("suggestion_status", ["pending", "approved", "rejected"]);
+
+export const marketSuggestions = pgTable("market_suggestions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }), // proposer
+  questionHe: text("questionHe").notNull(),
+  category: text("category").notNull(),                 // Category union, stored as text
+  personId: integer("personId"),                        // optional featured MK → politicians.personId (no FK; resolve by id)
+  status: suggestionStatus("status").notNull().default("pending"),
+  reviewNote: text("reviewNote"),                       // admin note (esp. on reject)
+  reviewedBy: text("reviewedBy").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
+  marketId: uuid("marketId").references(() => markets.id, { onDelete: "set null" }), // set on approve
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [index("market_suggestions_status_idx").on(t.status, t.createdAt)]);

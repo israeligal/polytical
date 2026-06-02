@@ -351,6 +351,7 @@ export async function getUserBets({
 
 export async function createMarket({
   db = defaultDb,
+  tx,
   questionHe,
   descriptionHe,
   category,
@@ -362,6 +363,7 @@ export async function createMarket({
   personIds = [],
 }: {
   db?: DB;
+  tx?: Tx;
   questionHe: string;
   descriptionHe?: string;
   category: string;
@@ -372,22 +374,17 @@ export async function createMarket({
   outcomes: { labelHe: string; cat?: number; ordinal: number }[];
   personIds?: number[];
 }): Promise<{ marketId: string }> {
-  return db.transaction(async (tx) => {
-    const [market] = await tx
+  // The whole composite must be atomic. Standalone callers (admin/seed) open a
+  // fresh transaction; the suggestion-approval flow passes its OWN tx so the
+  // market creation + the status flip commit together.
+  const run = async (exec: Tx): Promise<{ marketId: string }> => {
+    const [market] = await exec
       .insert(markets)
-      .values({
-        questionHe,
-        descriptionHe,
-        category,
-        type,
-        hot,
-        closeAt,
-        createdBy,
-      })
+      .values({ questionHe, descriptionHe, category, type, hot, closeAt, createdBy })
       .returning({ id: markets.id });
 
     if (outcomeInputs.length > 0) {
-      await tx.insert(outcomes).values(
+      await exec.insert(outcomes).values(
         outcomeInputs.map((o) => ({
           marketId: market.id,
           labelHe: o.labelHe,
@@ -398,11 +395,47 @@ export async function createMarket({
     }
 
     if (personIds.length > 0) {
-      await tx
+      await exec
         .insert(marketPoliticians)
         .values(personIds.map((personId) => ({ marketId: market.id, personId })));
     }
 
     return { marketId: market.id };
-  });
+  };
+
+  return tx ? run(tx) : db.transaction(run);
+}
+
+/**
+ * Every market that features a given MK (via market_politicians), newest first,
+ * each as the same `{ market, outcomes, personIds }` bundle the homepage cards
+ * consume. Four queries total regardless of how many markets — no N+1: find the
+ * link rows, fetch the markets + all their outcomes + all their links in bulk,
+ * then group in memory.
+ */
+export async function getMarketsForPolitician({
+  db = defaultDb,
+  personId,
+}: {
+  db?: DB;
+  personId: number;
+}): Promise<{ market: MarketRow; outcomes: OutcomeRow[]; personIds: number[] }[]> {
+  const links = await db
+    .select({ marketId: marketPoliticians.marketId })
+    .from(marketPoliticians)
+    .where(eq(marketPoliticians.personId, personId));
+  if (links.length === 0) return [];
+
+  const ids = [...new Set(links.map((l) => l.marketId))];
+  const [mkts, outs, allLinks] = await Promise.all([
+    db.select().from(markets).where(inArray(markets.id, ids)).orderBy(desc(markets.createdAt)),
+    db.select().from(outcomes).where(inArray(outcomes.marketId, ids)).orderBy(asc(outcomes.ordinal)),
+    db.select().from(marketPoliticians).where(inArray(marketPoliticians.marketId, ids)),
+  ]);
+
+  return mkts.map((market) => ({
+    market,
+    outcomes: outs.filter((o) => o.marketId === market.id),
+    personIds: allLinks.filter((l) => l.marketId === market.id).map((l) => l.personId),
+  }));
 }
