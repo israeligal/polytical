@@ -15,7 +15,7 @@ export function CategoryBadge({ category }: { category: Category }) {
 
 export function HotBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 px-2.5 py-1 font-accent text-xs font-bold text-accent" style={{ backgroundColor: "rgba(255,194,61,.12)" }}>
+    <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 font-accent text-xs font-bold text-gold">
       <Flame className="h-3.5 w-3.5" />
       חם
     </span>
