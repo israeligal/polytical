@@ -48,13 +48,19 @@ export function CommentRow({
   const initial = authorName.trim().charAt(0) || "?";
 
   function toggleVote() {
-    // Optimistic flip; the action reconciles via revalidatePath.
+    // Optimistic flip; the action reconciles via revalidatePath. Roll back on a
+    // not-ok result OR a thrown action so the count never silently desyncs.
     const next = !voted;
     setVoted(next);
     setCount((c) => c + (next ? 1 : -1));
     startVote(async () => {
-      const res = await upvoteCommentAction({ marketId, commentId });
-      if (!res.ok) {
+      try {
+        const res = await upvoteCommentAction({ marketId, commentId });
+        if (!res.ok) {
+          setVoted(voted);
+          setCount(upvotes);
+        }
+      } catch {
         setVoted(voted);
         setCount(upvotes);
       }
@@ -64,8 +70,12 @@ export function CommentRow({
   function hide() {
     setHidden(true);
     startHide(async () => {
-      const res = await hideCommentAction({ marketId, commentId });
-      if (!res.ok) setHidden(false);
+      try {
+        const res = await hideCommentAction({ marketId, commentId });
+        if (!res.ok) setHidden(false);
+      } catch {
+        setHidden(false);
+      }
     });
   }
 
@@ -98,7 +108,8 @@ export function CommentRow({
             type="button"
             onClick={toggleVote}
             aria-pressed={voted}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 transition-colors ${
+            aria-label={voted ? "בטלו הצבעה" : "הצביעו בעד התגובה"}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ring-1 transition-colors ${
               voted
                 ? "bg-primary text-primary-foreground ring-primary"
                 : "bg-card text-muted-foreground ring-border hover:ring-primary"

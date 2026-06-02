@@ -53,7 +53,7 @@ export default async function AdminPage() {
                 key={s.id}
                 suggestionId={s.id}
                 questionHe={s.questionHe}
-                categoryHe={categoryLabel(s.category as Parameters<typeof categoryLabel>[0])}
+                categoryHe={categoryLabel(s.category)}
                 proposerName={s.proposerName}
                 personName={s.personId != null ? nameByPersonId.get(s.personId) ?? null : null}
                 createdAtIso={s.createdAt.toISOString()}
@@ -78,7 +78,7 @@ export default async function AdminPage() {
                 key={market.id}
                 marketId={market.id}
                 questionHe={market.questionHe}
-                category={categoryLabel(market.category as Parameters<typeof categoryLabel>[0])}
+                category={categoryLabel(market.category)}
                 status={market.status}
                 closeAtIso={market.closeAt.toISOString()}
                 outcomes={outcomes.map((o) => ({

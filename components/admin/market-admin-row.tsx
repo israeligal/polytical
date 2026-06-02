@@ -39,9 +39,14 @@ export function MarketAdminRow({
   function run(fn: () => Promise<{ ok: boolean; message?: string }>) {
     setMessage(null);
     startTransition(async () => {
-      const res = await fn();
-      setOk(res.ok);
-      setMessage(res.message ?? (res.ok ? "בוצע" : "שגיאה"));
+      try {
+        const res = await fn();
+        setOk(res.ok);
+        setMessage(res.message ?? (res.ok ? "בוצע" : "שגיאה"));
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
+      }
     });
   }
 
@@ -97,9 +102,13 @@ export function MarketAdminRow({
             ))}
           </select>
           <input
+            type="url"
+            inputMode="url"
+            dir="ltr"
             value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)}
-            className={FIELD}
+            className={`${FIELD} text-start`}
+            aria-label="קישור מקור"
             placeholder="קישור מקור (לא חובה)"
           />
         </div>

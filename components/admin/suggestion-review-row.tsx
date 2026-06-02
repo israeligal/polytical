@@ -48,18 +48,28 @@ export function SuggestionReviewRow({
       return;
     }
     startTransition(async () => {
-      const res = await approveSuggestionAction({ suggestionId, closeAt });
-      setOk(res.ok);
-      setMessage(res.message ?? (res.ok ? "אושר" : "שגיאה"));
+      try {
+        const res = await approveSuggestionAction({ suggestionId, closeAt });
+        setOk(res.ok);
+        setMessage(res.message ?? (res.ok ? "אושר" : "שגיאה"));
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
+      }
     });
   }
 
   function reject() {
     setMessage(null);
     startTransition(async () => {
-      const res = await rejectSuggestionAction({ suggestionId, note: note.trim() || undefined });
-      setOk(res.ok);
-      setMessage(res.message ?? (res.ok ? "נדחה" : "שגיאה"));
+      try {
+        const res = await rejectSuggestionAction({ suggestionId, note: note.trim() || undefined });
+        setOk(res.ok);
+        setMessage(res.message ?? (res.ok ? "נדחה" : "שגיאה"));
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
+      }
     });
   }
 

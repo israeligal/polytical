@@ -36,16 +36,21 @@ export function SuggestMarketForm({
     e.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const res = await suggestMarketAction({
-        questionHe: question,
-        category,
-        personId: personId ? Number(personId) : null,
-      });
-      setOk(res.ok);
-      setMessage(res.message ?? (res.ok ? "נשלח" : "שגיאה"));
-      if (res.ok) {
-        setQuestion("");
-        setPersonId("");
+      try {
+        const res = await suggestMarketAction({
+          questionHe: question,
+          category,
+          personId: personId ? Number(personId) : null,
+        });
+        setOk(res.ok);
+        setMessage(res.message ?? (res.ok ? "נשלח" : "שגיאה"));
+        if (res.ok) {
+          setQuestion("");
+          setPersonId("");
+        }
+      } catch {
+        setOk(false);
+        setMessage("אירעה שגיאה — נסו שוב");
       }
     });
   }

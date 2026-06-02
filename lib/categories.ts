@@ -9,5 +9,8 @@ export const CATEGORIES: { key: Category; he: string }[] = [
   { key: "scandals", he: "פרשות" },
 ];
 
-export const categoryLabel = (key: Category): string =>
+// Accepts a raw string (DB columns store category as free text) and falls back
+// to the key for an unknown value — so callers never need a type-erasure cast.
+// The write path (suggestions/admin) still validates against the Category union.
+export const categoryLabel = (key: string): string =>
   CATEGORIES.find((c) => c.key === key)?.he ?? key;

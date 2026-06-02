@@ -14,11 +14,15 @@ export function FaucetButton() {
     setMessage(null);
     setReward(null);
     startTransition(async () => {
-      const res = await claimFaucetAction();
-      if (res.ok) {
-        setReward(`🔥 רצף ${res.streak} · +${res.amount}`);
-      } else if (res.message) {
-        setMessage(res.message);
+      try {
+        const res = await claimFaucetAction();
+        if (res.ok) {
+          setReward(`🔥 רצף ${res.streak} · +${res.amount}`);
+        } else if (res.message) {
+          setMessage(res.message);
+        }
+      } catch {
+        setMessage("אירעה שגיאה — נסו שוב");
       }
     });
   }
@@ -35,7 +39,7 @@ export function FaucetButton() {
         onClick={onClick}
         disabled={pending}
         aria-busy={pending}
-        className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-bold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
         <Coin className="h-4 w-4" />
         <span>{pending ? "מקבל…" : "בונוס יומי"}</span>

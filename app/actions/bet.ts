@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { checkRateLimit } from "@/app/lib/rate-limit";
 import { placeBet } from "@/app/lib/markets/service";
 import { BelowMinBetError, InsufficientFundsError, MarketClosedError } from "@/app/lib/errors";
 
@@ -19,6 +20,10 @@ export async function placeBetAction({
 }): Promise<{ ok: boolean; message?: string }> {
   const session = await getSession();
   if (!session?.user) return { ok: false, message: "התחברו כדי להמר" };
+  // Anti-abuse throttle (generous — active bettors won't hit it). The balance
+  // invariant is enforced in placeBet regardless; this just caps request spam.
+  const limit = checkRateLimit({ key: `bet:${session.user.id}`, max: 30, windowMs: 60_000 });
+  if (!limit.allowed) return { ok: false, message: "יותר מדי הימורים — האטו לרגע" };
   try {
     await placeBet({ userId: session.user.id, marketId, outcomeId, amount });
     revalidatePath(`/market/${marketId}`);
