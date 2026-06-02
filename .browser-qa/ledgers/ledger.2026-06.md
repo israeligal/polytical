@@ -2,6 +2,9 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-02 | 849c33d | light Israeli theme (default) | ✅ | white bg, BLUE=כן / RED=לא odds bars, blue CTAs, gold coins+hot badge; header/portrait/pill theme-fixed; 0 console errors |
+| 2026-06-02 | 849c33d | dark toggle (Sun/Moon) | ✅ | click moon → dark "trading floor" (mint=כן/coral=לא) instantly, no flash; cookie-persisted; click sun → back to light |
+| 2026-06-02 | 849c33d | multi-persona dogfood (7 accts) | ⚠️ | money/ledger invariants ALL held across 45+ adversarial probes; leaderboard now populated; 5 bugs found (1 HIGH season-unreachable, see dogfood-fixes) |
 | 2026-06-02 | c36fc23 | global search (/search) | ✅ | P3: "נתניהו"→1 politician; "קואליציה"→1 market card (hot+odds+portrait); header search icon; 0 errors |
 | 2026-06-02 | c36fc23 | seasons board (anonymous) | ✅ | P3: banner "עונת הפתיחה" + countdown 29d + progress 0 + 4 tiers נעול w/ Shekoin rewards; gold glow |
 | 2026-06-02 | c36fc23 | season tier claim (◈ credit) | ✅ | P3: progress 150→tier1 claimable→claim→balance 1,000→1,050; DB: 1 reward(50)+1 claim, no double-credit; terminal "נתבע ✓" |
