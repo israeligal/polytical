@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ballot } from "@/components/icons";
+import { PolyticalLogo } from "@/components/icons";
 import { CoinPill } from "@/components/coin-pill";
 import { FaucetButton } from "@/components/faucet-button";
 import { SignOutButton } from "@/components/auth-buttons";
@@ -20,23 +20,14 @@ export async function SiteHeader() {
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-      {/* masthead kicker */}
-      <div className="bg-foreground text-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-1 text-xs sm:px-6 lg:px-8">
-          <span>מהדורת הבוקר · בלי כסף אמיתי, רק על הכבוד</span>
-          <span className="hidden opacity-90 sm:inline">פוליטיקל · Polytical</span>
-        </div>
-      </div>
-
+    <header
+      className="sticky top-0 z-30 border-b border-line-soft backdrop-blur-xl"
+      style={{ backgroundColor: "rgba(11,16,32,.72)" }}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Ballot className="h-5 w-5" />
-          </span>
-          <span className="font-display text-2xl font-black leading-none text-foreground">
-            פוליטיקל
-          </span>
+        <Link href="/" className="flex items-center gap-2.5">
+          <PolyticalLogo className="h-8 w-8" />
+          <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">

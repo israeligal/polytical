@@ -3,9 +3,9 @@ import type { Category } from "@/lib/types";
 import { CATEGORIES } from "@/lib/categories";
 
 const base =
-  "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 py-1.5 text-sm font-semibold transition-colors";
-const on = "bg-primary text-primary-foreground";
-const off = "bg-muted text-muted-foreground hover:text-foreground";
+  "inline-flex min-h-10 shrink-0 items-center rounded-full border px-4 py-1.5 font-accent text-[13.5px] font-bold transition-colors";
+const on = "border-primary bg-primary text-primary-foreground";
+const off = "border-border bg-card text-muted-foreground hover:text-foreground";
 
 /** Server-side category filter via ?cat= (no client JS). */
 export function CategoryRail({ active }: { active?: Category }) {

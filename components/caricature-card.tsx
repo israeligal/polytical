@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { Politician } from "@/lib/types";
 import { marketsForPolitician } from "@/lib/mock-data";
-import { catBg, catBorder, catText, catTint } from "@/lib/cat";
+import { rarityForRole, suitForCat, RARITY_HE, RARITY_TEXT, RARITY_BORDER } from "@/lib/rarity";
 import { PoliticianPortrait } from "@/components/politician-portrait";
-import { ChevronForward } from "@/components/icons";
+import { ChevronForward, Crest, Gem } from "@/components/icons";
 
 /**
  * The collectible caricature card — the hero artifact of the product.
@@ -21,37 +21,42 @@ export function CaricatureCard({
   realData?: boolean;
 }) {
   const count = realData ? 0 : marketsForPolitician(politician.id).length;
+  const rarity = rarityForRole(politician.role);
+  const suit = suitForCat(politician.cat);
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-2xl border-2 bg-card shadow-lg ${catBorder[politician.cat]}`}
+      className={`flex flex-col overflow-hidden rounded-card border-[2.5px] bg-card shadow-3 ${RARITY_BORDER[rarity]} ${rarity === "legendary" ? "shadow-glow-gold" : ""}`}
     >
-      <div className={`h-1.5 w-full ${catBg[politician.cat]}`} />
+      {/* rarity-tinted header: gem + tier on the start, faction crest on the end */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <span className={`inline-flex items-center gap-1.5 font-accent text-[11px] font-extrabold ${RARITY_TEXT[rarity]}`}>
+          <Gem rarity={rarity} className="h-4 w-4" />
+          {RARITY_HE[rarity]}
+        </span>
+        <span className={`grid h-7 w-7 place-items-center rounded-[9px] ${RARITY_TEXT[rarity]}`} style={{ backgroundColor: "rgba(0,0,0,.25)" }}>
+          <Crest suit={suit} className="h-[18px] w-[18px]" />
+        </span>
+      </div>
 
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${catTint[politician.cat]} ${catText[politician.cat]}`}
-          >
-            {politician.party}
-          </span>
-          <span className="text-xs text-muted-foreground">{politician.role}</span>
-        </div>
-
+      <div className="px-4 pb-4">
         <PoliticianPortrait politician={politician} size="card" />
 
-        <h3 className="mt-3 font-display text-2xl font-black leading-tight text-foreground">
+        <h3 className="mt-3 font-display text-2xl leading-tight text-foreground">
           {politician.name}
         </h3>
+        <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+          {politician.role} · {politician.party}
+        </p>
         {politician.tagline ? (
           <p className="mt-0.5 text-sm italic text-muted-foreground">
             {politician.tagline}
           </p>
         ) : null}
 
-        <dl className="mt-3 divide-y divide-border rounded-lg bg-muted/60 px-3">
+        <dl className="mt-3 divide-y divide-border overflow-hidden rounded-[12px]" style={{ backgroundColor: "var(--bg-sunken)" }}>
           {politician.facts.map((f) => (
-            <div key={f.label} className="flex items-center justify-between py-1.5">
-              <dt className="text-sm text-muted-foreground">{f.label}</dt>
+            <div key={f.label} className="flex items-center justify-between px-3 py-1.5">
+              <dt className="font-accent text-xs font-bold text-muted-foreground">{f.label}</dt>
               <dd className="nums text-sm font-bold text-foreground">{f.value}</dd>
             </div>
           ))}
@@ -60,7 +65,7 @@ export function CaricatureCard({
 
       <Link
         href={`/politician/${politician.id}`}
-        className={`mt-auto flex items-center justify-between px-4 py-3 text-sm font-bold transition-opacity hover:opacity-80 ${catTint[politician.cat]} ${catText[politician.cat]}`}
+        className="mt-auto flex items-center justify-between border-t border-border px-4 py-3 text-sm font-bold text-muted-foreground transition-colors hover:text-primary"
       >
         <span>
           {realData ? (

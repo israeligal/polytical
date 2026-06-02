@@ -1,12 +1,115 @@
-// Minimal inline icon set (no icon dependency). All use currentColor; size via className.
+// Minimal inline icon set (no icon dependency). Line icons use currentColor; size via className.
 type IconProps = { className?: string };
 
-export function Coin({ className }: IconProps) {
+/**
+ * Shekoin — the game currency coin. Baked gold gradient + diamond motif (NOT
+ * currentColor). Size via className (set h-/w-). The gradient id is fixed but
+ * identical across instances, so duplicates render correctly.
+ */
+export function Shekoin({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
-      <circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.25" />
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M12 7v10M9.5 9.2c0-1 1.1-1.7 2.5-1.7s2.5.6 2.5 1.6c0 2.4-5 1.3-5 3.6 0 1 1.1 1.7 2.5 1.7s2.5-.7 2.5-1.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true" fill="none">
+      <defs>
+        <linearGradient id="shekoin-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFD874" />
+          <stop offset="1" stopColor="#E8A623" />
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="29" fill="url(#shekoin-grad)" stroke="#B57E12" strokeWidth="2.5" />
+      <path d="M32 16 L44 32 L32 48 L20 32 Z" fill="#7A540A" />
+      <path d="M32 23 L39 32 L32 41 L25 32 Z" fill="#FFE9A8" />
+    </svg>
+  );
+}
+
+/** Currency coin alias — every existing `<Coin>` now renders the gold Shekoin. */
+export function Coin({ className }: IconProps) {
+  return <Shekoin className={className} />;
+}
+
+/** The Polytical mark: a coin badge with a mint up-chevron over a coral down-chevron (the YES/NO duel). */
+export function PolyticalLogo({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
+      <rect x="6" y="6" width="108" height="108" rx="30" fill="#121831" stroke="#FFC23D" strokeWidth="2" strokeOpacity=".5" />
+      <path d="M30 64 L60 38 L90 64" stroke="#00E0A4" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M30 76 L60 92 L90 76" stroke="#FF4D6D" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+export type Suit = "knesset" | "ballot" | "podium" | "mandate";
+
+/** Faction crest (suit). Tints via currentColor; size via className. */
+export function Crest({ suit = "knesset", className }: IconProps & { suit?: Suit }) {
+  const inner = {
+    knesset: (
+      <g fill="currentColor">
+        <rect x="6" y="9" width="36" height="4" rx="1" />
+        <rect x="9" y="38" width="30" height="4" rx="1" />
+        <rect x="10" y="15" width="4" height="22" />
+        <rect x="18" y="15" width="4" height="22" />
+        <rect x="26" y="15" width="4" height="22" />
+        <rect x="34" y="15" width="4" height="22" />
+        <path d="M24 4 L40 9 H8 Z" />
+      </g>
+    ),
+    ballot: (
+      <g fill="currentColor">
+        <rect x="9" y="20" width="30" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="3" />
+        <rect x="18" y="14" width="12" height="4" rx="1" />
+        <path d="M18 30 l4 4 l8 -9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    ),
+    podium: (
+      <g fill="currentColor">
+        <rect x="20" y="22" width="8" height="20" rx="2" />
+        <path d="M12 42 H36" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <rect x="15" y="14" width="18" height="9" rx="2" />
+        <circle cx="24" cy="8" r="3" />
+        <path d="M24 11 V14" stroke="currentColor" strokeWidth="2" />
+      </g>
+    ),
+    mandate: (
+      <g fill="currentColor">
+        <path d="M12 20 v-6 a4 4 0 0 1 4-4 h16 a4 4 0 0 1 4 4 v6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <rect x="10" y="20" width="28" height="9" rx="3" />
+        <rect x="13" y="29" width="4" height="11" rx="1" />
+        <rect x="31" y="29" width="4" height="11" rx="1" />
+      </g>
+    ),
+  }[suit];
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      {inner}
+    </svg>
+  );
+}
+
+export type Rarity = "common" | "rare" | "epic" | "legendary";
+const RARITY_FILL: Record<Rarity, string> = {
+  common: "#8A93B8",
+  rare: "#3FA9F5",
+  epic: "#B36BFF",
+  legendary: "#FFC23D",
+};
+
+/** Faceted rarity gem. Body color baked per tier; size via className. */
+export function Gem({ rarity = "common", className }: IconProps & { rarity?: Rarity }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true" fill="none">
+      <path d="M24 4 L40 14 L40 34 L24 44 L8 34 L8 14 Z" fill={RARITY_FILL[rarity]} stroke="rgba(0,0,0,.3)" strokeWidth="1.5" />
+      <path d="M24 4 L40 14 L24 22 L8 14 Z" fill="#FFFFFF" fillOpacity=".25" />
+    </svg>
+  );
+}
+
+/** Bell (notifications). Lucide-style line icon. */
+export function Bell({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
     </svg>
   );
 }

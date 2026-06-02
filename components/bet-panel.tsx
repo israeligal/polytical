@@ -68,8 +68,8 @@ export function BetPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
-      <h3 className="mb-3 font-display text-lg font-bold text-foreground">הימור</h3>
+    <div className="rounded-card border border-border bg-card p-5 shadow-2">
+      <h3 className="mb-3 font-display text-xl text-foreground">הימור</h3>
 
       <div className="flex flex-wrap gap-2">
         {market.outcomes.map((o, i) => {
@@ -78,21 +78,21 @@ export function BetPanel({
             market.type === "binary"
               ? i === 0
                 ? active
-                  ? "border-positive bg-positive text-white"
-                  : "border-positive text-positive"
+                  ? "border-positive bg-positive text-primary-foreground"
+                  : "border-positive bg-positive-soft text-positive"
                 : active
-                  ? "border-negative bg-negative text-white"
-                  : "border-negative text-negative"
+                  ? "border-negative bg-negative text-primary-foreground"
+                  : "border-negative bg-negative-soft text-negative"
               : active
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-foreground";
+                : "border-border bg-sunken text-foreground";
           return (
             <button
               key={o.id}
               type="button"
               onClick={() => setOutcomeId(o.id)}
               aria-pressed={active}
-              className={`rounded-lg border-2 px-3 py-1.5 text-sm font-bold transition-colors ${tone}`}
+              className={`rounded-[12px] border-[1.5px] px-3 py-1.5 text-sm font-extrabold transition-colors ${tone}`}
             >
               {o.label} <span className="nums opacity-70">{pct(o.pool, total)}%</span>
             </button>
@@ -100,11 +100,11 @@ export function BetPanel({
         })}
       </div>
 
-      <div className="mt-4 rounded-lg bg-muted px-3 py-2.5">
+      <div className="mt-4 rounded-[12px] px-3 py-2.5" style={{ backgroundColor: "var(--bg-sunken)" }}>
         <label className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">סכום</span>
           <span className="inline-flex items-center gap-1.5">
-            <Coin className="h-4 w-4 text-accent" />
+            <Coin className="h-[18px] w-[18px]" />
             <input
               type="number"
               inputMode="numeric"
@@ -135,7 +135,7 @@ export function BetPanel({
 
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="text-muted-foreground">תשלום פוטנציאלי</span>
-        <span className="nums font-black text-positive">+{formatCoins(potential)}</span>
+        <span className="nums font-extrabold text-positive">+{formatCoins(potential)}</span>
       </div>
 
       {isLoggedIn ? (
@@ -143,14 +143,14 @@ export function BetPanel({
           type="button"
           onClick={submit}
           disabled={pending || !validStake}
-          className="mt-4 w-full rounded-lg bg-primary py-3 font-bold text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          className="mt-4 w-full rounded-[12px] bg-primary py-3 font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint disabled:cursor-not-allowed disabled:opacity-45"
         >
           {pending ? "רושם…" : "הניחו ניחוש"}
         </button>
       ) : (
         <Link
           href="/login"
-          className="mt-4 block w-full rounded-lg bg-primary py-3 text-center font-bold text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover"
+          className="mt-4 block w-full rounded-[12px] bg-primary py-3 text-center font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint"
         >
           התחברו כדי להמר
         </Link>

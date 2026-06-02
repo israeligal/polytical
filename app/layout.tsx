@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
-import { Frank_Ruhl_Libre, Heebo } from "next/font/google";
+import { Secular_One, Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 
-// Display — the classic Hebrew newspaper serif, for op-ed headlines.
-const frankRuhl = Frank_Ruhl_Libre({
+// Display — Secular One: heavy Hebrew display face for headlines + big odds.
+const secularOne = Secular_One({
   subsets: ["hebrew", "latin"],
-  variable: "--font-frank-ruhl",
+  weight: "400",
+  variable: "--font-secular-one",
 });
 
 // Sans — clean Hebrew UI/data font for body, labels, numbers.
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
   variable: "--font-heebo",
+});
+
+// Accent — Rubik: chips, badges, faction tags.
+const rubik = Rubik({
+  subsets: ["hebrew", "latin"],
+  variable: "--font-rubik",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +37,7 @@ export default function RootLayout({
     <html
       lang="he"
       dir="rtl"
-      className={`${frankRuhl.variable} ${heebo.variable} h-full antialiased`}
+      className={`${secularOne.variable} ${heebo.variable} ${rubik.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <SiteHeader />

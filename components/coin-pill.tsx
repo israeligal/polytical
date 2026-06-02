@@ -1,12 +1,15 @@
-import { Coin } from "@/components/icons";
+import { Shekoin } from "@/components/icons";
 import { formatCoins } from "@/lib/format";
 
-/** The play-money balance, in the gold "coin" accent. */
+/** Shekoin balance — gold-tinted pill with the coin glyph + tabular gold amount. */
 export function CoinPill({ amount }: { amount: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-accent-foreground shadow-sm">
-      <Coin className="h-4 w-4" />
-      <span className="nums text-sm font-bold">{formatCoins(amount)}</span>
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
+      style={{ backgroundColor: "rgba(255,194,61,.12)", border: "1px solid rgba(255,194,61,.3)" }}
+    >
+      <Shekoin className="h-[18px] w-[18px]" />
+      <span className="nums text-sm font-extrabold text-gold">{formatCoins(amount)}</span>
     </span>
   );
 }

@@ -14,7 +14,7 @@ export function LeaderboardRow({
         you ? "border-primary bg-primary/5" : "border-border bg-card"
       }`}
     >
-      <span className="nums w-7 text-center text-lg font-black text-muted-foreground">
+      <span className={`nums w-7 text-center font-display text-lg ${you ? "text-primary" : "text-muted-foreground"}`}>
         {entry.rank}
       </span>
       <span
@@ -32,7 +32,7 @@ export function LeaderboardRow({
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-accent" />
-        <span className="nums font-bold text-foreground">
+        <span className="nums font-extrabold text-gold">
           {formatCoins(entry.netWorth)}
         </span>
       </span>

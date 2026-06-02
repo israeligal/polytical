@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Coin } from "@/components/icons";
 import { claimFaucetAction } from "@/app/actions/faucet";
 
 /** Daily coin faucet with a streak bonus. Gold accent pill; on a successful
@@ -30,7 +29,7 @@ export function FaucetButton() {
   return (
     <div className="flex items-center gap-2">
       {reward ? (
-        <span className="hidden text-xs font-bold text-accent-foreground sm:inline">{reward}</span>
+        <span className="hidden text-xs font-bold text-gold sm:inline">{reward}</span>
       ) : message ? (
         <span className="hidden text-xs font-medium text-muted-foreground sm:inline">{message}</span>
       ) : null}
@@ -39,9 +38,8 @@ export function FaucetButton() {
         onClick={onClick}
         disabled={pending}
         aria-busy={pending}
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-bold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-extrabold text-accent-foreground transition-all hover:bg-accent-hover hover:shadow-glow-gold disabled:opacity-60"
       >
-        <Coin className="h-4 w-4" />
         <span>{pending ? "מקבל…" : "בונוס יומי"}</span>
       </button>
     </div>
