@@ -9,7 +9,7 @@ import { PolyticalLogo, Crest, type Suit } from "@/components/icons";
 const ARENA_SUITS: Suit[] = ["knesset", "ballot", "podium", "mandate"];
 
 type Arena = { key: Category; he: string };
-type Availability = { available: boolean; reason?: "invalid" | "taken" } | null;
+type Availability = { available: boolean; reason?: "invalid" | "taken" | "rate_limited" } | null;
 
 // Single-route, three-step identity wizard. Step state is local (derive, don't
 // sync); the gate itself is authoritative on the server (page + proxy).
@@ -130,7 +130,10 @@ export function OnboardingWizard({
               {!checking && avail?.available && (
                 <span className="font-semibold text-positive">@{normalized} פנוי ✓</span>
               )}
-              {!checking && avail && !avail.available && (
+              {!checking && avail && !avail.available && avail.reason === "rate_limited" && (
+                <span className="font-medium text-muted-foreground">רגע, נסו שוב עוד רגע…</span>
+              )}
+              {!checking && avail && !avail.available && avail.reason !== "rate_limited" && (
                 <span className="font-semibold text-negative">
                   {avail.reason === "taken" ? "הכינוי תפוס — בחרו אחר" : "3–20 תווים: a–z, 0–9, _ בלבד"}
                 </span>

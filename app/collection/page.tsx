@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { Politician } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
@@ -26,7 +25,7 @@ export default async function CollectionPage() {
     getOwnedPersonIds({ userId: session.user.id }),
   ]);
   const items: CollectionItem[] = rows.map((r) => ({
-    politician: dbToCard(r) as Politician,
+    politician: dbToCard(r),
     owned: owned.has(r.personId),
   }));
 

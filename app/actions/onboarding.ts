@@ -22,12 +22,14 @@ export async function checkHandleAction({
   handle,
 }: {
   handle: string;
-}): Promise<{ available: boolean; reason?: "invalid" | "taken" }> {
+}): Promise<{ available: boolean; reason?: "invalid" | "taken" | "rate_limited" }> {
   const s = await getSession();
   if (!s?.user) return { available: false, reason: "invalid" };
-  // Generous — fires on (debounced) keystrokes.
+  // Generous — fires on (debounced) keystrokes. A throttle is NOT a "taken"
+  // fact: report it distinctly so the wizard doesn't tell the user a free
+  // handle is taken (it just couldn't verify right now).
   const limit = checkRateLimit({ key: `handle-check:${s.user.id}`, max: 40, windowMs: 60_000 });
-  if (!limit.allowed) return { available: false, reason: "taken" };
+  if (!limit.allowed) return { available: false, reason: "rate_limited" };
   const res = await checkHandleAvailable({ userId: s.user.id, handle });
   return { available: res.available, reason: res.reason };
 }
@@ -68,7 +70,15 @@ export async function completeOnboardingAction({
   } catch (e) {
     if (e instanceof InvalidArenaError) return { ok: false, message: "בחרו תחום עניין מהרשימה" };
     if (e instanceof HandleRequiredError) return { ok: false, message: "בחרו קודם כינוי" };
-    if (e instanceof AlreadyOnboardedError) return { ok: true }; // already done → let the client proceed
+    if (e instanceof AlreadyOnboardedError) {
+      // Already onboarded (terminal) — but THIS caller's cookie may still be
+      // stale not-onboarded, which is exactly what would bounce them back to
+      // /onboarding. Heal the cookie before letting the client proceed, same as
+      // the success path.
+      await refreshSession();
+      revalidatePath("/", "layout");
+      return { ok: true };
+    }
     throw e;
   }
   await refreshSession(); // re-issue the cookie so the proxy gate sees onboardedAt set (no redirect loop)

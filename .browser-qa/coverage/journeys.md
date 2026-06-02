@@ -2,6 +2,8 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [onboarding](#onboarding) | 2026-06-02 `46f0770` | 1 | 5/5 |
+| [card-collection](#card-collection) | 2026-06-02 `46f0770` | 1 | 5/5 |
 | [community-suggestion](#community-suggestion) | 2026-06-02 `a7135e3` | 1 | 6/6 |
 | [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
 | [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
@@ -11,6 +13,42 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+## onboarding
+
+**What it is:** A new account is gated into a first-run wizard that sets a unique @-handle (live availability check) and a focus "arena", then lands in the app. The gate funnels any not-onboarded logged-in user to /onboarding from anywhere and reverse-bounces a finished user away from it.
+
+**Last walked:** 2026-06-02 `46f0770`. **Walks:** 1. **Coverage:** 5/5
+
+**Steps:**
+- ✅ fresh email signup → proxy gate redirects to `/onboarding` (not `/`)
+- ✅ handle step live availability: invalid "ab" → "3–20 תווים…" (format), valid "qa_player_p2" → "פנוי ✓" (debounced server check); "המשך" disabled until valid
+- ✅ arena step: 6 CATEGORIES tiles, single-select (aria-pressed), "המשך" gated on a pick
+- ✅ finish ("יאללה, מתחילים") → completeOnboarding + refreshSession → lands on `/` (gate cleared, no loop)
+- ✅ reverse-bounce: onboarded user visiting `/onboarding` → redirected to `/` (proxy + page's authoritative DB read)
+
+**Notable history:**
+- `46f0770` (2026-06-02): Phase 2 — onboarding gate. additionalFields (handle/arena/onboardedAt) + refreshSession re-issues the 5-min cookie so the gate sees onboardedAt immediately.
+
+**Known gaps:** handle-taken cross-user race + partially-onboarded (handle set, no arena) resume covered by PGlite unit tests, not browser-walked; OAuth (Google) signup path into onboarding not walked (email path only).
+
+## card-collection
+
+**What it is:** A user spends Shekoins to permanently collect a politician's caricature card; the /collection gallery shows owned cards bright and un-owned dimmed+locked with a completion meter.
+
+**Last walked:** 2026-06-02 `46f0770`. **Walks:** 1. **Coverage:** 5/5
+
+**Steps:**
+- ✅ politician page shows "אספו את הקלף · 250" for a signed-in non-owner
+- ✅ collect → header balance 1,000→750 (◈250 debit via the collect ledger row), button → "הקלף באוסף שלכם" chip
+- ✅ `/collection` gallery: progress meter 1/120, owned card bright, others grayscale-locked with "לא נאסף" + lock chips
+- ✅ "באוסף" filter tab → narrows to just owned cards; "הכול"/"נעולים" tabs present
+- ✅ insufficient-funds (Hebrew msg) + idempotent double-collect (no double-debit, one ownership row) — PGlite unit-tested
+
+**Notable history:**
+- `46f0770` (2026-06-02): Phase 2 — collect path is one atomic tx (lockUser → isOwned guard → applyEntry collect debit → race-safe insertOwnership; lost race rolls back the debit). Reuses CaricatureCard via new `owned` prop.
+
+**Known gaps:** the <250-balance browser path not walked (unit-tested); collecting from the gallery itself (vs the politician page) — gallery cards link to the politician page, no inline collect button there.
 
 ## community-suggestion
 
