@@ -2,6 +2,11 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-02 | a7135e3 | suggest → approve → market (full lifecycle) | ✅ | propose (pre-fill ?person=526) → pending → admin approve (atomic open כן/לא market linked to MK) → renders on /politician/526 → profile "אושר"+link |
+| 2026-06-02 | a7135e3 | suggestion reject path | ✅ | reject w/ note → queue 0 → profile shows "נדחה" + note; terminal |
+| 2026-06-02 | a7135e3 | admin gate (re-login refreshes isAdmin) | ✅ | promote in DB + sign out/in (cookieCache 5min) → /admin loads; non-pending queue empty-state |
+| 2026-06-02 | a7135e3 | approve past-closeAt guard (review fix) | ✅ | service ClosePastError + action msg + min/dir=ltr on datetime inputs; unit-tested |
+| 2026-06-02 | a7135e3 | politician markets filter (review fix) | ✅ | getMarketsForPolitician → open only (draft/resolved/voided excluded); unit-tested |
 | 2026-06-02 | c5b7ad8 | login/signup redirect after success | 🔴 | callbackURL no-op for email flow → user stranded on form; fixed c5b7ad8 (useRouter push+refresh), both verified → `/` |
 | 2026-06-02 | bcdb818 | `/politician/[id]` activity (data fix) | ✅ | Gafni 283 bills/0 q/6 recent; Tibi 390/83/6; Liberman 301/1/6 — real K25, recent-bills list renders, 0 errors |
 | 2026-06-02 | 8547d36 | faucet streak reward | ✅ | "🔥 רצף 1 · +200"; balance 1000→1200; 2nd claim cooldown held 1200 (no double-pay) |
