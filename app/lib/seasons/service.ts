@@ -1,13 +1,12 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { seasons as seasonsTable } from "@/app/lib/schema";
 import * as repo from "@/app/lib/seasons/repo";
 import type { SeasonRow } from "@/app/lib/seasons/repo";
 import { applyEntry } from "@/app/lib/ledger/service";
 import { lockUser } from "@/app/lib/ledger/repo";
+import { isUniqueViolation } from "@/app/lib/pg-errors";
 import {
   AlreadyClaimedError,
   AnotherSeasonActiveError,
@@ -116,12 +115,9 @@ export async function claimTier({
     const tier = await repo.lockTier({ tx, tierId });
     if (!tier) throw new TierNotFoundError();
 
-    // Read the tier's season under the same tx (its window bounds the progress).
-    const [seasonRow] = await tx
-      .select()
-      .from(seasonsTable)
-      .where(eq(seasonsTable.id, tier.seasonId))
-      .limit(1);
+    // Lock the tier's season under the same tx (its window bounds the progress)
+    // so a concurrent endSeason can't slip in between this check and the credit.
+    const seasonRow = await repo.lockSeason({ tx, seasonId: tier.seasonId });
     if (!seasonRow) throw new SeasonNotFoundError();
     if (seasonRow.status === "ended" || Date.now() >= seasonRow.endAt.getTime()) throw new SeasonEndedError();
 
@@ -176,13 +172,22 @@ export async function createSeason({
   }
   if ((await repo.countActiveSeasons({ db })) > 0) throw new AnotherSeasonActiveError();
 
-  return repo.insertSeasonWithTiers({
-    db,
-    nameHe,
-    startAt,
-    endAt,
-    tiers: tiers.map((t, i) => ({ ordinal: i + 1, ...t })),
-  });
+  // The count guard above and the insert below aren't one transaction, so two
+  // concurrent creates can both pass it; the seasons_one_active_uq partial-unique
+  // index is the real backstop. Translate its 23505 to the clean domain error
+  // (mirrors setHandle / collectCard) so a race surfaces a Hebrew message, not a 500.
+  try {
+    return await repo.insertSeasonWithTiers({
+      db,
+      nameHe,
+      startAt,
+      endAt,
+      tiers: tiers.map((t, i) => ({ ordinal: i + 1, ...t })),
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) throw new AnotherSeasonActiveError();
+    throw e;
+  }
 }
 
 /** Ends the active season (admin or a passed seasonId). */
@@ -197,5 +202,8 @@ export async function endSeason({
     ? await repo.getSeasonById({ db, seasonId })
     : await repo.getActiveSeason({ db });
   if (!target) throw seasonId ? new SeasonNotFoundError() : new NoActiveSeasonError();
-  await repo.setSeasonEnded({ db, seasonId: target.id });
+  // The UPDATE is scoped to status='active'; 0 rows means it was already ended —
+  // surface that rather than reporting a false success (errors-over-fallbacks).
+  const { ended } = await repo.setSeasonEnded({ db, seasonId: target.id });
+  if (ended === 0) throw new SeasonEndedError();
 }

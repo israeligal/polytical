@@ -80,6 +80,7 @@ export async function endSeasonAction({ seasonId }: { seasonId?: string } = {}):
   } catch (e) {
     if (e instanceof NoActiveSeasonError) return { ok: false, message: "אין עונה פעילה" };
     if (e instanceof SeasonNotFoundError) return { ok: false, message: "העונה לא נמצאה" };
+    if (e instanceof SeasonEndedError) return { ok: false, message: "העונה כבר הסתיימה" };
     throw e;
   }
   revalidatePath("/seasons");

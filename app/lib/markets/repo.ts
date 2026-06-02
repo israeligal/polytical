@@ -284,6 +284,37 @@ export async function getMarketBundle({
   return { market, outcomes: outs, personIds: links.map((l) => l.personId) };
 }
 
+/**
+ * Batched bundles for many markets — three queries total regardless of count
+ * (markets by id, outcomes by ids, links by ids), modeled on
+ * getMarketsForPolitician. Use this over mapping getMarketBundle per id (which
+ * is 3 queries EACH). Returned in the order of the passed ids; unknown ids drop.
+ */
+export async function getMarketBundles({
+  db = defaultDb,
+  marketIds,
+}: {
+  db?: DB;
+  marketIds: string[];
+}): Promise<{ market: MarketRow; outcomes: OutcomeRow[]; personIds: number[] }[]> {
+  const ids = [...new Set(marketIds)];
+  if (ids.length === 0) return [];
+  const [mkts, outs, allLinks] = await Promise.all([
+    db.select().from(markets).where(inArray(markets.id, ids)),
+    db.select().from(outcomes).where(inArray(outcomes.marketId, ids)).orderBy(asc(outcomes.ordinal)),
+    db.select().from(marketPoliticians).where(inArray(marketPoliticians.marketId, ids)),
+  ]);
+  const byId = new Map(mkts.map((m) => [m.id, m]));
+  return marketIds
+    .map((id) => byId.get(id))
+    .filter((m): m is MarketRow => Boolean(m))
+    .map((market) => ({
+      market,
+      outcomes: outs.filter((o) => o.marketId === market.id),
+      personIds: allLinks.filter((l) => l.marketId === market.id).map((l) => l.personId),
+    }));
+}
+
 /** A user's bets on a market (their position; drives the UI "your bets" view). */
 export async function getUserPositions({
   db = defaultDb,

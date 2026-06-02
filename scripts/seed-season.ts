@@ -38,6 +38,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((e) => {
-    console.error(e);
+    logger.error("seed_season_failed", { err: String(e) });
     process.exit(1);
   });

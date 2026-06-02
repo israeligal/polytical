@@ -35,6 +35,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((e) => {
-    console.error(e);
+    logger.error("backfill_market_search_failed", { err: String(e) });
     process.exit(1);
   });

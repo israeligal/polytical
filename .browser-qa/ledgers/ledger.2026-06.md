@@ -2,6 +2,9 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-02 | c36fc23 | global search (/search) | ✅ | P3: "נתניהו"→1 politician; "קואליציה"→1 market card (hot+odds+portrait); header search icon; 0 errors |
+| 2026-06-02 | c36fc23 | seasons board (anonymous) | ✅ | P3: banner "עונת הפתיחה" + countdown 29d + progress 0 + 4 tiers נעול w/ Shekoin rewards; gold glow |
+| 2026-06-02 | c36fc23 | season tier claim (◈ credit) | ✅ | P3: progress 150→tier1 claimable→claim→balance 1,000→1,050; DB: 1 reward(50)+1 claim, no double-credit; terminal "נתבע ✓" |
 | 2026-06-02 | 46f0770 | onboarding gate (signup→/onboarding) | ✅ | P2: fresh signup forced to /onboarding; onboarded user reverse-bounced /onboarding→/ |
 | 2026-06-02 | 46f0770 | onboarding wizard (handle→arena→finish) | ✅ | P2: live availability invalid"ab"→valid"qa_player_p2 פנוי ✓"; arena ביטחון; finish→/ (gate cleared, refreshSession) |
 | 2026-06-02 | 46f0770 | collect card (◈250 debit) | ✅ | P2: collect משה גפני → header 1,000→750, button→"הקלף באוסף שלכם"; ins-funds+double-collect unit-tested |

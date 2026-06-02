@@ -124,6 +124,9 @@ export const politicians = pgTable(
   (t) => [
     index("politicians_faction_idx").on(t.factionId),
     index("politicians_active_idx").on(t.active),
+    // Declared in-schema (not just migration 0003) so db:push CREATES + PRESERVES
+    // it — a migration-only index gets dropped by a later push. Backs searchPoliticians.
+    index("politicians_searchname_trgm_idx").using("gin", sql`${t.searchName} gin_trgm_ops`),
   ],
 );
 

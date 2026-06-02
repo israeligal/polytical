@@ -108,6 +108,13 @@ export async function lockTier({ tx, tierId }: { tx: Tx; tierId: string }): Prom
   return row ?? null;
 }
 
+/** Locks a season row FOR UPDATE (+ returns it) — read the season under the
+ *  claim's tx so a concurrent endSeason can't slip in between check and credit. */
+export async function lockSeason({ tx, seasonId }: { tx: Tx; seasonId: string }): Promise<SeasonRow | null> {
+  const [row] = await tx.select().from(seasons).where(eq(seasons.id, seasonId)).for("update");
+  return row ?? null;
+}
+
 /** True if this (user, tier) claim already exists. */
 export async function isClaimed({
   tx,
@@ -186,13 +193,19 @@ export async function insertSeasonWithTiers({
   });
 }
 
-/** Flips a season to ended. */
+/** Flips an ACTIVE season to ended; returns how many rows changed (0 = it was
+ *  already ended, so the caller can avoid reporting a false success). */
 export async function setSeasonEnded({
   db = defaultDb,
   seasonId,
 }: {
   db?: DB;
   seasonId: string;
-}): Promise<void> {
-  await db.update(seasons).set({ status: "ended" }).where(eq(seasons.id, seasonId));
+}): Promise<{ ended: number }> {
+  const rows = await db
+    .update(seasons)
+    .set({ status: "ended" })
+    .where(and(eq(seasons.id, seasonId), eq(seasons.status, "active")))
+    .returning({ id: seasons.id });
+  return { ended: rows.length };
 }

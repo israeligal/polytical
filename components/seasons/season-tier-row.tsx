@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { Shekoin, Trophy, Lock, Sparkle } from "@/components/icons";
 import { formatCoins } from "@/lib/format";
 import { claimTierAction } from "@/app/actions/seasons";
-
-type TierState = "claimed" | "claimable" | "locked";
+import type { TierState } from "@/app/lib/seasons/service";
 
 /**
  * One reward-tier row. `claimable` → an active gold claim button; `claimed` → a

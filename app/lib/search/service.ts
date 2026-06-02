@@ -4,7 +4,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import type { Market, Politician } from "@/lib/types";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
-import { searchMarkets, getMarketBundle } from "@/app/lib/markets/repo";
+import { searchMarkets, getMarketBundles } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { searchPoliticians, getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
@@ -52,11 +52,9 @@ export async function search({
 
   const politicians = politicianRows.map(dbToCard);
 
-  // Map of personId → card, to resolve each market's featured portraits without
-  // an N+1 (one extra read of the matched markets' bundles).
-  const bundles = (
-    await Promise.all(marketRows.map((m) => getMarketBundle({ db, marketId: m.id })))
-  ).filter((b): b is NonNullable<typeof b> => b !== null);
+  // Hydrate the matched markets' bundles in ONE batched read (3 queries total),
+  // then resolve each market's featured portraits from a personId→card map.
+  const bundles = await getMarketBundles({ db, marketIds: marketRows.map((m) => m.id) });
 
   const neededPersonIds = new Set<number>(bundles.flatMap((b) => b.personIds));
   const cardByPersonId = new Map<number, Politician>();

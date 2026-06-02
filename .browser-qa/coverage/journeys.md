@@ -2,6 +2,8 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
+| [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [onboarding](#onboarding) | 2026-06-02 `46f0770` | 1 | 5/5 |
 | [card-collection](#card-collection) | 2026-06-02 `46f0770` | 1 | 5/5 |
 | [community-suggestion](#community-suggestion) | 2026-06-02 `a7135e3` | 1 | 6/6 |
@@ -13,6 +15,42 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+## seasons-claim
+
+**What it is:** A time-boxed reward track. A user accrues "net Shekoins won" in the season window (live from the ledger), and claims each tier on demand once its goal is reached; the reward credits coins and is terminal.
+
+**Last walked:** 2026-06-02 `c36fc23`. **Walks:** 1. **Coverage:** 5/5
+
+**Steps:**
+- ✅ `/seasons` anonymous: banner + countdown + progress 0 + tiers locked + "התחברו" CTA
+- ✅ logged-in board: progress reflects in-window net winnings; tier states derived (claimable vs locked) against goals
+- ✅ claim a reached tier → coins credited (header balance 1,000→1,050), tier → "נתבע ✓" terminal
+- ✅ no double-credit: DB shows exactly one season_reward ledger row + one claim row per tier
+- ✅ below-goal / ended / dip-below-goal-after-claim / one-active-season / increasing-goals — PGlite unit-tested
+
+**Notable history:**
+- `c36fc23` (2026-06-02): Phase 3 — claim-on-demand, no cron; progress = live ledger window sum; claim is one atomic tx (applyEntry season_reward + composite-PK idempotency).
+
+**Known gaps:** the claim's net-winnings were injected via a direct in-window payout row for the walk (real 2-user parimutuel net-positive not exercised in-browser; the money math is unit-tested). header balance updates on next refresh/nav (brief router.refresh lag, authoritative on reload). Admin create/end-season UI not built (actions exist + seed script).
+
+## global-search
+
+**What it is:** One search box finds both markets and politicians by normalized Hebrew text.
+
+**Last walked:** 2026-06-02 `c36fc23`. **Walks:** 1. **Coverage:** 5/5
+
+**Steps:**
+- ✅ header search icon → `/search`
+- ✅ politician query ("נתניהו") → matching MK card, non-matches excluded
+- ✅ market query ("קואליציה") → matching market card (hot badge + odds + featured portrait)
+- ✅ draft/voided markets excluded; <2-char query → prompt state; niqqud-normalized match — unit-tested
+- ✅ debounced URL-driven input (router.replace; q is the shareable source of truth)
+
+**Notable history:**
+- `c36fc23` (2026-06-02): Phase 3 — markets.searchText (normalizeSearchName, trigram GIN index in-schema so db:push preserves it); ILIKE discovery-only.
+
+**Known gaps:** the live debounced-typing path (vs deep-linking ?q=) not click-walked in-browser (deep-link + unit tests cover the query path); empty-result state ("לא נמצאו תוצאות") not visually walked.
 
 ## onboarding
 
