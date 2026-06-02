@@ -150,9 +150,13 @@ test("with no viewerId, mineUpvoted is false even for upvoted comments", async (
 });
 
 test("ties on upvotes are broken by recency desc (newest first)", async () => {
-  // Two comments, both zero upvotes → newest first.
+  // Two comments, both zero upvotes → newest first. Pin distinct createdAt
+  // values so the ordering is deterministic — two rapid inserts can otherwise
+  // share a now() microsecond on in-memory PGlite, making the tiebreak a coin flip.
   const older = await postComment({ db: h.db, marketId, userId: UID, body: "ישן" });
   const newer = await postComment({ db: h.db, marketId, userId: UID, body: "חדש" });
+  await h.db.update(comments).set({ createdAt: new Date("2026-01-01T00:00:00Z") }).where(eq(comments.id, older.id));
+  await h.db.update(comments).set({ createdAt: new Date("2026-01-01T00:00:01Z") }).where(eq(comments.id, newer.id));
 
   const list = await getComments({ db: h.db, marketId, viewerId: UID });
   expect(list.map((x) => x.id)).toEqual([newer.id, older.id]);
