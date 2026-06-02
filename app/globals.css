@@ -1,63 +1,75 @@
 /*
- * Polytical — Design System token layer  ("Ballot & Ink")
- * Color space: OKLCH only. Never commit a hex value to this file. Convert at https://oklch.com.
+ * Polytical — Design System token layer  ("Trading Floor", dark)
+ * Recreated from the Ploytical design handoff (design_handoff_ploytical).
+ * Dark navy canvas; color MEANS direction (mint=YES/win, coral=NO/loss,
+ * gold=Shekoins/celebration); surfaces step UP in lightness; accents glow.
  *
  * Two layers:
- *   @theme inline  — maps tokens to Tailwind v4 utilities (bg-primary, text-foreground, font-display, ...)
- *   :root          — the semantic token VALUES (OKLCH)
+ *   @theme inline  — maps tokens to Tailwind v4 utilities (bg-primary, text-foreground, shadow-glow-mint, ...)
+ *   :root          — the semantic token VALUES (hex, from prototype/colors_and_type.css)
  *
- * Components reference ONLY the @theme utilities, never the raw :root values.
- * Full rationale + usage rules: docs/design/design-system-spec.md
- *
- * Personality: a satirical political op-ed page that's secretly a game —
- * fact-grounded and credible, witty and irreverent through its caricatures.
- * Light-only in v1 (the editorial "paper" aesthetic is inherently light).
+ * Components reference the @theme utilities, never the raw :root values.
  */
 
 @import "tailwindcss";
 
 @theme inline {
-  /* Typography — display = Frank Ruhl Libre (Hebrew op-ed serif), sans = Heebo (UI/data) */
-  --font-display: var(--font-frank-ruhl), "Frank Ruhl Libre", Georgia, serif;
+  /* Typography — display = Secular One (ships heavy at 400; scale by size), UI/body = Heebo, accent = Rubik */
+  --font-display: var(--font-secular-one), "Secular One", system-ui, sans-serif;
   --font-sans: var(--font-heebo), "Heebo", system-ui, -apple-system, sans-serif;
+  --font-accent: var(--font-rubik), "Rubik", system-ui, sans-serif;
 
-  /* Base */
+  /* Base + surface ladder (deepest → raised) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--foreground);
+  --color-sunken: var(--bg-sunken);     /* inputs / wells */
+  --color-raised: var(--bg-raised);     /* hovered card / pressed */
+  --color-overlay: var(--bg-overlay);   /* popovers / menus */
 
-  /* Primary — ballot blue (actions, links, active, overline labels, focus) */
+  /* Primary — mint (the YES / confirm / primary-action accent) */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
 
-  /* Accent — gold (coins, hot/trending/featured highlights). FILLS ONLY, never body text. */
+  /* Accent — gold (Shekoins / hot / legendary / celebration). FILLS + currency. */
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-hover: var(--accent-hover);
+  --color-gold: var(--accent);          /* alias for currency emphasis */
 
-  /* Muted — subdued section backgrounds, input fills, captions */
+  /* Muted — subdued sections, captions */
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-text-low: var(--text-low);    /* lowest-emphasis meta */
 
   /* Structure */
   --color-border: var(--border);
+  --color-line-soft: var(--line-soft);
   --color-ring: var(--primary);
 
-  /* Outcomes — reserved EXCLUSIVELY for market semantics (never decorative) */
-  --color-positive: var(--positive);              /* YES · up · gain · win */
+  /* Outcomes — color = direction, never decorative */
+  --color-positive: var(--positive);          /* YES · up · gain · win (mint) */
   --color-positive-foreground: var(--positive-foreground);
-  --color-positive-soft: var(--positive-soft);    /* bar track / chip backgrounds */
-  --color-negative: var(--negative);              /* NO · down · loss */
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);          /* NO · down · loss (coral) */
   --color-negative-foreground: var(--negative-foreground);
   --color-negative-soft: var(--negative-soft);
 
-  /* Feedback */
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  /* Feedback / info / special */
+  --color-destructive: var(--negative);
+  --color-destructive-foreground: var(--negative-foreground);
+  --color-blue: var(--blue);
+  --color-purple: var(--purple);
 
-  /* Categorical — parties & multi-option outcomes. No inherent meaning; assign from data. */
+  /* Rarity tiers (collectible cards) */
+  --color-rarity-common: var(--rarity-common);
+  --color-rarity-rare: var(--rarity-rare);
+  --color-rarity-epic: var(--rarity-epic);
+  --color-rarity-legendary: var(--rarity-legendary);
+
+  /* Categorical — parties & multi-option outcomes (vivid on dark) */
   --color-cat-1: var(--cat-1);
   --color-cat-2: var(--cat-2);
   --color-cat-3: var(--cat-3);
@@ -66,91 +78,144 @@
   --color-cat-6: var(--cat-6);
   --color-cat-7: var(--cat-7);
   --color-cat-8: var(--cat-8);
+
+  /* Radii — card = 22 is the signature */
+  --radius-card: 22px;
+  --radius-xl: 20px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  /* Elevation (deep shadows) + accent glows */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --shadow-glow-mint: 0 0 24px rgba(0, 224, 164, 0.45);
+  --shadow-glow-coral: 0 0 24px rgba(255, 77, 109, 0.45);
+  --shadow-glow-gold: 0 0 22px rgba(255, 194, 61, 0.5);
+
+  /* Motion easings */
+  --ease-out: cubic-bezier(0.16, 0.84, 0.44, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 :root {
-  /* Base — warm "ballot paper", near-black warm ink */
-  --background: oklch(0.985 0.008 85);
-  --foreground: oklch(0.25 0.012 75);
-  --card: oklch(0.995 0.004 90);            /* near-white, lifts off the cream background */
+  /* Canvas — deep "trading floor" navy (surfaces step UP) */
+  --background: #0b1020;
+  --bg-sunken: #080c1a;
+  --bg-800: #121831;
+  --card: #1a2244;
+  --bg-raised: #232c52;
+  --bg-overlay: #2b3563;
+  --border: #2e3a66;
+  --line-soft: #20284c;
 
-  /* Primary — ballot blue */
-  --primary: oklch(0.47 0.16 258);
-  --primary-foreground: oklch(0.99 0.005 250);
-  --primary-hover: oklch(0.42 0.16 258);    /* base L − 0.05 */
+  /* Text */
+  --foreground: #f5f7ff; /* text-hi */
+  --muted-foreground: #a9b2d6; /* text-mid */
+  --text-low: #6b76a3;
 
-  /* Accent — gold (coins / hot / featured) */
-  --accent: oklch(0.78 0.14 80);
-  --accent-foreground: oklch(0.28 0.03 75); /* ink on gold */
-  --accent-hover: oklch(0.73 0.14 80);
+  /* Primary = mint (YES / confirm / action) */
+  --primary: #00e0a4;
+  --primary-foreground: #07112b; /* dark ink on mint */
+  --primary-hover: #06b888;
 
-  /* Muted */
-  --muted: oklch(0.955 0.01 85);
-  --muted-foreground: oklch(0.46 0.02 80);
+  /* Accent = gold (Shekoins / hot / celebration) */
+  --accent: #ffc23d;
+  --accent-foreground: #07112b; /* dark ink on gold */
+  --accent-hover: #e8a623;
 
-  /* Structure */
-  --border: oklch(0.89 0.012 82);           /* warm hairline rule */
+  /* Muted section surface */
+  --muted: #121831;
 
   /* Outcomes */
-  --positive: oklch(0.56 0.13 152);
-  --positive-foreground: oklch(0.99 0.01 150);
-  --positive-soft: oklch(0.93 0.045 152);
-  --negative: oklch(0.56 0.19 28);
-  --negative-foreground: oklch(0.99 0.01 28);
-  --negative-soft: oklch(0.93 0.05 28);
+  --positive: #00e0a4; /* mint */
+  --positive-foreground: #07112b;
+  --positive-soft: #0c3f3a;
+  --negative: #ff4d6d; /* coral */
+  --negative-foreground: #07112b;
+  --negative-soft: #3a1626;
 
-  /* Feedback */
-  --destructive: oklch(0.55 0.20 27);
-  --destructive-foreground: oklch(0.99 0.005 27);
+  /* Info / special */
+  --blue: #5b8def;
+  --purple: #b36bff;
 
-  /* Categorical (parties / multi-option) */
-  --cat-1: oklch(0.55 0.16 258);            /* blue */
-  --cat-2: oklch(0.60 0.12 200);            /* teal */
-  --cat-3: oklch(0.58 0.14 152);            /* green */
-  --cat-4: oklch(0.75 0.14 85);             /* gold */
-  --cat-5: oklch(0.65 0.16 50);             /* orange */
-  --cat-6: oklch(0.57 0.19 25);             /* red */
-  --cat-7: oklch(0.55 0.15 305);            /* purple */
-  --cat-8: oklch(0.62 0.16 350);            /* magenta */
+  /* Rarity tiers */
+  --rarity-common: #8a93b8;
+  --rarity-rare: #3fa9f5;
+  --rarity-epic: #b36bff;
+  --rarity-legendary: #ffc23d;
+
+  /* Categorical (parties / multi-option) — vivid on dark */
+  --cat-1: #5b8def; /* blue */
+  --cat-2: #00e0a4; /* mint */
+  --cat-3: #3fa9f5; /* sky */
+  --cat-4: #ffc23d; /* gold */
+  --cat-5: #ff9f45; /* orange */
+  --cat-6: #ff4d6d; /* coral */
+  --cat-7: #b36bff; /* purple */
+  --cat-8: #f56bc4; /* magenta */
 }
 
-/* ----- Base layer ----------------------------------------------------------
-   RTL + Hebrew baseline. NOTE: Hebrew does NOT take Latin-style negative
-   letter-spacing or uppercase — both are forbidden (see spec §5). */
+/* ----- Base layer ---------------------------------------------------------- */
 @layer base {
   body {
     background-color: var(--background);
-    /* Faint paper grain baked as a background layer (behind all content). */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    /* Subtle radial lift at the top so the dark canvas isn't flat. */
+    background-image: radial-gradient(120% 80% at 50% -10%, rgba(91, 141, 239, 0.08), transparent 60%);
+    background-attachment: fixed;
     color: var(--foreground);
     font-family: var(--font-sans);
     font-size: 16px;
-    line-height: 1.6;            /* Hebrew reads better with slightly more leading */
-    letter-spacing: normal;      /* never negative-track Hebrew */
+    line-height: 1.6;
+    letter-spacing: normal; /* never negative-track Hebrew */
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Editorial default: headlines are the op-ed serif. Components may opt to
-     font-sans for dense UI labels. */
+  /* Headlines: Secular One (display). Ships heavy at 400 — scale by size. */
   h1, h2, h3 {
     font-family: var(--font-display);
-    font-weight: 700;
-    line-height: 1.15;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--foreground);
   }
 
-  /* Numeric data (odds %, coins, payouts) aligns with tabular figures. */
-  .nums { font-variant-numeric: tabular-nums; }
+  /* Numeric data (odds %, Shekoins, payouts): tabular + lining figures. */
+  .nums { font-variant-numeric: tabular-nums lining-nums; }
 
-  /* Keyboard focus is visible app-wide (WCAG 2.4.7). Most controls only ship
-     hover styles; this gives every focusable element a ring in the brand color.
-     Mouse clicks (:focus without :focus-visible) stay ring-free. */
+  /* App-wide keyboard focus ring in the brand mint (WCAG 2.4.7). */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
-  :focus:not(:focus-visible) {
-    outline: none;
-  }
+  :focus:not(:focus-visible) { outline: none; }
+}
+
+/* ----- Game FX keyframes (from the design system) -------------------------- */
+@keyframes poly-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  55% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes poly-burst-up {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--bx, 0), var(--by, -160px)) scale(1) rotate(var(--br, 0deg)); }
+}
+@keyframes poly-coin-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(720deg); }
+}
+@keyframes poly-flash-mint { 0%, 100% { color: var(--foreground); } 40% { color: var(--positive); } }
+@keyframes poly-flash-coral { 0%, 100% { color: var(--foreground); } 40% { color: var(--negative); } }
+@keyframes poly-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 224, 164, 0); }
+  50% { box-shadow: var(--shadow-glow-mint); }
+}
+@keyframes poly-foil {
+  0% { transform: translateX(-120%) rotate(8deg); }
+  100% { transform: translateX(120%) rotate(8deg); }
 }
 
 /* Smooth-scroll only during focused in-page anchor jumps, accessibility-gated. */
@@ -158,9 +223,7 @@
   html:focus-within { scroll-behavior: smooth; }
 }
 
-/* Honor reduced-motion globally: neutralize the card/button hover-lifts and the
-   odds-bar width transitions for users with vestibular sensitivity (WCAG 2.3.3),
-   without removing the components' final visual states. */
+/* Honor reduced-motion globally (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
