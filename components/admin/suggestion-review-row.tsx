@@ -6,6 +6,13 @@ import { approveSuggestionAction, rejectSuggestionAction } from "@/app/actions/s
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 
+/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
+function nowLocalInput(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
 /**
  * One pending community suggestion in the admin queue: approve (creating a real
  * binary market with the given close date) or reject (with an optional note).
@@ -79,6 +86,8 @@ export function SuggestionReviewRow({
           <input
             id={`close-${suggestionId}`}
             type="datetime-local"
+            dir="ltr"
+            min={nowLocalInput()}
             value={closeAt}
             onChange={(e) => setCloseAt(e.target.value)}
             className={FIELD}

@@ -4,6 +4,7 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, politicians, markets, outcomes, marketPoliticians, marketSuggestions } from "@/app/lib/schema";
 import {
   AlreadyReviewedError,
+  ClosePastError,
   InvalidCategoryError,
   SuggestionTooLongError,
   SuggestionTooShortError,
@@ -84,6 +85,17 @@ test("approveSuggestion creates an open binary market, links the MK, and flips s
     approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE }),
   ).rejects.toBeInstanceOf(AlreadyReviewedError);
   expect((await h.db.select().from(markets)).length).toBe(1);
+});
+
+test("approveSuggestion rejects a past closeAt (no un-bettable market is minted)", async () => {
+  const { id } = await createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה עם מועד עבר", category: "elections" });
+  await expect(
+    approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: new Date("2020-01-01T00:00:00Z") }),
+  ).rejects.toBeInstanceOf(ClosePastError);
+  // Nothing was created, and the suggestion stays pending so it can still be approved properly.
+  expect((await h.db.select().from(markets)).length).toBe(0);
+  const [s] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
+  expect(s.status).toBe("pending");
 });
 
 test("rejectSuggestion records the note and is terminal", async () => {

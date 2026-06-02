@@ -9,6 +9,7 @@ import {
 } from "@/app/lib/suggestions/service";
 import {
   AlreadyReviewedError,
+  ClosePastError,
   InvalidCategoryError,
   SuggestionNotFoundError,
   SuggestionTooLongError,
@@ -75,6 +76,7 @@ export async function approveSuggestionAction({
   } catch (e) {
     if (e instanceof AlreadyReviewedError) return { ok: false, message: "ההצעה כבר טופלה" };
     if (e instanceof SuggestionNotFoundError) return { ok: false, message: "ההצעה לא נמצאה" };
+    if (e instanceof ClosePastError) return { ok: false, message: "מועד הסגירה חייב להיות בעתיד" };
     throw e;
   }
   revalidatePath("/admin");

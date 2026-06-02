@@ -69,16 +69,18 @@ test("getMarketOfTheDay returns null when nothing is open", async () => {
   expect(await getMarketOfTheDay({ db: h.db })).toBeNull();
 });
 
-test("getMarketsForPolitician returns only markets featuring the MK, as bundles", async () => {
+test("getMarketsForPolitician returns only OPEN markets featuring the MK, as bundles", async () => {
   const mine = await newMarket("שוק על ח״כ 100");
   const other = await newMarket("שוק על מישהו אחר");
+  const settled = await newMarket("שוק שהוכרע על ח״כ 100", "resolved");
   await h.db.insert(marketPoliticians).values([
     { marketId: mine.marketId, personId: 100 },
     { marketId: other.marketId, personId: 200 },
+    { marketId: settled.marketId, personId: 100 }, // linked to 100 but resolved → excluded
   ]);
 
   const bundles = await getMarketsForPolitician({ db: h.db, personId: 100 });
-  expect(bundles.length).toBe(1);
+  expect(bundles.length).toBe(1); // the resolved market is filtered out
   expect(bundles[0].market.id).toBe(mine.marketId);
   expect(bundles[0].personIds).toEqual([100]);
   expect(bundles[0].outcomes.map((o) => o.labelHe)).toEqual(["כן"]);

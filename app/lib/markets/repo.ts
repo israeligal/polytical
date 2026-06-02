@@ -407,11 +407,11 @@ export async function createMarket({
 }
 
 /**
- * Every market that features a given MK (via market_politicians), newest first,
- * each as the same `{ market, outcomes, personIds }` bundle the homepage cards
- * consume. Four queries total regardless of how many markets — no N+1: find the
- * link rows, fetch the markets + all their outcomes + all their links in bulk,
- * then group in memory.
+ * The OPEN markets that feature a given MK (via market_politicians), newest
+ * first, each as the same `{ market, outcomes, personIds }` bundle the homepage
+ * cards consume. Status-filtered to `open` so the politician page never presents
+ * a draft/closed/settled market as a live, bettable card (MarketCard carries no
+ * status treatment). Four queries total regardless of count — no N+1.
  */
 export async function getMarketsForPolitician({
   db = defaultDb,
@@ -428,7 +428,11 @@ export async function getMarketsForPolitician({
 
   const ids = [...new Set(links.map((l) => l.marketId))];
   const [mkts, outs, allLinks] = await Promise.all([
-    db.select().from(markets).where(inArray(markets.id, ids)).orderBy(desc(markets.createdAt)),
+    db
+      .select()
+      .from(markets)
+      .where(and(inArray(markets.id, ids), eq(markets.status, "open")))
+      .orderBy(desc(markets.createdAt)),
     db.select().from(outcomes).where(inArray(outcomes.marketId, ids)).orderBy(asc(outcomes.ordinal)),
     db.select().from(marketPoliticians).where(inArray(marketPoliticians.marketId, ids)),
   ]);

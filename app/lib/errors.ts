@@ -37,3 +37,4 @@ export class InvalidCategoryError extends Error { constructor() { super("Invalid
 export class SuggestionNotFoundError extends Error { constructor() { super("Suggestion not found"); this.name = "SuggestionNotFoundError"; } }
 export class AlreadyReviewedError extends Error { constructor() { super("Suggestion already reviewed"); this.name = "AlreadyReviewedError"; } }
 export class UnknownPoliticianError extends Error { constructor() { super("Politician not found"); this.name = "UnknownPoliticianError"; } }
+export class ClosePastError extends Error { constructor() { super("Close date must be in the future"); this.name = "ClosePastError"; } }

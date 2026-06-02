@@ -9,6 +9,7 @@ import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { CATEGORIES } from "@/lib/categories";
 import {
   AlreadyReviewedError,
+  ClosePastError,
   InvalidCategoryError,
   SuggestionTooLongError,
   SuggestionTooShortError,
@@ -107,6 +108,11 @@ export async function approveSuggestion({
   reviewerId: string;
   closeAt: Date;
 }): Promise<{ marketId: string }> {
+  // Reject a non-future close date here, in the authoritative service: a market
+  // is born `open` (schema default) and nothing auto-closes it, so a past closeAt
+  // would mint a live-looking market that can never accept a bet.
+  if (closeAt.getTime() <= Date.now()) throw new ClosePastError();
+
   return db.transaction(async (tx) => {
     const s = await repo.lockSuggestion({ tx, id: suggestionId });
     if (s.status !== "pending") throw new AlreadyReviewedError();
