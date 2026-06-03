@@ -440,3 +440,28 @@ export const seasonRewardClaims = pgTable("season_reward_claims", {
   primaryKey({ columns: [t.userId, t.tierId] }),
   index("season_reward_claims_user_idx").on(t.userId),
 ]);
+
+// ===================================================================
+// Push subscriptions (Phase: push notifications) — one row per browser/device
+// push endpoint a user has granted. Web-push delivery rides ON TOP of the
+// in-app `notifications` log: the same NotificationEvent that writes a row
+// also fans out a push AFTER its transaction commits (never inside the
+// settlement tx — sendNotification is a network call that can't roll back).
+// `endpoint` is globally UNIQUE (it already identifies the device); a dead
+// endpoint (push service 404/410) is pruned by the dispatcher. text `userId`
+// FK cascade mirrors `notifications` so deleting a user drops their subs.
+// ===================================================================
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),  // client public key (PushSubscription.keys.p256dh)
+  auth: text("auth").notNull(),      // client auth secret (PushSubscription.keys.auth)
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [
+  // endpoint already uniquely identifies a device push channel → re-subscribe is
+  // an UPSERT on this, and pruning a dead sub targets it.
+  uniqueIndex("push_subscriptions_endpoint_uq").on(t.endpoint),
+  index("push_subscriptions_user_idx").on(t.userId),
+]);

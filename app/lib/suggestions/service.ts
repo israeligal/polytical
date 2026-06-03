@@ -6,6 +6,9 @@ import * as repo from "@/app/lib/suggestions/repo";
 import type { SuggestionStatus, SuggestionView } from "@/app/lib/suggestions/repo";
 import { createMarket } from "@/app/lib/markets/repo";
 import { emitNotifications } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { type NotificationEvent } from "@/app/lib/notifications/service";
+import { logger } from "@/app/lib/logger";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { CATEGORIES } from "@/lib/categories";
 import {
@@ -114,7 +117,10 @@ export async function approveSuggestion({
   // would mint a live-looking market that can never accept a bet.
   if (closeAt.getTime() <= Date.now()) throw new ClosePastError();
 
-  return db.transaction(async (tx) => {
+  // Captured inside the tx and pushed AFTER commit (web-push is a network call
+  // that cannot roll back); a push failure must never break the approval.
+  let dispatched: NotificationEvent[] = [];
+  const result = await db.transaction(async (tx) => {
     const s = await repo.lockSuggestion({ tx, id: suggestionId });
     if (s.status !== "pending") throw new AlreadyReviewedError();
 
@@ -130,12 +136,19 @@ export async function approveSuggestion({
     });
 
     await repo.markReviewed({ tx, id: suggestionId, status: "approved", reviewerId, marketId });
-    await emitNotifications({
-      tx,
-      events: [{ type: "suggestion_approved", userId: s.userId, suggestionId, marketId, questionHe: s.questionHe }],
-    });
+    const events: NotificationEvent[] = [
+      { type: "suggestion_approved", userId: s.userId, suggestionId, marketId, questionHe: s.questionHe },
+    ];
+    dispatched = events;
+    await emitNotifications({ tx, events });
     return { marketId };
   });
+  try {
+    await dispatchPush({ events: dispatched });
+  } catch (e) {
+    logger.error("push.approve_dispatch_failed", { suggestionId, err: String(e) });
+  }
+  return result;
 }
 
 /** Reject a pending suggestion with an optional note. Terminal-state guarded. */
@@ -150,6 +163,9 @@ export async function rejectSuggestion({
   reviewerId: string;
   note?: string;
 }): Promise<void> {
+  // Captured inside the tx and pushed AFTER commit (web-push is a network call
+  // that cannot roll back); a push failure must never break the rejection.
+  let dispatched: NotificationEvent[] = [];
   await db.transaction(async (tx) => {
     const s = await repo.lockSuggestion({ tx, id: suggestionId });
     if (s.status !== "pending") throw new AlreadyReviewedError();
@@ -160,9 +176,15 @@ export async function rejectSuggestion({
       reviewerId,
       reviewNote: note?.trim() || null,
     });
-    await emitNotifications({
-      tx,
-      events: [{ type: "suggestion_rejected", userId: s.userId, suggestionId, questionHe: s.questionHe, note }],
-    });
+    const events: NotificationEvent[] = [
+      { type: "suggestion_rejected", userId: s.userId, suggestionId, questionHe: s.questionHe, note },
+    ];
+    dispatched = events;
+    await emitNotifications({ tx, events });
   });
+  try {
+    await dispatchPush({ events: dispatched });
+  } catch (e) {
+    logger.error("push.reject_dispatch_failed", { suggestionId, err: String(e) });
+  }
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { listNotifications } from "@/app/lib/notifications/service";
 import { NotificationFeed, type FeedItem } from "@/components/notifications/notification-feed";
+import { EnablePush } from "@/components/pwa/enable-push";
 
 // The notifications feed. Gated by proxy.ts; redirect defensively too.
 export default async function NotificationsPage() {
@@ -25,6 +26,7 @@ export default async function NotificationsPage() {
         <p className="font-accent text-sm font-bold text-primary">העדכונים שלך</p>
         <h1 className="font-display text-3xl text-foreground sm:text-4xl">התראות</h1>
       </header>
+      <EnablePush />
       <NotificationFeed items={items} />
     </main>
   );

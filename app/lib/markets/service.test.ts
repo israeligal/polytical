@@ -1,6 +1,13 @@
-import { beforeEach, afterEach, expect, test } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
+
+// Mock at the push-service boundary: push fires AFTER commit, fire-and-forget.
+// Asserting the call (and that a rejection cannot break settlement) IS the
+// observable behavior for this boundary.
+vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
+import { dispatchPush } from "@/app/lib/push/service";
+const dispatchPushMock = vi.mocked(dispatchPush);
 import { users, markets, outcomes, bets, transactions } from "@/app/lib/schema";
 import { STARTING_STACK, MIN_BET } from "@/app/lib/economy";
 import {
@@ -68,6 +75,8 @@ async function seed(opts: { status?: "open" | "closed"; closeAt?: Date } = {}) {
 
 beforeEach(async () => {
   h = await createTestDb();
+  dispatchPushMock.mockReset();
+  dispatchPushMock.mockResolvedValue(undefined);
 });
 afterEach(async () => {
   await h.close();
@@ -392,4 +401,71 @@ test("voidMarket leaves accuracy stats unchanged", async () => {
 
   expect(await userStats("a")).toEqual({ totalResolved: 0, totalWins: 0 });
   expect(await userStats("b")).toEqual({ totalResolved: 0, totalWins: 0 });
+});
+
+// --- Post-commit push dispatch -------------------------------------------------
+
+test("resolveMarket fires dispatchPush once after commit with the winner's bet_won event", async () => {
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  // winner stakes YES (the winning outcome); loser stakes NO so YES has a payout.
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 600 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 400 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  // Exactly one dispatch, post-commit, carrying the event batch built in the tx.
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  // The winner's bet_won event is present with the right shape.
+  const won = events.find((e) => e.type === "bet_won" && e.userId === "winner");
+  expect(won).toMatchObject({
+    type: "bet_won",
+    userId: "winner",
+    marketId: mId,
+    payout: 1000, // total 1000, winningPool 600 → floor(1000×600/600)=1000
+  });
+  // market_resolved is emitted for every participant (winner + loser).
+  const resolvedFor = events.filter((e) => e.type === "market_resolved").map((e) => e.userId).sort();
+  expect(resolvedFor).toEqual(["loser", "winner"]);
+});
+
+test("resolveMarket settles correctly even when dispatchPush rejects (push cannot break settlement)", async () => {
+  dispatchPushMock.mockRejectedValueOnce(new Error("push service down"));
+
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 600 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 400 });
+
+  // Must NOT throw — the post-commit push failure is swallowed.
+  await expect(
+    resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId }),
+  ).resolves.toBeUndefined();
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+
+  // Settlement is fully committed despite the push failure (assert DB state).
+  const [winnerBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "winner"), eq(bets.marketId, mId)));
+  expect(winnerBet.status).toBe("won");
+  expect(winnerBet.payout).toBe(1000);
+  // winner staked 600 of 1000 → 1000 - 600 + 1000 = 1400.
+  expect(await getBalance({ db: h.db, userId: "winner" })).toBe(1400);
+
+  const [loserBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "loser"), eq(bets.marketId, mId)));
+  expect(loserBet.status).toBe("lost");
+  expect(loserBet.payout).toBe(0);
+  // loser staked 400 of 1000, no credit → 600.
+  expect(await getBalance({ db: h.db, userId: "loser" })).toBe(600);
+
+  const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(mkt.status).toBe("resolved");
+  expect(mkt.resolvedOutcomeId).toBe(yesId);
 });

@@ -4,6 +4,8 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as repo from "@/app/lib/markets/repo";
 import { applyEntry } from "@/app/lib/ledger/service";
 import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { logger } from "@/app/lib/logger";
 import { MIN_BET } from "@/app/lib/economy";
 import * as schema from "@/app/lib/schema";
 import {
@@ -88,6 +90,9 @@ export async function resolveMarket({
   sourceUrl?: string;
   note?: string;
 }): Promise<void> {
+  // Captured inside the tx and pushed AFTER commit: web-push is a network call
+  // that cannot roll back and must not hold the market FOR UPDATE lock.
+  let dispatched: NotificationEvent[] = [];
   await db.transaction(async (tx) => {
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
@@ -154,8 +159,15 @@ export async function resolveMarket({
       }
     }
     await repo.markResolved({ tx, marketId, winningOutcomeId, sourceUrl, note });
+    dispatched = events;
     await emitNotifications({ tx, events });
   });
+  // Best-effort push AFTER commit. A push failure must never break settlement.
+  try {
+    await dispatchPush({ events: dispatched });
+  } catch (e) {
+    logger.error("push.resolve_dispatch_failed", { marketId, err: String(e) });
+  }
 }
 
 /** Voids a market: refunds every open bet in full and marks it voided. Same

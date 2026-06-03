@@ -23,7 +23,9 @@ export type NotificationEvent =
   | { type: "suggestion_approved"; userId: string; suggestionId: string; marketId: string; questionHe: string }
   | { type: "suggestion_rejected"; userId: string; suggestionId: string; questionHe: string; note?: string | null };
 
-function compose(e: NotificationEvent): NewNotification {
+// Exported so the push dispatcher derives its `{title, body}` from the SAME
+// Hebrew copy as the in-app row — one source of truth for notification text.
+export function composeNotification(e: NotificationEvent): NewNotification {
   switch (e.type) {
     case "bet_won":
       return {
@@ -70,7 +72,7 @@ export async function emitNotifications({
   events: NotificationEvent[];
 }): Promise<void> {
   if (events.length === 0) return;
-  await repo.insertNotifications({ tx, rows: events.map(compose) });
+  await repo.insertNotifications({ tx, rows: events.map(composeNotification) });
 }
 
 export async function listNotifications({
