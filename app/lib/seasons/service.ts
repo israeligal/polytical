@@ -6,6 +6,9 @@ import * as repo from "@/app/lib/seasons/repo";
 import type { SeasonRow } from "@/app/lib/seasons/repo";
 import { applyEntry } from "@/app/lib/ledger/service";
 import { lockUser } from "@/app/lib/ledger/repo";
+import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { logger } from "@/app/lib/logger";
 import { isUniqueViolation } from "@/app/lib/pg-errors";
 import { isUuid } from "@/app/lib/ids";
 import {
@@ -115,7 +118,10 @@ export async function claimTier({
   // `uuid` column and raise a raw 22P02 driver error. A valid-but-unknown id is
   // handled below (lockTier → null → TierNotFoundError).
   if (!isUuid(tierId)) throw new TierNotFoundError();
-  return db.transaction(async (tx) => {
+  // Captured inside the tx, fired as push AFTER it commits (a push must never be
+  // able to roll back the reward credit).
+  let dispatched: NotificationEvent[] = [];
+  const result = await db.transaction(async (tx) => {
     await lockUser({ tx, userId }); // lock the user first so concurrent claims serialize
     const tier = await repo.lockTier({ tx, tierId });
     if (!tier) throw new TierNotFoundError();
@@ -145,8 +151,26 @@ export async function claimTier({
       amount: tier.rewardAmount,
     });
     if (!inserted) throw new AlreadyClaimedError(); // lost the PK race → roll back the credit
+
+    // In-app notice rides the same tx (atomic with the credit); push fans out post-commit.
+    const events: NotificationEvent[] = [{
+      type: "season_reward",
+      userId,
+      tierId,
+      seasonId: seasonRow.id,
+      tierNameHe: tier.nameHe,
+      amount: tier.rewardAmount,
+    }];
+    await emitNotifications({ tx, events });
+    dispatched = events;
     return { balanceAfter, amount: tier.rewardAmount };
   });
+  try {
+    await dispatchPush({ events: dispatched });
+  } catch (e) {
+    logger.error("push.season_dispatch_failed", { userId, tierId, err: String(e) });
+  }
+  return result;
 }
 
 // --- Admin ---

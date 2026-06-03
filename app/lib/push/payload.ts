@@ -24,15 +24,25 @@ export function eventToPush(event: NotificationEvent): PushPayload {
   return {
     title: n.titleHe,
     body: n.bodyHe,
-    url: n.refMarketId ? `/market/${n.refMarketId}` : "/notifications",
+    url: pushUrl(event, n.refMarketId),
   };
+}
+
+/** Where a notification click lands: the referenced market, the seasons board
+ *  for a reward, otherwise the notifications inbox. */
+function pushUrl(event: NotificationEvent, refMarketId?: string | null): string {
+  if (event.type === "season_reward") return "/seasons";
+  return refMarketId ? `/market/${refMarketId}` : "/notifications";
 }
 
 /** Higher number wins when one user has multiple pending events. */
 const EVENT_PRIORITY: Record<NotificationEvent["type"], number> = {
   bet_won: 3,
   market_resolved: 2,
+  market_voided: 2,
+  market_closing_soon: 1,
   suggestion_approved: 1,
+  season_reward: 1,
   suggestion_rejected: 0,
 };
 

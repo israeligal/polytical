@@ -268,6 +268,9 @@ export const markets = pgTable("markets", {
   // creates AND preserves it (a hand-written migration index gets dropped by a
   // later push, since push diffs against the schema).
   searchText: text("searchText").notNull().default(""),
+  // Set once when the closing-soon push has been sent for this market, so the
+  // cron sweep is idempotent and never re-notifies the same bettors.
+  closingSoonNotifiedAt: timestamp("closingSoonNotifiedAt"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [
   index("markets_searchtext_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
@@ -358,6 +361,9 @@ export const notificationType = pgEnum("notification_type", [
   "market_resolved",
   "suggestion_approved",
   "suggestion_rejected",
+  "season_reward",       // a season reward tier was claimed
+  "market_voided",       // a market the user bet on was voided (stakes refunded)
+  "market_closing_soon", // a market the user bet on is about to close
 ]);
 
 export const notifications = pgTable("notifications", {

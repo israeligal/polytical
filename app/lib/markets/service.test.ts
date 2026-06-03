@@ -8,7 +8,7 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 import { dispatchPush } from "@/app/lib/push/service";
 const dispatchPushMock = vi.mocked(dispatchPush);
-import { users, markets, outcomes, bets, transactions } from "@/app/lib/schema";
+import { users, markets, outcomes, bets, transactions, notifications } from "@/app/lib/schema";
 import { STARTING_STACK, MIN_BET } from "@/app/lib/economy";
 import {
   AlreadyResolvedError,
@@ -18,7 +18,7 @@ import {
   InvalidOutcomeError,
 } from "@/app/lib/errors";
 import { applyEntry, grantStartingStack, getBalance } from "@/app/lib/ledger/service";
-import { placeBet, resolveMarket, voidMarket } from "./service";
+import { placeBet, resolveMarket, voidMarket, notifyClosingSoonMarkets } from "./service";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -468,4 +468,96 @@ test("resolveMarket settles correctly even when dispatchPush rejects (push canno
   const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
   expect(mkt.status).toBe("resolved");
   expect(mkt.resolvedOutcomeId).toBe(yesId);
+});
+
+test("voidMarket dispatches a market_voided push to each bettor after commit", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 250 });
+  await placeBet({ db: h.db, userId: "b", marketId: mId, outcomeId: noId, amount: 750 });
+
+  await voidMarket({ db: h.db, marketId: mId });
+
+  // In-app market_voided rows for both bettors, linked to the market.
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(voided.every((n) => n.refMarketId === mId)).toBe(true);
+
+  // One post-commit dispatch carrying both market_voided events.
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(events.filter((e) => e.type === "market_voided").map((e) => e.userId).sort()).toEqual(["a", "b"]);
+});
+
+// --- Closing-soon sweep --------------------------------------------------------
+
+/** Seeds a market with an explicit closeAt + YES/NO outcomes. */
+async function seedMarketClosingAt(closeAt: Date, status: "open" | "closed" = "open") {
+  const [m] = await h.db
+    .insert(markets)
+    .values({ questionHe: "סוגרים בקרוב?", category: "coalition", status, closeAt })
+    .returning({ id: markets.id });
+  const outs = await h.db
+    .insert(outcomes)
+    .values([
+      { marketId: m.id, labelHe: "כן", ordinal: 0 },
+      { marketId: m.id, labelHe: "לא", ordinal: 1 },
+    ])
+    .returning({ id: outcomes.id });
+  return { marketId: m.id, yesId: outs[0].id };
+}
+
+test("notifyClosingSoonMarkets notifies bettors of a soon-closing market once and stamps it", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const soon = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000)); // due (within 24h)
+  const later = await seedMarketClosingAt(new Date(Date.now() + 5 * 24 * 3600 * 1000)); // not due
+  await placeBet({ db: h.db, userId: "a", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "b", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "a", marketId: later.marketId, outcomeId: later.yesId, amount: 100 });
+
+  const { notified } = await notifyClosingSoonMarkets({ db: h.db });
+  expect(notified).toBe(1); // one market, not one-per-bettor
+
+  // In-app closing-soon notice for each distinct bettor of the SOON market only.
+  const cs = (await h.db.select().from(notifications)).filter((n) => n.type === "market_closing_soon");
+  expect(cs.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(cs.every((n) => n.refMarketId === soon.marketId)).toBe(true);
+
+  // The soon market is stamped; the later one is untouched.
+  const [soonRow] = await h.db.select().from(markets).where(eq(markets.id, soon.marketId));
+  const [laterRow] = await h.db.select().from(markets).where(eq(markets.id, later.marketId));
+  expect(soonRow.closingSoonNotifiedAt).not.toBeNull();
+  expect(laterRow.closingSoonNotifiedAt).toBeNull();
+
+  // One post-commit push dispatch (for the soon market).
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+});
+
+test("notifyClosingSoonMarkets is idempotent: a second sweep notifies nobody", async () => {
+  await fundedUser("a", 1000);
+  const soon = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000));
+  await placeBet({ db: h.db, userId: "a", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(1);
+  dispatchPushMock.mockClear();
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(0);
+  expect(dispatchPushMock).not.toHaveBeenCalled();
+
+  // Still exactly one closing-soon notice — no duplicate on the re-sweep.
+  const cs = (await h.db.select().from(notifications)).filter((n) => n.type === "market_closing_soon");
+  expect(cs.length).toBe(1);
+});
+
+test("notifyClosingSoonMarkets ignores markets past closeAt or not open", async () => {
+  await fundedUser("a", 1000);
+  const past = await seedMarketClosingAt(new Date(Date.now() - 1000)); // open but already past close
+  const closed = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000), "closed"); // not open
+  // Bet rows inserted directly (placeBet would reject a past/closed market).
+  await h.db.insert(bets).values({ userId: "a", marketId: past.marketId, outcomeId: past.yesId, amount: 100 });
+  await h.db.insert(bets).values({ userId: "a", marketId: closed.marketId, outcomeId: closed.yesId, amount: 100 });
+
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(0);
+  expect((await h.db.select().from(notifications)).length).toBe(0);
 });

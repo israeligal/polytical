@@ -21,7 +21,10 @@ export type NotificationEvent =
   | { type: "bet_won"; userId: string; marketId: string; betId: string; questionHe: string; payout: number }
   | { type: "market_resolved"; userId: string; marketId: string; questionHe: string }
   | { type: "suggestion_approved"; userId: string; suggestionId: string; marketId: string; questionHe: string }
-  | { type: "suggestion_rejected"; userId: string; suggestionId: string; questionHe: string; note?: string | null };
+  | { type: "suggestion_rejected"; userId: string; suggestionId: string; questionHe: string; note?: string | null }
+  | { type: "season_reward"; userId: string; tierId: string; seasonId: string; tierNameHe: string; amount: number }
+  | { type: "market_voided"; userId: string; marketId: string; questionHe: string }
+  | { type: "market_closing_soon"; userId: string; marketId: string; questionHe: string };
 
 // Exported so the push dispatcher derives its `{title, body}` from the SAME
 // Hebrew copy as the in-app row — one source of truth for notification text.
@@ -54,6 +57,26 @@ export function composeNotification(e: NotificationEvent): NewNotification {
         titleHe: "ההצעה שלך נדחתה",
         bodyHe: e.note?.trim() || e.questionHe,
         refSuggestionId: e.suggestionId,
+      };
+    case "season_reward":
+      return {
+        userId: e.userId, type: "season_reward",
+        titleHe: "זכית בתגמול עונה! 🏆",
+        bodyHe: `קיבלת ${formatCoins(e.amount)} שקוינים — ${e.tierNameHe}`,
+      };
+    case "market_voided":
+      return {
+        userId: e.userId, type: "market_voided",
+        titleHe: "השוק בוטל",
+        bodyHe: `הימורך הוחזר במלואו · ${e.questionHe}`,
+        refMarketId: e.marketId,
+      };
+    case "market_closing_soon":
+      return {
+        userId: e.userId, type: "market_closing_soon",
+        titleHe: "שוק נסגר בקרוב ⏰",
+        bodyHe: `מהרו להמר לפני הסגירה · ${e.questionHe}`,
+        refMarketId: e.marketId,
       };
   }
 }

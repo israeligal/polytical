@@ -179,12 +179,14 @@ export async function voidMarket({
   db?: DB;
   marketId: string;
 }): Promise<void> {
+  let dispatched: NotificationEvent[] = [];
   await db.transaction(async (tx) => {
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
     if (market.status === "resolved" || market.status === "voided")
       throw new AlreadyResolvedError();
-    for (const b of await repo.listOpenBets({ tx, marketId })) {
+    const bets = await repo.listOpenBets({ tx, marketId });
+    for (const b of bets) {
       await applyEntry({
         tx,
         userId: b.userId,
@@ -196,5 +198,70 @@ export async function voidMarket({
       await repo.setBetStatus({ tx, betId: b.id, status: "refunded", payout: b.amount });
     }
     await repo.markVoided({ tx, marketId });
+    // One "market voided, stake refunded" notice per distinct bettor.
+    const events: NotificationEvent[] = [...new Set(bets.map((b) => b.userId))].map((uid) => ({
+      type: "market_voided" as const,
+      userId: uid,
+      marketId,
+      questionHe: market.questionHe,
+    }));
+    await emitNotifications({ tx, events });
+    dispatched = events;
   });
+  // Best-effort push AFTER commit (a push failure must never break the void/refunds).
+  try {
+    await dispatchPush({ events: dispatched });
+  } catch (e) {
+    logger.error("push.void_dispatch_failed", { marketId, err: String(e) });
+  }
+}
+
+/** Default closing-soon horizon: notify bettors of markets closing within 24h. */
+export const CLOSING_SOON_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Sweeps OPEN markets closing within `withinMs` and sends each a one-time
+ * "closing soon" notice to its bettors. Driven by the Vercel Cron at
+ * /api/cron/closing-soon. Idempotent + concurrency-safe: each market is claimed
+ * via markClosingSoonNotified (conditional UPDATE on closingSoonNotifiedAt IS
+ * NULL) inside its own tx — a second run (or a parallel cron) that loses the
+ * claim skips it, so no bettor is double-notified. Push fans out post-commit.
+ */
+export async function notifyClosingSoonMarkets({
+  db = defaultDb,
+  withinMs = CLOSING_SOON_WINDOW_MS,
+  now = new Date(),
+}: {
+  db?: DB;
+  withinMs?: number;
+  now?: Date;
+} = {}): Promise<{ notified: number }> {
+  const due = await repo.listMarketsClosingSoon({ db, withinMs, now });
+  let notified = 0;
+  for (const m of due) {
+    let dispatched: NotificationEvent[] = [];
+    const claimed = await db.transaction(async (tx) => {
+      // Win the claim BEFORE notifying — a lost claim (another run got here first)
+      // skips the market entirely so its bettors aren't notified twice.
+      if (!(await repo.markClosingSoonNotified({ tx, marketId: m.id, now }))) return false;
+      const bettors = await repo.getMarketBettors({ tx, marketId: m.id });
+      const events: NotificationEvent[] = bettors.map((uid) => ({
+        type: "market_closing_soon" as const,
+        userId: uid,
+        marketId: m.id,
+        questionHe: m.questionHe,
+      }));
+      await emitNotifications({ tx, events });
+      dispatched = events;
+      return true;
+    });
+    if (!claimed) continue;
+    notified += 1;
+    try {
+      await dispatchPush({ events: dispatched });
+    } catch (e) {
+      logger.error("push.closing_dispatch_failed", { marketId: m.id, err: String(e) });
+    }
+  }
+  return { notified };
 }

@@ -65,6 +65,50 @@ describe("eventToPush", () => {
       url: "/notifications",
     });
   });
+
+  it("maps season_reward to the reward copy + the seasons url (no market)", () => {
+    const event: NotificationEvent = {
+      type: "season_reward",
+      userId: "u1",
+      tierId: "t1",
+      seasonId: "se1",
+      tierNameHe: "ברונזה",
+      amount: 200,
+    };
+    expect(eventToPush(event)).toEqual<PushPayload>({
+      title: "זכית בתגמול עונה! 🏆",
+      body: "קיבלת 200 שקוינים — ברונזה",
+      url: "/seasons",
+    });
+  });
+
+  it("maps market_voided to the void copy + the market url", () => {
+    const event: NotificationEvent = {
+      type: "market_voided",
+      userId: "u1",
+      marketId: "m4",
+      questionHe: "האם יעבור התקציב?",
+    };
+    expect(eventToPush(event)).toEqual<PushPayload>({
+      title: "השוק בוטל",
+      body: "הימורך הוחזר במלואו · האם יעבור התקציב?",
+      url: "/market/m4",
+    });
+  });
+
+  it("maps market_closing_soon to the urgency copy + the market url", () => {
+    const event: NotificationEvent = {
+      type: "market_closing_soon",
+      userId: "u1",
+      marketId: "m5",
+      questionHe: "האם יעבור התקציב?",
+    };
+    expect(eventToPush(event)).toEqual<PushPayload>({
+      title: "שוק נסגר בקרוב ⏰",
+      body: "מהרו להמר לפני הסגירה · האם יעבור התקציב?",
+      url: "/market/m5",
+    });
+  });
 });
 
 describe("dedupeEventsPerUser", () => {
