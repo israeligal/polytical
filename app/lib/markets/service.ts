@@ -164,7 +164,7 @@ export async function resolveMarket({
   });
   // Best-effort push AFTER commit. A push failure must never break settlement.
   try {
-    await dispatchPush({ events: dispatched });
+    await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.resolve_dispatch_failed", { marketId, err: String(e) });
   }
@@ -210,7 +210,7 @@ export async function voidMarket({
   });
   // Best-effort push AFTER commit (a push failure must never break the void/refunds).
   try {
-    await dispatchPush({ events: dispatched });
+    await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.void_dispatch_failed", { marketId, err: String(e) });
   }
@@ -258,7 +258,7 @@ export async function notifyClosingSoonMarkets({
     if (!claimed) continue;
     notified += 1;
     try {
-      await dispatchPush({ events: dispatched });
+      await dispatchPush({ db, events: dispatched });
     } catch (e) {
       logger.error("push.closing_dispatch_failed", { marketId: m.id, err: String(e) });
     }

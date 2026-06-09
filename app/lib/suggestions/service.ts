@@ -144,7 +144,7 @@ export async function approveSuggestion({
     return { marketId };
   });
   try {
-    await dispatchPush({ events: dispatched });
+    await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.approve_dispatch_failed", { suggestionId, err: String(e) });
   }
@@ -183,7 +183,7 @@ export async function rejectSuggestion({
     await emitNotifications({ tx, events });
   });
   try {
-    await dispatchPush({ events: dispatched });
+    await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.reject_dispatch_failed", { suggestionId, err: String(e) });
   }

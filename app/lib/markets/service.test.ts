@@ -19,6 +19,7 @@ import {
 } from "@/app/lib/errors";
 import { applyEntry, grantStartingStack, getBalance } from "@/app/lib/ledger/service";
 import { placeBet, resolveMarket, voidMarket, notifyClosingSoonMarkets } from "./service";
+import { markClosingSoonNotified } from "./repo";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -560,4 +561,17 @@ test("notifyClosingSoonMarkets ignores markets past closeAt or not open", async 
 
   expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(0);
   expect((await h.db.select().from(notifications)).length).toBe(0);
+});
+
+test("markClosingSoonNotified won't claim a market that stopped being open (TOCTOU guard)", async () => {
+  const m = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000)); // open + due
+  // Simulate the market resolving in the gap between the cron's (unlocked) list
+  // read and its per-market claim — the claim must NOT stamp/notify it.
+  await h.db.update(markets).set({ status: "resolved" }).where(eq(markets.id, m.marketId));
+
+  const won = await h.db.transaction((tx) => markClosingSoonNotified({ tx, marketId: m.marketId, now: new Date() }));
+  expect(won).toBe(false);
+
+  const [row] = await h.db.select().from(markets).where(eq(markets.id, m.marketId));
+  expect(row.closingSoonNotifiedAt).toBeNull(); // never stamped
 });

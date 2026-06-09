@@ -240,7 +240,11 @@ export async function getMarketBettors({
 }
 
 /** Claims the closing-soon notice for a market: stamps closingSoonNotifiedAt only
- *  if still NULL. Returns true iff THIS call won (concurrent crons can't double-send). */
+ *  if still NULL AND the market is still open + not yet past closeAt. Returns true
+ *  iff THIS call won. The status/closeAt predicates are part of the atomic UPDATE
+ *  (which row-locks), so a market resolved/voided/closed in the gap since the
+ *  unlocked list read is NOT claimed — its bettors never get a stale "closing
+ *  soon" push. Concurrent crons also can't double-send (loser matches 0 rows). */
 export async function markClosingSoonNotified({
   tx,
   marketId,
@@ -253,7 +257,14 @@ export async function markClosingSoonNotified({
   const rows = await tx
     .update(markets)
     .set({ closingSoonNotifiedAt: now })
-    .where(and(eq(markets.id, marketId), isNull(markets.closingSoonNotifiedAt)))
+    .where(
+      and(
+        eq(markets.id, marketId),
+        eq(markets.status, "open"),
+        gt(markets.closeAt, now),
+        isNull(markets.closingSoonNotifiedAt),
+      ),
+    )
     .returning({ id: markets.id });
   return rows.length > 0;
 }

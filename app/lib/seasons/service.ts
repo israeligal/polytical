@@ -166,7 +166,7 @@ export async function claimTier({
     return { balanceAfter, amount: tier.rewardAmount };
   });
   try {
-    await dispatchPush({ events: dispatched });
+    await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.season_dispatch_failed", { userId, tierId, err: String(e) });
   }
