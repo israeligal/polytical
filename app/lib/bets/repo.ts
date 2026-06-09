@@ -6,8 +6,8 @@ import * as schema from "@/app/lib/schema";
 import { bets, markets, outcomes } from "@/app/lib/schema";
 import { MissingUserError } from "@/app/lib/errors";
 
-// Bets read/seen helpers — a small module so markets/repo.ts stays under 500
-// lines. Drives the one-time win/loss celebration via the bets.seenAt flag.
+// Prediction read/seen helpers — a small module so markets/repo.ts stays under
+// 500 lines. Drives the one-time right/wrong reveal via the bets.seenAt flag.
 
 type DB = PgDatabase<
   PgQueryResultHKT,
@@ -15,14 +15,12 @@ type DB = PgDatabase<
   ExtractTablesWithRelations<typeof schema>
 >;
 
-export interface UnseenResolvedBet {
-  betId: string;
+export interface UnseenResolvedPrediction {
+  predictionId: string;
   marketId: string;
   questionHe: string;
   outcomeLabelHe: string;
-  amount: number;
-  payout: number;
-  status: "won" | "lost";
+  correct: boolean; // the picked outcome was the market's winning outcome
 }
 
 function reqUser(userId: string): string {
@@ -31,10 +29,12 @@ function reqUser(userId: string): string {
 }
 
 /**
- * A user's resolved-but-unseen bets (won/lost only — refunds aren't celebratory),
- * optionally scoped to one market. `seenAt IS NULL` is the one-time trigger.
+ * A user's resolved-but-unseen predictions, optionally scoped to one market.
+ * `seenAt IS NULL` on a RESOLVED market is the one-time reveal trigger; `correct`
+ * is derived (picked outcome === the market's resolved winning outcome). Voided
+ * markets are excluded — there's no right/wrong to reveal.
  */
-export async function listUnseenResolvedBets({
+export async function listUnseenResolvedPredictions({
   db = defaultDb,
   userId,
   marketId,
@@ -42,49 +42,53 @@ export async function listUnseenResolvedBets({
   db?: DB;
   userId: string;
   marketId?: string;
-}): Promise<UnseenResolvedBet[]> {
+}): Promise<UnseenResolvedPrediction[]> {
   const where = [
     eq(bets.userId, reqUser(userId)),
     isNull(bets.seenAt),
-    inArray(bets.status, ["won", "lost"]),
+    eq(markets.status, "resolved"),
   ];
   if (marketId) where.push(eq(bets.marketId, marketId));
   const rows = await db
     .select({
-      betId: bets.id,
+      predictionId: bets.id,
       marketId: bets.marketId,
       questionHe: markets.questionHe,
       outcomeLabelHe: outcomes.labelHe,
-      amount: bets.amount,
-      payout: bets.payout,
-      status: bets.status,
+      outcomeId: bets.outcomeId,
+      resolvedOutcomeId: markets.resolvedOutcomeId,
     })
     .from(bets)
     .innerJoin(markets, eq(markets.id, bets.marketId))
     .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
     .where(and(...where));
-  // status is the betStatus enum; narrowed to won|lost by the inArray filter.
-  return rows.map((r) => ({ ...r, status: r.status as "won" | "lost" }));
+  return rows.map((r) => ({
+    predictionId: r.predictionId,
+    marketId: r.marketId,
+    questionHe: r.questionHe,
+    outcomeLabelHe: r.outcomeLabelHe,
+    correct: r.outcomeId === r.resolvedOutcomeId,
+  }));
 }
 
 /**
- * Marks the given bets seen — scope-guarded (only the user's own) and idempotent
- * (`seenAt IS NULL` so a re-fire updates nothing). No-op on empty input.
+ * Marks the given predictions seen — scope-guarded (only the user's own) and
+ * idempotent (`seenAt IS NULL` so a re-fire updates nothing). No-op on empty input.
  */
-export async function markBetsSeen({
+export async function markPredictionsSeen({
   db = defaultDb,
   userId,
-  betIds,
+  predictionIds,
 }: {
   db?: DB;
   userId: string;
-  betIds: string[];
+  predictionIds: string[];
 }): Promise<{ updated: number }> {
-  if (betIds.length === 0) return { updated: 0 };
+  if (predictionIds.length === 0) return { updated: 0 };
   const rows = await db
     .update(bets)
     .set({ seenAt: sql`now()` })
-    .where(and(eq(bets.userId, reqUser(userId)), inArray(bets.id, betIds), isNull(bets.seenAt)))
+    .where(and(eq(bets.userId, reqUser(userId)), inArray(bets.id, predictionIds), isNull(bets.seenAt)))
     .returning({ id: bets.id });
   return { updated: rows.length };
 }

@@ -3,8 +3,9 @@ import { logger } from "@/app/lib/logger";
 import { createSeason } from "@/app/lib/seasons/service";
 import { getActiveSeason } from "@/app/lib/seasons/repo";
 
-// Seeds one active season (~30 days) with four increasing-goal tiers into the
-// DEV database. assertNonProductionDb() guards against ever touching prod.
+// Seeds one active season (~30 days) with four increasing-accuracy tiers (goal =
+// # correct predictions in the window) into the DEV database.
+// assertNonProductionDb() guards against ever touching prod.
 async function main() {
   assertNonProductionDb();
 
@@ -24,10 +25,10 @@ async function main() {
     startAt,
     endAt,
     tiers: [
-      { nameHe: "מתחילים", goalAmount: 100, rewardAmount: 50 },
-      { nameHe: "מנחשים", goalAmount: 500, rewardAmount: 200 },
-      { nameHe: "חזאים", goalAmount: 1500, rewardAmount: 600 },
-      { nameHe: "אלופי העונה", goalAmount: 5000, rewardAmount: 2000 },
+      { nameHe: "מתחילים", goalCorrect: 1 },
+      { nameHe: "מנחשים", goalCorrect: 3 },
+      { nameHe: "חזאים", goalCorrect: 7 },
+      { nameHe: "אלופי העונה", goalCorrect: 15 },
     ],
   });
 
