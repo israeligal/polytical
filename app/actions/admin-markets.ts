@@ -26,6 +26,19 @@ async function requireAdmin(): Promise<void> {
   if (!session?.user?.isAdmin) throw new NotAdminError();
 }
 
+/** A cited resolution source must be a real http(s) URL. Rejecting other schemes
+ *  (e.g. `javascript:` / `data:`) at this write boundary stops a stored value
+ *  from becoming an XSS vector when rendered as the "מקור ההכרעה" href on the
+ *  public market page. */
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /** Creates a market with its outcomes and featured MKs. `outcomeLabels` are the
  *  ordered outcome labels (≥2); `personIds` the featured MK personIds (optional).
  *  `closeAt` is an ISO/`datetime-local` string. */
@@ -104,11 +117,15 @@ export async function resolveMarketAction({
 }): Promise<ActionResult> {
   await requireAdmin();
   if (!winningOutcomeId) return { ok: false, message: "בחרו תוצאה זוכה" };
+  const cleanedSourceUrl = sourceUrl?.trim() || undefined;
+  if (cleanedSourceUrl && !isHttpUrl(cleanedSourceUrl)) {
+    return { ok: false, message: "כתובת המקור חייבת להיות קישור http/https תקין" };
+  }
   try {
     await resolveMarket({
       marketId,
       winningOutcomeId,
-      sourceUrl: sourceUrl?.trim() || undefined,
+      sourceUrl: cleanedSourceUrl,
       note: note?.trim() || undefined,
     });
   } catch (e) {
