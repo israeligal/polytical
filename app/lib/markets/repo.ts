@@ -2,17 +2,17 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { and, asc, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { LedgerTx } from "@/app/lib/ledger/repo";
+import type { Tx as LedgerTx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { bets, marketPoliticians, markets, outcomes, users } from "@/app/lib/schema";
+import { bets, marketPoliticians, markets, outcomes, politicians, users } from "@/app/lib/schema";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
 
-// Market repository: scope-guarded, tx-aware DB access for the betting service.
+// Market repository: scope-guarded, tx-aware DB access for the prediction service.
 //
 // Two access modes:
-//  - MUTATING paths join an existing transaction (`tx: LedgerTx`) so the
-//    market-row lock (`getMarketForUpdate` → FOR UPDATE) and every coin write
-//    via `applyEntry` share one atomic unit. Lock ordering is market→user.
+//  - MUTATING paths join an existing transaction (`tx`) so the market-row lock
+//    (`getMarketForUpdate` → FOR UPDATE) and the prediction/stat writes share one
+//    atomic unit. Lock ordering is market→user.
 //  - READ helpers default to the shared `db` (no tx) for server-component reads.
 
 // Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
@@ -26,10 +26,9 @@ type Tx = LedgerTx;
 
 export type MarketRow = typeof markets.$inferSelect;
 export type OutcomeRow = typeof outcomes.$inferSelect;
-export type BetRow = typeof bets.$inferSelect;
-type BetStatus = (typeof schema.betStatus.enumValues)[number];
+export type PredictionRow = typeof bets.$inferSelect;
 
-// --- Mutating, tx-aware (lock the market row FIRST, then users via applyEntry) ---
+// --- Mutating, tx-aware (lock the market row FIRST, then write predictions/stats) ---
 
 /** Locks the market row FOR UPDATE; concurrent bets/resolves serialize here. */
 export async function getMarketForUpdate({
@@ -75,75 +74,77 @@ export async function listOutcomes({
     .orderBy(asc(outcomes.ordinal));
 }
 
-/** Bumps an outcome's cached pool total by `delta` (kept in step with bet rows). */
-export async function incOutcomePool({
-  tx,
-  outcomeId,
-  delta,
-}: {
-  tx: Tx;
-  outcomeId: string;
-  delta: number;
-}): Promise<void> {
-  await tx
-    .update(outcomes)
-    .set({ poolTotal: sql`${outcomes.poolTotal} + ${delta}` })
-    .where(eq(outcomes.id, outcomeId));
-}
-
-/** Inserts an open bet; returns the new bet id (used as the ledger refBetId). */
-export async function insertBet({
+/** Records the user's prediction on a market: one stake-less pick per
+ *  (user, market). Re-predicting changes the pick in place (upsert on the
+ *  unique index) until the market closes. Returns the prediction row id. */
+export async function upsertPrediction({
   tx,
   userId,
   marketId,
   outcomeId,
-  amount,
 }: {
   tx: Tx;
   userId: string;
   marketId: string;
   outcomeId: string;
-  amount: number;
 }): Promise<{ id: string }> {
   const [row] = await tx
     .insert(bets)
-    .values({ userId, marketId, outcomeId, amount })
+    .values({ userId, marketId, outcomeId })
+    .onConflictDoUpdate({
+      target: [bets.userId, bets.marketId],
+      set: { outcomeId, createdAt: new Date() },
+    })
     .returning({ id: bets.id });
   return row;
 }
 
-/** All still-open bets on a market (the set settled on resolve/void). */
-export async function listOpenBets({
+/** All predictions on a market (the set tallied on resolve). */
+export async function listPredictions({
   tx,
   marketId,
 }: {
   tx: Tx;
   marketId: string;
-}): Promise<BetRow[]> {
-  return tx
-    .select()
-    .from(bets)
-    .where(and(eq(bets.marketId, marketId), eq(bets.status, "open")));
+}): Promise<PredictionRow[]> {
+  return tx.select().from(bets).where(eq(bets.marketId, marketId));
 }
 
-/** Settles a single bet (won/lost/refunded) with its final payout. */
-export async function setBetStatus({
+/** The market's featured politicians with their role (for card-unlock thresholds). */
+export async function getMarketPoliticianRoles({
   tx,
-  betId,
-  status,
-  payout,
+  marketId,
 }: {
   tx: Tx;
-  betId: string;
-  status: BetStatus;
-  payout: number;
-}): Promise<void> {
-  await tx.update(bets).set({ status, payout }).where(eq(bets.id, betId));
+  marketId: string;
+}): Promise<{ personId: number; roleHe: string | null }[]> {
+  return tx
+    .select({ personId: marketPoliticians.personId, roleHe: politicians.roleHe })
+    .from(marketPoliticians)
+    .leftJoin(politicians, eq(politicians.personId, marketPoliticians.personId))
+    .where(eq(marketPoliticians.marketId, marketId));
+}
+
+/** Live predictor count per outcome of a market (replaces the cached pool) —
+ *  the crowd-split the odds bars render. Returns outcomeId → count. */
+export async function getOutcomeCounts({
+  db = defaultDb,
+  marketId,
+}: {
+  db?: DB;
+  marketId: string;
+}): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ outcomeId: bets.outcomeId, n: sql<number>`count(*)::int` })
+    .from(bets)
+    .where(eq(bets.marketId, marketId))
+    .groupBy(bets.outcomeId);
+  return new Map(rows.map((r) => [r.outcomeId, r.n]));
 }
 
 /** Bumps a user's forecaster-accuracy counters on a resolve: +1 resolved, and
- *  +1 win when their top single-outcome stake was on the winning outcome. Rides
- *  inside the resolveMarket transaction (no coin movement here). */
+ *  +1 win when their prediction was on the winning outcome. Rides inside the
+ *  resolveMarket transaction. */
 export async function bumpUserStats({
   tx,
   userId,
@@ -188,7 +189,7 @@ export async function markResolved({
     .where(eq(markets.id, marketId));
 }
 
-/** Marks a market voided (all open bets refunded by the caller). */
+/** Marks a market voided (predictions left untouched — no stakes to refund). */
 export async function markVoided({ tx, marketId }: { tx: Tx; marketId: string }): Promise<void> {
   await tx
     .update(markets)
@@ -388,7 +389,8 @@ export async function getMarketBundles({
     }));
 }
 
-/** A user's bets on a market (their position; drives the UI "your bets" view). */
+/** A user's prediction on a market (their pick; drives the UI "your pick" view).
+ *  At most one row now (unique per user+market), but kept as a list for callers. */
 export async function getUserPositions({
   db = defaultDb,
   userId,
@@ -397,7 +399,7 @@ export async function getUserPositions({
   db?: DB;
   userId: string;
   marketId: string;
-}): Promise<BetRow[]> {
+}): Promise<PredictionRow[]> {
   return db
     .select()
     .from(bets)
@@ -405,11 +407,11 @@ export async function getUserPositions({
     .orderBy(asc(bets.createdAt));
 }
 
-/** One row in a user's portfolio: their bet plus the market + chosen-outcome
- *  context the profile page renders (question, status, payout, picked label,
- *  and whether their pick won). Newest bet first. One join, no per-row reads. */
-export interface PortfolioBet {
-  betId: string;
+/** One row in a user's portfolio: their prediction plus the market + chosen-outcome
+ *  context the profile page renders (question, status, picked label, and — once
+ *  resolved — whether the pick was right). Newest first. One join, no per-row reads. */
+export interface PortfolioPrediction {
+  predictionId: string;
   marketId: string;
   questionHe: string;
   marketType: (typeof schema.marketType.enumValues)[number];
@@ -417,22 +419,19 @@ export interface PortfolioBet {
   resolvedOutcomeId: string | null;
   outcomeId: string;
   outcomeLabelHe: string;
-  amount: number;
-  payout: number;
-  betStatus: BetStatus;
   createdAt: Date;
 }
 
-export async function getUserBets({
+export async function getUserPredictions({
   db = defaultDb,
   userId,
 }: {
   db?: DB;
   userId: string;
-}): Promise<PortfolioBet[]> {
+}): Promise<PortfolioPrediction[]> {
   return db
     .select({
-      betId: bets.id,
+      predictionId: bets.id,
       marketId: bets.marketId,
       questionHe: markets.questionHe,
       marketType: markets.type,
@@ -440,9 +439,6 @@ export async function getUserBets({
       resolvedOutcomeId: markets.resolvedOutcomeId,
       outcomeId: bets.outcomeId,
       outcomeLabelHe: outcomes.labelHe,
-      amount: bets.amount,
-      payout: bets.payout,
-      betStatus: bets.status,
       createdAt: bets.createdAt,
     })
     .from(bets)

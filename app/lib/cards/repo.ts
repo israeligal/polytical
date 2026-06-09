@@ -1,10 +1,10 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { cardCollections } from "@/app/lib/schema";
-import type { LedgerTx } from "@/app/lib/ledger/repo";
+import { cardCollections, cardProgress } from "@/app/lib/schema";
+import type { Tx as LedgerTx } from "@/app/lib/db";
 import { MissingUserError } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
@@ -84,4 +84,45 @@ export async function listCollection({
     .from(cardCollections)
     .where(eq(cardCollections.userId, reqUser(userId)))
     .orderBy(desc(cardCollections.collectedAt));
+}
+
+// --- Accuracy-unlock progress (the running correct-count toward a card) ---
+
+/** Increments the user's correct-prediction count for a politician (upsert) and
+ *  returns the NEW count. Rides inside the resolveMarket tx — the caller grants
+ *  the card when the returned count reaches the rarity threshold. */
+export async function bumpCardProgress({
+  tx,
+  userId,
+  personId,
+}: {
+  tx: Tx;
+  userId: string;
+  personId: number;
+}): Promise<number> {
+  const [row] = await tx
+    .insert(cardProgress)
+    .values({ userId: reqUser(userId), personId, correctCount: 1 })
+    .onConflictDoUpdate({
+      target: [cardProgress.userId, cardProgress.personId],
+      set: { correctCount: sql`${cardProgress.correctCount} + 1` },
+    })
+    .returning({ correctCount: cardProgress.correctCount });
+  return row.correctCount;
+}
+
+/** The user's correct-count per politician (personId → count) — drives the
+ *  "N/M correct to unlock" progress shown on locked cards. */
+export async function progressByPerson({
+  db = defaultDb,
+  userId,
+}: {
+  db?: DB;
+  userId: string;
+}): Promise<Map<number, number>> {
+  const rows = await db
+    .select({ personId: cardProgress.personId, correctCount: cardProgress.correctCount })
+    .from(cardProgress)
+    .where(eq(cardProgress.userId, reqUser(userId)));
+  return new Map(rows.map((r) => [r.personId, r.correctCount]));
 }

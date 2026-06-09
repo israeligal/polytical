@@ -32,7 +32,8 @@ export interface Politician {
 export interface Outcome {
   id: string;
   label: string;
-  pool: number;
+  /** Count of users who predicted this outcome (the crowd-split denominator). */
+  predictors: number;
   /** Multi-option markets only; binary uses the positive/negative tokens by order. */
   color?: CatColor;
 }
@@ -50,7 +51,8 @@ export interface Market {
 
 export interface CurrentUser {
   handle: string;
-  balance: number;
   rank: number;
   accuracy: number; // 0–100
+  totalWins: number;
+  totalResolved: number;
 }

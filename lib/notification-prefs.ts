@@ -23,14 +23,8 @@ export const PUSH_PREF_CATEGORIES: PushPrefCategory[] = [
   {
     key: "closing",
     labelHe: "שווקים שנסגרים",
-    descHe: "תזכורת כששוק שהימרתם בו עומד להיסגר",
+    descHe: "תזכורת כששוק שניחשתם בו עומד להיסגר",
     types: ["market_closing_soon"],
-  },
-  {
-    key: "season",
-    labelHe: "תגמולי עונה",
-    descHe: "כשנפתח לכם תגמול עונה לתביעה",
-    types: ["season_reward"],
   },
   {
     key: "suggestions",

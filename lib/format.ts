@@ -1,16 +1,12 @@
-import type { Outcome } from "@/lib/types";
-
-/** Thousands-separated coins (Latin numerals, rendered LTR via `.nums`). */
-export function formatCoins(n: number): string {
+/** Thousands-separated count (Latin numerals, rendered LTR via `.nums`). */
+export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-export function totalPool(outcomes: Pick<Outcome, "pool">[]): number {
-  return outcomes.reduce((sum, o) => sum + o.pool, 0);
-}
-
-export function pct(pool: number, total: number): number {
-  return total === 0 ? 0 : Math.round((pool / total) * 100);
+/** Percentage of a part within a whole (0 when the whole is 0). Used for the
+ *  crowd-split bars — `part`/`total` are predictor COUNTS now, not coin pools. */
+export function pct(part: number, total: number): number {
+  return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
 /** Hebrew relative time until close, e.g. "בעוד 3 ימים". */

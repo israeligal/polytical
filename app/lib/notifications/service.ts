@@ -1,11 +1,10 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { LedgerTx } from "@/app/lib/ledger/repo";
+import type { Tx as LedgerTx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import * as repo from "@/app/lib/notifications/repo";
 import type { NewNotification, NotificationRow } from "@/app/lib/notifications/repo";
-import { formatCoins } from "@/lib/format";
 import { NotificationNotFoundError } from "@/app/lib/errors";
 
 type DB = PgDatabase<
@@ -18,11 +17,10 @@ type Tx = LedgerTx;
 // A notification EVENT is what callers emit; the service composes the Hebrew
 // copy + ref columns so emit sites stay terse. Discriminated on `type`.
 export type NotificationEvent =
-  | { type: "bet_won"; userId: string; marketId: string; betId: string; questionHe: string; payout: number }
+  | { type: "bet_won"; userId: string; marketId: string; betId: string; questionHe: string }
   | { type: "market_resolved"; userId: string; marketId: string; questionHe: string }
   | { type: "suggestion_approved"; userId: string; suggestionId: string; marketId: string; questionHe: string }
   | { type: "suggestion_rejected"; userId: string; suggestionId: string; questionHe: string; note?: string | null }
-  | { type: "season_reward"; userId: string; tierId: string; seasonId: string; tierNameHe: string; amount: number }
   | { type: "market_voided"; userId: string; marketId: string; questionHe: string }
   | { type: "market_closing_soon"; userId: string; marketId: string; questionHe: string };
 
@@ -33,14 +31,14 @@ export function composeNotification(e: NotificationEvent): NewNotification {
     case "bet_won":
       return {
         userId: e.userId, type: "bet_won",
-        titleHe: "זכית בהימור!",
-        bodyHe: `קיבלת ${formatCoins(e.payout)} שקוינים · ${e.questionHe}`,
+        titleHe: "ניחשת נכון! 🎯",
+        bodyHe: `צדקת בתחזית · ${e.questionHe}`,
         refMarketId: e.marketId, refBetId: e.betId,
       };
     case "market_resolved":
       return {
         userId: e.userId, type: "market_resolved",
-        titleHe: "שוק שהימרת בו הוכרע",
+        titleHe: "שוק שניחשת בו הוכרע",
         bodyHe: e.questionHe,
         refMarketId: e.marketId,
       };
@@ -58,24 +56,18 @@ export function composeNotification(e: NotificationEvent): NewNotification {
         bodyHe: e.note?.trim() || e.questionHe,
         refSuggestionId: e.suggestionId,
       };
-    case "season_reward":
-      return {
-        userId: e.userId, type: "season_reward",
-        titleHe: "זכית בתגמול עונה! 🏆",
-        bodyHe: `קיבלת ${formatCoins(e.amount)} שקוינים — ${e.tierNameHe}`,
-      };
     case "market_voided":
       return {
         userId: e.userId, type: "market_voided",
         titleHe: "השוק בוטל",
-        bodyHe: `הימורך הוחזר במלואו · ${e.questionHe}`,
+        bodyHe: `התחזית שלך בוטלה · ${e.questionHe}`,
         refMarketId: e.marketId,
       };
     case "market_closing_soon":
       return {
         userId: e.userId, type: "market_closing_soon",
         titleHe: "שוק נסגר בקרוב ⏰",
-        bodyHe: `מהרו להמר לפני הסגירה · ${e.questionHe}`,
+        bodyHe: `הספיקו לנחש לפני הסגירה · ${e.questionHe}`,
         refMarketId: e.marketId,
       };
   }

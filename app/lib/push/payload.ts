@@ -28,10 +28,9 @@ export function eventToPush(event: NotificationEvent): PushPayload {
   };
 }
 
-/** Where a notification click lands: the referenced market, the seasons board
- *  for a reward, otherwise the notifications inbox. */
-function pushUrl(event: NotificationEvent, refMarketId?: string | null): string {
-  if (event.type === "season_reward") return "/seasons";
+/** Where a notification click lands: the referenced market, otherwise the
+ *  notifications inbox. */
+function pushUrl(_event: NotificationEvent, refMarketId?: string | null): string {
   return refMarketId ? `/market/${refMarketId}` : "/notifications";
 }
 
@@ -42,7 +41,6 @@ const EVENT_PRIORITY: Record<NotificationEvent["type"], number> = {
   market_voided: 2,
   market_closing_soon: 1,
   suggestion_approved: 1,
-  season_reward: 1,
   suggestion_rejected: 0,
 };
 

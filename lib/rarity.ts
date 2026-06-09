@@ -26,6 +26,22 @@ export const RARITY_HE: Record<Rarity, string> = {
   legendary: "אגדי",
 };
 
+// Cards unlock by ACCURACY: how many correct predictions on markets featuring a
+// politician are needed to collect their card. Scales with the card's rarity —
+// the more senior the seat, the more correct calls it takes (PM/ministers 10,
+// chairs/deputies 7, regular slots 5, plain MKs 2).
+export const RARITY_UNLOCK_THRESHOLD: Record<Rarity, number> = {
+  legendary: 10,
+  epic: 7,
+  rare: 5,
+  common: 2,
+};
+
+/** Correct predictions needed to unlock a politician's card, from their role. */
+export function unlockThresholdForRole(role: string | undefined | null): number {
+  return RARITY_UNLOCK_THRESHOLD[rarityForRole(role)];
+}
+
 /** Tailwind text/border color class per tier (tokens defined in globals.css). */
 export const RARITY_TEXT: Record<Rarity, string> = {
   common: "text-rarity-common",

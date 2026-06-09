@@ -3,8 +3,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { grantStartingStack } from "@/app/lib/ledger/service";
-import { logger } from "@/app/lib/logger";
 
 // Enable Google only when credentials are present so local/dev boots without them.
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
@@ -45,23 +43,6 @@ export const auth = betterAuth({
       handle: { type: "string", required: false, input: false },
       arena: { type: "string", required: false, input: false },
       onboardedAt: { type: "date", required: false, input: false },
-    },
-  },
-
-  // Grant the 1,000-coin starting stack at signup — deterministic, so a brand-new
-  // user's profile/leaderboard never read balance 0 racing the lazy header grant.
-  // Idempotent + non-fatal: getOrInitBalance stays a fallback for any ungranted user.
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user: { id: string }) => {
-          try {
-            await grantStartingStack({ userId: user.id });
-          } catch (e) {
-            logger.error("starting_grant_failed", { userId: user.id, err: String(e) });
-          }
-        },
-      },
     },
   },
 

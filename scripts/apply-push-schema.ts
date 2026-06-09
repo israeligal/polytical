@@ -25,7 +25,7 @@ async function main() {
   await sharedSql`CREATE INDEX IF NOT EXISTS "push_subscriptions_user_idx" ON "push_subscriptions" ("userId")`;
 
   // 0015 — new notification_type values + the closing-soon dedup column
-  await sharedSql`ALTER TYPE "notification_type" ADD VALUE IF NOT EXISTS 'season_reward'`;
+  // (season_reward was removed in 0017_remove_coins — do not re-add it here)
   await sharedSql`ALTER TYPE "notification_type" ADD VALUE IF NOT EXISTS 'market_voided'`;
   await sharedSql`ALTER TYPE "notification_type" ADD VALUE IF NOT EXISTS 'market_closing_soon'`;
   await sharedSql`ALTER TABLE "markets" ADD COLUMN IF NOT EXISTS "closingSoonNotifiedAt" timestamp`;
