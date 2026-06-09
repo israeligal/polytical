@@ -37,8 +37,8 @@ export const BinaryLeaningYes: Story = {
     market: createBinaryMarket({
       question: "האם תקציב 2026 יאושר עד המועד החוקי?",
       outcomes: [
-        { id: "yes", label: "כן", pool: 8600 },
-        { id: "no", label: "לא", pool: 1400 },
+        { id: "yes", label: "כן", predictors: 8600 },
+        { id: "no", label: "לא", predictors: 1400 },
       ],
     }),
   },
@@ -52,8 +52,8 @@ export const EmptyPool: Story = {
   args: {
     market: createBinaryMarket({
       outcomes: [
-        { id: "yes", label: "כן", pool: 0 },
-        { id: "no", label: "לא", pool: 0 },
+        { id: "yes", label: "כן", predictors: 0 },
+        { id: "no", label: "לא", predictors: 0 },
       ],
     }),
   },
@@ -64,8 +64,8 @@ export const VerifiesPercentages: Story = {
   args: {
     market: createBinaryMarket({
       outcomes: [
-        { id: "yes", label: "כן", pool: 4200 },
-        { id: "no", label: "לא", pool: 9800 },
+        { id: "yes", label: "כן", predictors: 4200 },
+        { id: "no", label: "לא", predictors: 9800 },
       ],
     }),
   },

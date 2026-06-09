@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { formatCoins, totalPool } from "@/lib/format";
-import { getMarketBundle } from "@/app/lib/markets/repo";
+import { formatCount } from "@/lib/format";
+import { getMarketBundle, getOutcomeCounts } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
@@ -13,7 +13,7 @@ import { BetPanel } from "@/components/bet-panel";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { CommentThread } from "@/components/comments/comment-thread";
-import { ChatBubble, ChevronForward, Coin } from "@/components/icons";
+import { ChatBubble, ChevronForward, Users } from "@/components/icons";
 
 export default async function MarketPage({
   params,
@@ -24,7 +24,8 @@ export default async function MarketPage({
   const bundle = await getMarketBundle({ marketId: id });
   if (!bundle) notFound();
 
-  const market = bundleToMarket(bundle);
+  const counts = await getOutcomeCounts({ marketId: id });
+  const market = bundleToMarket({ ...bundle, counts });
   const status = bundle.market.status;
   const settled = status === "resolved" || status === "voided";
   const winningOutcome =
@@ -41,8 +42,8 @@ export default async function MarketPage({
 
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
-  const volume = totalPool(market.outcomes);
-  // One-time win/loss celebration for this market's resolved bet (first view).
+  const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
+  // One-time right/wrong reveal for this market's resolved prediction (first view).
   const celebrations =
     settled && session?.user
       ? await getCelebrations({ userId: session.user.id, marketId: id })
@@ -50,7 +51,7 @@ export default async function MarketPage({
 
   return (
     <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-      <CelebrationHost bets={celebrations} />
+      <CelebrationHost predictions={celebrations} />
       <Link
         href="/#markets"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
@@ -72,11 +73,11 @@ export default async function MarketPage({
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <Coin className="h-4 w-4 text-accent" />
+              <Users className="h-4 w-4 text-accent" />
               <span className="nums font-bold text-foreground">
-                {formatCoins(volume)}
+                {formatCount(predictors)}
               </span>
-              מטבעות בקופה
+              ניחשו
             </span>
             <span className="text-border">•</span>
             <Countdown closeAt={market.closeAt} />

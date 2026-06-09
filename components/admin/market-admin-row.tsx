@@ -8,10 +8,10 @@ const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 
 /**
- * One row of the admin market list: shows the market, its outcomes + live pools,
- * and inline resolve (pick a winning outcome, optional source/note) and void
- * controls. Both call admin server actions (which re-check admin + run the
- * parimutuel settlement) and surface the result message. Functional-plain.
+ * One row of the admin market list: shows the market, its outcomes + the live
+ * crowd split (predictor counts), and inline resolve (pick a winning outcome,
+ * optional source/note) and void controls. Both call admin server actions (which
+ * re-check admin + tally right/wrong) and surface the result message.
  */
 export function MarketAdminRow({
   marketId,
@@ -26,7 +26,7 @@ export function MarketAdminRow({
   category: string;
   status: string;
   closeAtIso: string;
-  outcomes: { id: string; labelHe: string; poolTotal: number }[];
+  outcomes: { id: string; labelHe: string; predictors: number }[];
 }) {
   const [winningOutcomeId, setWinningOutcomeId] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -35,7 +35,7 @@ export function MarketAdminRow({
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const total = outcomes.reduce((s, o) => s + o.poolTotal, 0);
+  const total = outcomes.reduce((s, o) => s + o.predictors, 0);
 
   function run(fn: () => Promise<{ ok: boolean; message?: string }>) {
     setMessage(null);
@@ -61,7 +61,7 @@ export function MarketAdminRow({
   }
 
   function onVoid() {
-    if (!window.confirm("לבטל את השוק ולהחזיר את כל ההימורים?")) return;
+    if (!window.confirm("לבטל את השוק?")) return;
     run(() => voidMarketAction({ marketId }));
   }
 
@@ -81,7 +81,7 @@ export function MarketAdminRow({
           <li key={o.id} className="flex items-center justify-between">
             <span className="text-foreground">{o.labelHe}</span>
             <span className="nums text-muted-foreground">
-              {o.poolTotal} מטבעות ({total > 0 ? Math.round((o.poolTotal / total) * 100) : 0}%)
+              {o.predictors} ניחושים ({total > 0 ? Math.round((o.predictors / total) * 100) : 0}%)
             </span>
           </li>
         ))}

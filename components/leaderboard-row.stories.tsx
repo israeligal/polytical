@@ -30,7 +30,7 @@ export const Default: Story = {
 
 export const You: Story = {
   args: {
-    entry: createLeaderboardEntry({ rank: 142, handle: "gal", netWorth: 1840, accuracy: 64 }),
+    entry: createLeaderboardEntry({ rank: 142, handle: "gal", totalWins: 32, totalResolved: 50, accuracy: 64 }),
     you: true,
   },
 };
@@ -39,10 +39,10 @@ export const List: Story = {
   args: { entry: createLeaderboardEntry() },
   render: () => (
     <div className="flex flex-col gap-2">
-      <LeaderboardRow entry={createLeaderboardEntry({ rank: 1, handle: "knesset_nerd", netWorth: 48230, accuracy: 81 })} />
-      <LeaderboardRow entry={createLeaderboardEntry({ rank: 2, handle: "polldancer", netWorth: 41980, accuracy: 78 })} />
-      <LeaderboardRow entry={createLeaderboardEntry({ rank: 3, handle: "biko2026", netWorth: 39110, accuracy: 74 })} />
-      <LeaderboardRow entry={createLeaderboardEntry({ rank: 142, handle: "gal", netWorth: 1840, accuracy: 64 })} you />
+      <LeaderboardRow entry={createLeaderboardEntry({ rank: 1, handle: "knesset_nerd", totalWins: 81, totalResolved: 100, accuracy: 81 })} />
+      <LeaderboardRow entry={createLeaderboardEntry({ rank: 2, handle: "polldancer", totalWins: 78, totalResolved: 100, accuracy: 78 })} />
+      <LeaderboardRow entry={createLeaderboardEntry({ rank: 3, handle: "biko2026", totalWins: 52, totalResolved: 70, accuracy: 74 })} />
+      <LeaderboardRow entry={createLeaderboardEntry({ rank: 142, handle: "gal", totalWins: 32, totalResolved: 50, accuracy: 64 })} you />
     </div>
   ),
 };

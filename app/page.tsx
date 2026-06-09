@@ -54,16 +54,17 @@ export default async function Home({
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
 
-  // Real leaderboard: top 8 by net worth (handle = display name for now). If the
-  // viewer is logged in but outside the top 8, append their own row so they can
-  // always find themselves. Empty state until there are users to rank.
+  // Real leaderboard: top 8 by correct predictions (handle = display name for
+  // now). If the viewer is logged in but outside the top 8, append their own row
+  // so they can always find themselves. Empty state until there are users to rank.
   const session = await getSession();
   const me = session?.user ?? null;
-  const top = await getLeaderboard({ by: "networth", limit: 8 });
+  const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,
     handle: e.name,
-    netWorth: e.netWorth,
+    totalWins: e.totalWins,
+    totalResolved: e.totalResolved,
     accuracy: e.accuracy,
     you: me?.id === e.userId,
   }));
@@ -74,7 +75,8 @@ export default async function Home({
       ? {
           rank: myStats.rank,
           handle: me.name,
-          netWorth: myStats.netWorth,
+          totalWins: myStats.totalWins,
+          totalResolved: myStats.totalResolved,
           accuracy: myStats.accuracy,
         }
       : null;
