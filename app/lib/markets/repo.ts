@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, notInArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx as LedgerTx } from "@/app/lib/db";
@@ -91,9 +91,11 @@ export async function upsertPrediction({
   const [row] = await tx
     .insert(bets)
     .values({ userId, marketId, outcomeId })
+    // Change the pick in place but KEEP the original createdAt (and seenAt) so a
+    // changed prediction doesn't jump to the top of the portfolio's createdAt order.
     .onConflictDoUpdate({
       target: [bets.userId, bets.marketId],
-      set: { outcomeId, createdAt: new Date() },
+      set: { outcomeId },
     })
     .returning({ id: bets.id });
   return row;
@@ -142,6 +144,31 @@ export async function getOutcomeCounts({
   return new Map(rows.map((r) => [r.outcomeId, r.n]));
 }
 
+/** Predictor counts for MANY markets in one query → marketId → (outcomeId → count).
+ *  Feed pages use this so every card's crowd split is real (no N+1, no blank bars). */
+export async function getOutcomeCountsForMarkets({
+  db = defaultDb,
+  marketIds,
+}: {
+  db?: DB;
+  marketIds: string[];
+}): Promise<Map<string, Map<string, number>>> {
+  const ids = [...new Set(marketIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ marketId: bets.marketId, outcomeId: bets.outcomeId, n: sql<number>`count(*)::int` })
+    .from(bets)
+    .where(inArray(bets.marketId, ids))
+    .groupBy(bets.marketId, bets.outcomeId);
+  const out = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    const m = out.get(r.marketId) ?? new Map<string, number>();
+    m.set(r.outcomeId, r.n);
+    out.set(r.marketId, m);
+  }
+  return out;
+}
+
 /** Bumps a user's forecaster-accuracy counters on a resolve: +1 resolved, and
  *  +1 win when their prediction was on the winning outcome. Rides inside the
  *  resolveMarket transaction. */
@@ -177,6 +204,9 @@ export async function markResolved({
   sourceUrl?: string;
   note?: string;
 }): Promise<void> {
+  // The status guard makes the terminal invariant hold at the DB layer too, not
+  // just via the service's FOR UPDATE check — a direct caller can't overwrite an
+  // already-settled market (the UPDATE matches 0 rows).
   await tx
     .update(markets)
     .set({
@@ -186,15 +216,16 @@ export async function markResolved({
       resolutionNote: note ?? null,
       resolvedAt: new Date(),
     })
-    .where(eq(markets.id, marketId));
+    .where(and(eq(markets.id, marketId), notInArray(markets.status, ["resolved", "voided"])));
 }
 
-/** Marks a market voided (predictions left untouched — no stakes to refund). */
+/** Marks a market voided (predictions left untouched — no stakes to refund).
+ *  Status-guarded so a settled market can't be re-voided at the DB layer. */
 export async function markVoided({ tx, marketId }: { tx: Tx; marketId: string }): Promise<void> {
   await tx
     .update(markets)
     .set({ status: "voided", resolvedAt: new Date() })
-    .where(eq(markets.id, marketId));
+    .where(and(eq(markets.id, marketId), notInArray(markets.status, ["resolved", "voided"])));
 }
 
 // --- Closing-soon sweep (the cron's queries) ---

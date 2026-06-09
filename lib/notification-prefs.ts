@@ -17,7 +17,7 @@ export const PUSH_PREF_CATEGORIES: PushPrefCategory[] = [
   {
     key: "outcomes",
     labelHe: "תוצאות שווקים",
-    descHe: "זכייה, הכרעה או ביטול של שוק שהימרתם בו",
+    descHe: "ניחוש נכון, הכרעה או ביטול של שוק שניחשתם בו",
     types: ["bet_won", "market_resolved", "market_voided"],
   },
   {

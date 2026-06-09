@@ -31,6 +31,7 @@ export function CelebrationHost({ predictions }: { predictions: UnseenResolvedPr
       key={current.predictionId}
       kind={current.correct ? "win" : "loss"}
       questionHe={current.questionHe}
+      outcomeLabelHe={current.outcomeLabelHe}
       onClose={() => setIndex((i) => i + 1)}
     />
   );

@@ -340,3 +340,17 @@ test("endSeason with a non-existent seasonId throws SeasonNotFoundError", async 
     endSeason({ db: h.db, seasonId: "00000000-0000-0000-0000-000000000000" }),
   ).rejects.toBeInstanceOf(SeasonNotFoundError);
 });
+
+test("getSeasonBoard: a correct prediction resolved BEFORE the season window is excluded", async () => {
+  const season = await seedSeason([{ nameHe: "ברונזה", goalCorrect: 1 }]);
+  const { marketId } = await makeCorrectPrediction();
+  // Force the resolution timestamp to before the season start — it must not count.
+  await h.db
+    .update(markets)
+    .set({ resolvedAt: new Date(season.startAt.getTime() - 1000) })
+    .where(eq(markets.id, marketId));
+
+  const board = await getSeasonBoard({ db: h.db, userId: UID });
+  expect(board!.progress).toBe(0);
+  expect(board!.tiers[0].reached).toBe(false);
+});

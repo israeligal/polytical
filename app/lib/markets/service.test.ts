@@ -611,3 +611,72 @@ test("markClosingSoonNotified won't claim a market that stopped being open (TOCT
   const [row] = await h.db.select().from(markets).where(eq(markets.id, m.marketId));
   expect(row.closingSoonNotifiedAt).toBeNull(); // never stamped
 });
+
+// ---------------------------------------------------------------------------
+// Review-flagged coverage: multi-politician unlock, pick-change, void/zero edges
+// ---------------------------------------------------------------------------
+
+test("resolveMarket advances card progress for EVERY featured politician independently", async () => {
+  // One market featuring a common MK (threshold 2) AND a minister (legendary, threshold 10).
+  await seedUser("multi");
+  const m1 = await seedMarket();
+  const commonId = await seedPoliticianLinkedToMarket(m1.marketId); // 9001, "חבר הכנסת" → common (2)
+  const ministerId = 9002;
+  await h.db.insert(politicians).values({
+    personId: ministerId, nameHe: "שר האוצר בדיקה", roleHe: "שר האוצר",
+    sourceDataset: "test", sourceUrl: "https://test.example", fetchedAt: new Date(),
+    searchName: "שר האוצר בדיקה",
+  });
+  await h.db.insert(marketPoliticians).values({ marketId: m1.marketId, personId: ministerId });
+
+  await makePrediction({ db: h.db, userId: "multi", marketId: m1.marketId, outcomeId: m1.yesId });
+  await resolveMarket({ db: h.db, marketId: m1.marketId, winningOutcomeId: m1.yesId });
+
+  // A second market featuring the SAME two politicians; correct again.
+  const m2 = await seedMarket();
+  await h.db.insert(marketPoliticians).values([
+    { marketId: m2.marketId, personId: commonId },
+    { marketId: m2.marketId, personId: ministerId },
+  ]);
+  await makePrediction({ db: h.db, userId: "multi", marketId: m2.marketId, outcomeId: m2.yesId });
+  await resolveMarket({ db: h.db, marketId: m2.marketId, winningOutcomeId: m2.yesId });
+
+  // Common MK: 2 correct ≥ 2 → card granted. Minister: 2 correct < 10 → not granted.
+  const owned = await h.db.select().from(cardCollections).where(eq(cardCollections.userId, "multi"));
+  const ownedIds = owned.map((o) => o.personId);
+  expect(ownedIds).toContain(commonId);
+  expect(ownedIds).not.toContain(ministerId);
+});
+
+test("changing a prediction to a losing outcome before resolve tallies the user as wrong", async () => {
+  await seedUser("flipper");
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "flipper", marketId: mId, outcomeId: yesId }); // initially the winner
+  await makePrediction({ db: h.db, userId: "flipper", marketId: mId, outcomeId: noId });  // changes to the loser
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+  expect(await userStats("flipper")).toEqual({ totalResolved: 1, totalWins: 0 });
+});
+
+test("resolveMarket with zero predictors resolves cleanly and changes no stats", async () => {
+  await seedUser("bystander");
+  const { marketId: mId, yesId } = await seedMarket();
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+  const [row] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(row.status).toBe("resolved");
+  expect(row.resolvedOutcomeId).toBe(yesId);
+  expect(await userStats("bystander")).toEqual({ totalResolved: 0, totalWins: 0 });
+});
+
+test("resolveMarket on a VOIDED market throws AlreadyResolvedError (terminal)", async () => {
+  const { marketId: mId, yesId } = await seedMarket();
+  await voidMarket({ db: h.db, marketId: mId });
+  await expect(
+    resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId }),
+  ).rejects.toBeInstanceOf(AlreadyResolvedError);
+});
+
+test("voidMarket on an already-voided market throws AlreadyResolvedError (terminal)", async () => {
+  const { marketId: mId } = await seedMarket();
+  await voidMarket({ db: h.db, marketId: mId });
+  await expect(voidMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(AlreadyResolvedError);
+});

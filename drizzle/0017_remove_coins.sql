@@ -25,6 +25,13 @@ DROP TYPE "public"."notification_type";--> statement-breakpoint
 CREATE TYPE "public"."notification_type" AS ENUM('bet_won', 'market_resolved', 'suggestion_approved', 'suggestion_rejected', 'market_voided', 'market_closing_soon');--> statement-breakpoint
 ALTER TABLE "notifications" ALTER COLUMN "type" SET DATA TYPE "public"."notification_type" USING "type"::"public"."notification_type";--> statement-breakpoint
 ALTER TABLE "card_progress" ADD CONSTRAINT "card_progress_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- The old coin model allowed multiple bets per (user, market) — collapse them to
+-- ONE prediction (keep the latest pick: max createdAt, ties by id) BEFORE adding
+-- the unique index, or CREATE UNIQUE INDEX aborts on a populated DB. No-op on a
+-- fresh test DB (bets is empty).
+DELETE FROM "bets" b USING "bets" b2
+WHERE b."userId" = b2."userId" AND b."marketId" = b2."marketId"
+  AND (b."createdAt" < b2."createdAt" OR (b."createdAt" = b2."createdAt" AND b."id" < b2."id"));--> statement-breakpoint
 CREATE UNIQUE INDEX "bets_user_market_uq" ON "bets" USING btree ("userId","marketId");--> statement-breakpoint
 ALTER TABLE "bets" DROP COLUMN "amount";--> statement-breakpoint
 ALTER TABLE "bets" DROP COLUMN "payout";--> statement-breakpoint

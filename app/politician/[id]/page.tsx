@@ -7,7 +7,7 @@ import {
   getPoliticianByPersonId,
 } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketsForPolitician } from "@/app/lib/markets/repo";
+import { getMarketsForPolitician, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
 import { MarketCard } from "@/components/market-card";
@@ -48,8 +48,11 @@ export default async function PoliticianPage({
   for (const p of await getAllPoliticians()) polById.set(String(p.personId), dbToCard(p));
   const featuredFor = (ids: number[]): Politician[] =>
     ids.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+  const countsByMarket = await getOutcomeCountsForMarkets({
+    marketIds: marketBundles.map((b) => b.market.id),
+  });
   const marketCards = marketBundles.map((b) => ({
-    market: bundleToMarket(b),
+    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
     featured: featuredFor(b.personIds),
   }));
 

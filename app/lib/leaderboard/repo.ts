@@ -105,10 +105,17 @@ export async function getUserStats({
     .where(eq(users.id, userId));
   if (!row) return null;
 
+  // Rank = how many users sort strictly AHEAD of this one in the SAME order
+  // getLeaderboard("wins") uses (totalWins desc, accuracy desc, id asc), + 1 — so
+  // the profile rank matches the leaderboard table's row number exactly, even on ties.
   const [higher] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(users)
-    .where(sql`${users.totalWins} > ${row.totalWins}`);
+    .where(sql`
+      ${users.totalWins} > ${row.totalWins}
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} > ${row.accuracy})
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.id} < ${userId})
+    `);
 
   return {
     totalResolved: row.totalResolved,

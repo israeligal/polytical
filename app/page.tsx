@@ -3,7 +3,7 @@ import type { Category, Politician } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, getMarketOfTheDay, listOpenMarkets } from "@/app/lib/markets/repo";
+import { getMarketBundle, getMarketOfTheDay, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { CategoryRail } from "@/components/category-rail";
@@ -36,8 +36,12 @@ export default async function Home({
   const featuredFor = (personIds: number[]): Politician[] =>
     personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
 
+  // Live predictor counts for every card in one query so each OddsBar shows the
+  // real crowd split (not a blank 0/0 bar).
+  const countsByMarket = await getOutcomeCountsForMarkets({ marketIds: bundles.map((b) => b.market.id) });
+
   const cards = bundles.map((b) => ({
-    market: bundleToMarket(b),
+    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
     featured: featuredFor(b.personIds),
   }));
 

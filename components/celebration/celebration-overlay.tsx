@@ -12,10 +12,12 @@ import { Sparkle, Trophy } from "@/components/icons";
 export function CelebrationOverlay({
   kind,
   questionHe,
+  outcomeLabelHe,
   onClose,
 }: {
   kind: "win" | "loss";
   questionHe: string;
+  outcomeLabelHe: string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -92,6 +94,9 @@ export function CelebrationOverlay({
           </>
         )}
         <p className="max-w-xs text-sm text-muted-foreground">{questionHe}</p>
+        <p className="text-xs text-muted-foreground">
+          ניחשת: <span className="font-bold text-foreground">{outcomeLabelHe}</span>
+        </p>
       </div>
     </div>
   );
