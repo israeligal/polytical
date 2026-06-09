@@ -2,6 +2,10 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-09 | fabb59a | push: EnablePush CTA on `/notifications` (PR #15, prod:3211) | ✅ | SW active at /sw.js (scope /), perm=default, "🔔 קבלו התראות" renders, 0 console errors |
+| 2026-06-09 | fabb59a | push: notifications feed render (widened FeedItem) | ✅ | bet_won (mint) + market_resolved (neutral) correct copy/accents/timestamps; 0 errors; new types not in data |
+| 2026-06-09 | c24ef5b | mobile header overflow FIX (MobileMenu collapse) | ✅ | 390px now 0 overflow on `/` + `/notifications`; hamburger menu holds nav + theme + bonus + logout; desktop unchanged; verified in browser |
+| 2026-06-09 | fabb59a | mobile 390px `/notifications` + `/` header overflow | ⚠️ | 200px h-overflow from SiteHeader (~590px, no mobile collapse); IDENTICAL on untouched `/`; was pre-existing; FIXED c24ef5b |
 | 2026-06-02 | 849c33d | light Israeli theme (default) | ✅ | white bg, BLUE=כן / RED=לא odds bars, blue CTAs, gold coins+hot badge; header/portrait/pill theme-fixed; 0 console errors |
 | 2026-06-02 | 849c33d | dark toggle (Sun/Moon) | ✅ | click moon → dark "trading floor" (mint=כן/coral=לא) instantly, no flash; cookie-persisted; click sun → back to light |
 | 2026-06-02 | 849c33d | multi-persona dogfood (7 accts) | ⚠️ | money/ledger invariants ALL held across 45+ adversarial probes; leaderboard now populated; 5 bugs found (1 HIGH season-unreachable, see dogfood-fixes) |

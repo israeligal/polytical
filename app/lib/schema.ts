@@ -268,6 +268,9 @@ export const markets = pgTable("markets", {
   // creates AND preserves it (a hand-written migration index gets dropped by a
   // later push, since push diffs against the schema).
   searchText: text("searchText").notNull().default(""),
+  // Set once when the closing-soon push has been sent for this market, so the
+  // cron sweep is idempotent and never re-notifies the same bettors.
+  closingSoonNotifiedAt: timestamp("closingSoonNotifiedAt"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [
   index("markets_searchtext_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
@@ -358,6 +361,9 @@ export const notificationType = pgEnum("notification_type", [
   "market_resolved",
   "suggestion_approved",
   "suggestion_rejected",
+  "season_reward",       // a season reward tier was claimed
+  "market_voided",       // a market the user bet on was voided (stakes refunded)
+  "market_closing_soon", // a market the user bet on is about to close
 ]);
 
 export const notifications = pgTable("notifications", {
@@ -439,4 +445,29 @@ export const seasonRewardClaims = pgTable("season_reward_claims", {
   // One claim per (user, tier) — the idempotency invariant behind AlreadyClaimedError.
   primaryKey({ columns: [t.userId, t.tierId] }),
   index("season_reward_claims_user_idx").on(t.userId),
+]);
+
+// ===================================================================
+// Push subscriptions (Phase: push notifications) — one row per browser/device
+// push endpoint a user has granted. Web-push delivery rides ON TOP of the
+// in-app `notifications` log: the same NotificationEvent that writes a row
+// also fans out a push AFTER its transaction commits (never inside the
+// settlement tx — sendNotification is a network call that can't roll back).
+// `endpoint` is globally UNIQUE (it already identifies the device); a dead
+// endpoint (push service 404/410) is pruned by the dispatcher. text `userId`
+// FK cascade mirrors `notifications` so deleting a user drops their subs.
+// ===================================================================
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),  // client public key (PushSubscription.keys.p256dh)
+  auth: text("auth").notNull(),      // client auth secret (PushSubscription.keys.auth)
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, (t) => [
+  // endpoint already uniquely identifies a device push channel → re-subscribe is
+  // an UPSERT on this, and pruning a dead sub targets it.
+  uniqueIndex("push_subscriptions_endpoint_uq").on(t.endpoint),
+  index("push_subscriptions_user_idx").on(t.userId),
 ]);

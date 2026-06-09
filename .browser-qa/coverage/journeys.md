@@ -2,6 +2,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [onboarding](#onboarding) | 2026-06-02 `46f0770` | 1 | 5/5 |
@@ -15,6 +16,27 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+## notifications-push
+
+**What it is:** A user opts into web-push from `/notifications`, and sees their in-app notification feed (wins, resolutions, voids, season rewards, closing-soon). Push fans out from the same events as the in-app log; delivery needs an installed PWA + VAPID.
+
+**Last walked:** 2026-06-09 `fabb59a`. **Walks:** 1. **Coverage:** 3/5
+
+**Steps:**
+- ✅ `/notifications` (prod, logged-in): SW registers + active at `/sw.js` (scope `/`); the "🔔 קבלו התראות" CTA renders when `Notification.permission=default`; 0 console errors
+- ✅ in-app feed renders existing types — bet_won (mint accent) + market_resolved (neutral) — correct Hebrew copy, accents, timestamps; widened FeedItem type doesn't break render
+- ✅ mobile 390px: 0 horizontal overflow on `/notifications` + `/`; SiteHeader collapses to a hamburger menu (fixed in c24ef5b); push content (CTA + cards) full-width + readable
+- ❌ click CTA → grant permission → subscribe POST `/api/push/subscribe` → row created → status flips to "subscribed" (blocked: automation can't grant the OS Notification permission)
+- ❌ real push delivery on an installed PWA (iOS-after-install + Android) — HARD GATE, needs a device + VAPID handshake
+
+**Notable history:**
+- `fabb59a` (2026-06-09): first walk — PR #15 web-push feature. CTA + SW + feed green.
+- `c24ef5b` (2026-06-09): fixed the authed SiteHeader mobile overflow (MobileMenu hamburger) — also gave the nav its first mobile surface.
+
+**Known gaps:**
+- Subscribe round-trip + delivery un-walkable in automation (OS permission prompt + real push service). Covered by route + service integration tests instead.
+- New notification types (season_reward / market_voided / market_closing_soon) not visually exercised — no data for the test account; render path is type-safe + ACCENT map exhaustive.
 
 ## seasons-claim
 

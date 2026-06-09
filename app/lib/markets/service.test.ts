@@ -1,7 +1,14 @@
-import { beforeEach, afterEach, expect, test } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, markets, outcomes, bets, transactions } from "@/app/lib/schema";
+
+// Mock at the push-service boundary: push fires AFTER commit, fire-and-forget.
+// Asserting the call (and that a rejection cannot break settlement) IS the
+// observable behavior for this boundary.
+vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
+import { dispatchPush } from "@/app/lib/push/service";
+const dispatchPushMock = vi.mocked(dispatchPush);
+import { users, markets, outcomes, bets, transactions, notifications } from "@/app/lib/schema";
 import { STARTING_STACK, MIN_BET } from "@/app/lib/economy";
 import {
   AlreadyResolvedError,
@@ -11,7 +18,8 @@ import {
   InvalidOutcomeError,
 } from "@/app/lib/errors";
 import { applyEntry, grantStartingStack, getBalance } from "@/app/lib/ledger/service";
-import { placeBet, resolveMarket, voidMarket } from "./service";
+import { placeBet, resolveMarket, voidMarket, notifyClosingSoonMarkets } from "./service";
+import { markClosingSoonNotified } from "./repo";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 const UID = "u1";
@@ -68,6 +76,8 @@ async function seed(opts: { status?: "open" | "closed"; closeAt?: Date } = {}) {
 
 beforeEach(async () => {
   h = await createTestDb();
+  dispatchPushMock.mockReset();
+  dispatchPushMock.mockResolvedValue(undefined);
 });
 afterEach(async () => {
   await h.close();
@@ -392,4 +402,176 @@ test("voidMarket leaves accuracy stats unchanged", async () => {
 
   expect(await userStats("a")).toEqual({ totalResolved: 0, totalWins: 0 });
   expect(await userStats("b")).toEqual({ totalResolved: 0, totalWins: 0 });
+});
+
+// --- Post-commit push dispatch -------------------------------------------------
+
+test("resolveMarket fires dispatchPush once after commit with the winner's bet_won event", async () => {
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  // winner stakes YES (the winning outcome); loser stakes NO so YES has a payout.
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 600 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 400 });
+
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  // Exactly one dispatch, post-commit, carrying the event batch built in the tx.
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  // The winner's bet_won event is present with the right shape.
+  const won = events.find((e) => e.type === "bet_won" && e.userId === "winner");
+  expect(won).toMatchObject({
+    type: "bet_won",
+    userId: "winner",
+    marketId: mId,
+    payout: 1000, // total 1000, winningPool 600 → floor(1000×600/600)=1000
+  });
+  // market_resolved is emitted for every participant (winner + loser).
+  const resolvedFor = events.filter((e) => e.type === "market_resolved").map((e) => e.userId).sort();
+  expect(resolvedFor).toEqual(["loser", "winner"]);
+});
+
+test("resolveMarket settles correctly even when dispatchPush rejects (push cannot break settlement)", async () => {
+  dispatchPushMock.mockRejectedValueOnce(new Error("push service down"));
+
+  await fundedUser("winner", 1000);
+  await fundedUser("loser", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "winner", marketId: mId, outcomeId: yesId, amount: 600 });
+  await placeBet({ db: h.db, userId: "loser", marketId: mId, outcomeId: noId, amount: 400 });
+
+  // Must NOT throw — the post-commit push failure is swallowed.
+  await expect(
+    resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId }),
+  ).resolves.toBeUndefined();
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+
+  // Settlement is fully committed despite the push failure (assert DB state).
+  const [winnerBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "winner"), eq(bets.marketId, mId)));
+  expect(winnerBet.status).toBe("won");
+  expect(winnerBet.payout).toBe(1000);
+  // winner staked 600 of 1000 → 1000 - 600 + 1000 = 1400.
+  expect(await getBalance({ db: h.db, userId: "winner" })).toBe(1400);
+
+  const [loserBet] = await h.db
+    .select()
+    .from(bets)
+    .where(and(eq(bets.userId, "loser"), eq(bets.marketId, mId)));
+  expect(loserBet.status).toBe("lost");
+  expect(loserBet.payout).toBe(0);
+  // loser staked 400 of 1000, no credit → 600.
+  expect(await getBalance({ db: h.db, userId: "loser" })).toBe(600);
+
+  const [mkt] = await h.db.select().from(markets).where(eq(markets.id, mId));
+  expect(mkt.status).toBe("resolved");
+  expect(mkt.resolvedOutcomeId).toBe(yesId);
+});
+
+test("voidMarket dispatches a market_voided push to each bettor after commit", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await placeBet({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId, amount: 250 });
+  await placeBet({ db: h.db, userId: "b", marketId: mId, outcomeId: noId, amount: 750 });
+
+  await voidMarket({ db: h.db, marketId: mId });
+
+  // In-app market_voided rows for both bettors, linked to the market.
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(voided.every((n) => n.refMarketId === mId)).toBe(true);
+
+  // One post-commit dispatch carrying both market_voided events.
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(events.filter((e) => e.type === "market_voided").map((e) => e.userId).sort()).toEqual(["a", "b"]);
+});
+
+// --- Closing-soon sweep --------------------------------------------------------
+
+/** Seeds a market with an explicit closeAt + YES/NO outcomes. */
+async function seedMarketClosingAt(closeAt: Date, status: "open" | "closed" = "open") {
+  const [m] = await h.db
+    .insert(markets)
+    .values({ questionHe: "סוגרים בקרוב?", category: "coalition", status, closeAt })
+    .returning({ id: markets.id });
+  const outs = await h.db
+    .insert(outcomes)
+    .values([
+      { marketId: m.id, labelHe: "כן", ordinal: 0 },
+      { marketId: m.id, labelHe: "לא", ordinal: 1 },
+    ])
+    .returning({ id: outcomes.id });
+  return { marketId: m.id, yesId: outs[0].id };
+}
+
+test("notifyClosingSoonMarkets notifies bettors of a soon-closing market once and stamps it", async () => {
+  await fundedUser("a", 1000);
+  await fundedUser("b", 1000);
+  const soon = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000)); // due (within 24h)
+  const later = await seedMarketClosingAt(new Date(Date.now() + 5 * 24 * 3600 * 1000)); // not due
+  await placeBet({ db: h.db, userId: "a", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "b", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+  await placeBet({ db: h.db, userId: "a", marketId: later.marketId, outcomeId: later.yesId, amount: 100 });
+
+  const { notified } = await notifyClosingSoonMarkets({ db: h.db });
+  expect(notified).toBe(1); // one market, not one-per-bettor
+
+  // In-app closing-soon notice for each distinct bettor of the SOON market only.
+  const cs = (await h.db.select().from(notifications)).filter((n) => n.type === "market_closing_soon");
+  expect(cs.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(cs.every((n) => n.refMarketId === soon.marketId)).toBe(true);
+
+  // The soon market is stamped; the later one is untouched.
+  const [soonRow] = await h.db.select().from(markets).where(eq(markets.id, soon.marketId));
+  const [laterRow] = await h.db.select().from(markets).where(eq(markets.id, later.marketId));
+  expect(soonRow.closingSoonNotifiedAt).not.toBeNull();
+  expect(laterRow.closingSoonNotifiedAt).toBeNull();
+
+  // One post-commit push dispatch (for the soon market).
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+});
+
+test("notifyClosingSoonMarkets is idempotent: a second sweep notifies nobody", async () => {
+  await fundedUser("a", 1000);
+  const soon = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000));
+  await placeBet({ db: h.db, userId: "a", marketId: soon.marketId, outcomeId: soon.yesId, amount: 100 });
+
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(1);
+  dispatchPushMock.mockClear();
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(0);
+  expect(dispatchPushMock).not.toHaveBeenCalled();
+
+  // Still exactly one closing-soon notice — no duplicate on the re-sweep.
+  const cs = (await h.db.select().from(notifications)).filter((n) => n.type === "market_closing_soon");
+  expect(cs.length).toBe(1);
+});
+
+test("notifyClosingSoonMarkets ignores markets past closeAt or not open", async () => {
+  await fundedUser("a", 1000);
+  const past = await seedMarketClosingAt(new Date(Date.now() - 1000)); // open but already past close
+  const closed = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000), "closed"); // not open
+  // Bet rows inserted directly (placeBet would reject a past/closed market).
+  await h.db.insert(bets).values({ userId: "a", marketId: past.marketId, outcomeId: past.yesId, amount: 100 });
+  await h.db.insert(bets).values({ userId: "a", marketId: closed.marketId, outcomeId: closed.yesId, amount: 100 });
+
+  expect((await notifyClosingSoonMarkets({ db: h.db })).notified).toBe(0);
+  expect((await h.db.select().from(notifications)).length).toBe(0);
+});
+
+test("markClosingSoonNotified won't claim a market that stopped being open (TOCTOU guard)", async () => {
+  const m = await seedMarketClosingAt(new Date(Date.now() + 2 * 3600 * 1000)); // open + due
+  // Simulate the market resolving in the gap between the cron's (unlocked) list
+  // read and its per-market claim — the claim must NOT stamp/notify it.
+  await h.db.update(markets).set({ status: "resolved" }).where(eq(markets.id, m.marketId));
+
+  const won = await h.db.transaction((tx) => markClosingSoonNotified({ tx, marketId: m.marketId, now: new Date() }));
+  expect(won).toBe(false);
+
+  const [row] = await h.db.select().from(markets).where(eq(markets.id, m.marketId));
+  expect(row.closingSoonNotifiedAt).toBeNull(); // never stamped
 });

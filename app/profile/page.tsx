@@ -14,6 +14,7 @@ import { StatusChip } from "@/components/status-chip";
 import { EmptyState } from "@/components/empty-state";
 import { getCelebrations } from "@/app/lib/bets/service";
 import { CelebrationHost } from "@/components/celebration/celebration-host";
+import { PushSettings } from "@/components/pwa/push-settings";
 import { Flame, Trophy } from "@/components/icons";
 
 export default async function ProfilePage() {
@@ -108,6 +109,9 @@ export default async function ProfilePage() {
           </StatCard>
         </div>
       </section>
+
+      {/* SETTINGS — push notifications */}
+      <PushSettings />
 
       {/* OPEN POSITIONS */}
       <section className="mb-10">
