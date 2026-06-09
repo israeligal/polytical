@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { LedgerTx } from "@/app/lib/ledger/repo";
@@ -194,6 +194,79 @@ export async function markVoided({ tx, marketId }: { tx: Tx; marketId: string })
     .update(markets)
     .set({ status: "voided", resolvedAt: new Date() })
     .where(eq(markets.id, marketId));
+}
+
+// --- Closing-soon sweep (the cron's queries) ---
+
+/** OPEN markets closing within `withinMs` from `now` that haven't had their
+ *  closing-soon notice sent yet (closingSoonNotifiedAt IS NULL). Soonest first. */
+export async function listMarketsClosingSoon({
+  db = defaultDb,
+  withinMs,
+  now,
+}: {
+  db?: DB;
+  withinMs: number;
+  now: Date;
+}): Promise<MarketRow[]> {
+  const horizon = new Date(now.getTime() + withinMs);
+  return db
+    .select()
+    .from(markets)
+    .where(
+      and(
+        eq(markets.status, "open"),
+        isNull(markets.closingSoonNotifiedAt),
+        gt(markets.closeAt, now),
+        lte(markets.closeAt, horizon),
+      ),
+    )
+    .orderBy(asc(markets.closeAt));
+}
+
+/** Distinct users who have a bet on a market (the closing-soon notice audience). */
+export async function getMarketBettors({
+  tx,
+  marketId,
+}: {
+  tx: Tx;
+  marketId: string;
+}): Promise<string[]> {
+  const rows = await tx
+    .selectDistinct({ userId: bets.userId })
+    .from(bets)
+    .where(eq(bets.marketId, marketId));
+  return rows.map((r) => r.userId);
+}
+
+/** Claims the closing-soon notice for a market: stamps closingSoonNotifiedAt only
+ *  if still NULL AND the market is still open + not yet past closeAt. Returns true
+ *  iff THIS call won. The status/closeAt predicates are part of the atomic UPDATE
+ *  (which row-locks), so a market resolved/voided/closed in the gap since the
+ *  unlocked list read is NOT claimed — its bettors never get a stale "closing
+ *  soon" push. Concurrent crons also can't double-send (loser matches 0 rows). */
+export async function markClosingSoonNotified({
+  tx,
+  marketId,
+  now,
+}: {
+  tx: Tx;
+  marketId: string;
+  now: Date;
+}): Promise<boolean> {
+  const rows = await tx
+    .update(markets)
+    .set({ closingSoonNotifiedAt: now })
+    .where(
+      and(
+        eq(markets.id, marketId),
+        eq(markets.status, "open"),
+        gt(markets.closeAt, now),
+        isNull(markets.closingSoonNotifiedAt),
+      ),
+    )
+    .returning({ id: markets.id });
+  return rows.length > 0;
 }
 
 // --- Read helpers (default `db`, no tx) ---

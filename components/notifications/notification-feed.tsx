@@ -4,17 +4,18 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markNotificationReadAction, markAllReadAction } from "@/app/actions/notifications";
 import { EmptyState } from "@/components/empty-state";
-
-const dateFmt = new Intl.DateTimeFormat("he-IL", {
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+import { formatDateTime } from "@/lib/time";
 
 export interface FeedItem {
   id: string;
-  type: "bet_won" | "market_resolved" | "suggestion_approved" | "suggestion_rejected";
+  type:
+    | "bet_won"
+    | "market_resolved"
+    | "suggestion_approved"
+    | "suggestion_rejected"
+    | "season_reward"
+    | "market_voided"
+    | "market_closing_soon";
   titleHe: string;
   bodyHe: string;
   refMarketId: string | null;
@@ -22,12 +23,16 @@ export interface FeedItem {
   createdAtIso: string;
 }
 
-// Left-accent color per type: wins/approvals mint, rejections coral, resolved neutral.
+// Left-accent color per type: wins/approvals/rewards mint, rejections coral,
+// resolved/voided neutral, closing-soon gold (call-to-action).
 const ACCENT: Record<FeedItem["type"], string> = {
   bet_won: "border-s-positive",
   suggestion_approved: "border-s-positive",
+  season_reward: "border-s-positive",
   suggestion_rejected: "border-s-negative",
   market_resolved: "border-s-border",
+  market_voided: "border-s-border",
+  market_closing_soon: "border-s-accent",
 };
 
 export function NotificationFeed({ items }: { items: FeedItem[] }) {
@@ -37,7 +42,12 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   function open(item: FeedItem) {
     startTransition(async () => {
       if (!item.read) await markNotificationReadAction({ id: item.id });
-      router.push(item.refMarketId ? `/market/${item.refMarketId}` : "/profile");
+      const href = item.refMarketId
+        ? `/market/${item.refMarketId}`
+        : item.type === "season_reward"
+          ? "/seasons"
+          : "/profile";
+      router.push(href);
     });
   }
 
@@ -84,7 +94,7 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
               </span>
               <span className="text-sm text-muted-foreground">{item.bodyHe}</span>
               <time dateTime={item.createdAtIso} className="font-accent text-xs text-muted-foreground">
-                {dateFmt.format(new Date(item.createdAtIso))}
+                {formatDateTime(item.createdAtIso)}
               </time>
             </button>
           </li>

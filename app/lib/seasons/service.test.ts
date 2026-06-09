@@ -1,10 +1,15 @@
-import { beforeEach, afterEach, expect, test } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, transactions, seasonRewardClaims, seasons } from "@/app/lib/schema";
+import { users, transactions, seasonRewardClaims, seasons, notifications } from "@/app/lib/schema";
 import { grantStartingStack, getBalance } from "@/app/lib/ledger/service";
+import { dispatchPush } from "@/app/lib/push/service";
 import { getActiveSeason } from "./repo";
 import { getSeasonBoard, claimTier, createSeason, endSeason } from "./service";
+
+// Mock the push dispatcher at its boundary: assert it's invoked post-commit
+// without reaching web-push. The in-app emitNotifications still runs for real.
+vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 import {
   AlreadyClaimedError,
   AnotherSeasonActiveError,
@@ -34,10 +39,43 @@ async function seedSeason(goals: { nameHe: string; goalAmount: number; rewardAmo
 
 beforeEach(async () => {
   h = await createTestDb();
+  vi.mocked(dispatchPush).mockClear();
   await h.db.insert(users).values({ id: UID, name: "גל", email: "g@x.co" });
   await grantStartingStack({ db: h.db, userId: UID }); // balance 1000
 });
 afterEach(async () => h.close());
+
+test("claimTier writes a season_reward in-app notice and dispatches push post-commit", async () => {
+  await seedSeason([{ nameHe: "ברונזה", goalAmount: 500, rewardAmount: 200 }]);
+  await ledger("bet", -600, new Date()); // wagered 600 ≥ 500
+
+  const tier = (await getSeasonBoard({ db: h.db, userId: UID }))!.tiers[0];
+  await claimTier({ db: h.db, userId: UID, tierId: tier.id });
+
+  // In-app: exactly one season_reward row for the user.
+  const reward = await h.db
+    .select()
+    .from(notifications)
+    .where(and(eq(notifications.userId, UID), eq(notifications.type, "season_reward")));
+  expect(reward.length).toBe(1);
+  expect(reward[0].bodyHe).toContain("ברונזה");
+
+  // Push: dispatched once, post-commit, carrying the season_reward event.
+  expect(dispatchPush).toHaveBeenCalledTimes(1);
+  const arg = vi.mocked(dispatchPush).mock.calls[0][0];
+  expect(arg.events[0]).toMatchObject({ type: "season_reward", userId: UID, amount: 200 });
+});
+
+test("a failing push never breaks the claim (reward still credited)", async () => {
+  vi.mocked(dispatchPush).mockRejectedValueOnce(new Error("push service down"));
+  await seedSeason([{ nameHe: "ברונזה", goalAmount: 500, rewardAmount: 200 }]);
+  await ledger("bet", -600, new Date());
+  const tier = (await getSeasonBoard({ db: h.db, userId: UID }))!.tiers[0];
+
+  const res = await claimTier({ db: h.db, userId: UID, tierId: tier.id });
+  expect(res.amount).toBe(200);
+  expect(await getBalance({ db: h.db, userId: UID })).toBe(1200); // credited despite push failure
+});
 
 test("progress = Shekoins WAGERED in-window (bet debits); payouts + handouts + out-of-window excluded", async () => {
   await seedSeason([{ nameHe: "א", goalAmount: 100, rewardAmount: 50 }]);

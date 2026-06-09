@@ -50,3 +50,6 @@ next-env.d.ts
 
 # AI caricature capture scratch (style explorations; not for commit)
 .caricature-capture/
+
+# Local git worktrees (full checkouts, never part of the repo)
+.claude/worktrees/

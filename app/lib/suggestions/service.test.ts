@@ -1,6 +1,13 @@
-import { beforeEach, afterEach, expect, test } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
+
+// Mock at the push-service boundary: push fires AFTER commit, fire-and-forget.
+// Asserting the call (and that a rejection cannot break the approval) IS the
+// observable behavior for this boundary.
+vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
+import { dispatchPush } from "@/app/lib/push/service";
+const dispatchPushMock = vi.mocked(dispatchPush);
 import { users, politicians, markets, outcomes, marketPoliticians, marketSuggestions } from "@/app/lib/schema";
 import {
   AlreadyReviewedError,
@@ -24,6 +31,8 @@ const CLOSE = new Date("2026-12-31T00:00:00Z");
 
 beforeEach(async () => {
   h = await createTestDb();
+  dispatchPushMock.mockReset();
+  dispatchPushMock.mockResolvedValue(undefined);
   await h.db.insert(users).values([
     { id: "proposer", name: "מציע", email: "p@x.co" },
     { id: "other", name: "אחר", email: "o@x.co" },
@@ -124,4 +133,65 @@ test("getMySuggestions returns only the caller's rows; listSuggestions filters b
   expect(pending.length).toBe(2);
   const approved = await listSuggestions({ db: h.db, status: "approved" });
   expect(approved.length).toBe(0);
+});
+
+// --- Post-commit push dispatch -------------------------------------------------
+
+test("approveSuggestion fires dispatchPush once after commit with the suggestion_approved event", async () => {
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם תוקם ועדת חקירה?", category: "scandals",
+  });
+
+  const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
+
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(events).toEqual([
+    {
+      type: "suggestion_approved",
+      userId: "proposer",
+      suggestionId: id,
+      marketId,
+      questionHe: "האם תוקם ועדת חקירה?",
+    },
+  ]);
+});
+
+test("approveSuggestion succeeds even when dispatchPush rejects (push cannot break approval)", async () => {
+  dispatchPushMock.mockRejectedValueOnce(new Error("push service down"));
+
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם יתקיימו בחירות מוקדמות?", category: "elections",
+  });
+
+  // Must NOT throw — the post-commit push failure is swallowed.
+  const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+
+  // The approval fully committed despite the push failure (assert DB state).
+  const [m] = await h.db.select().from(markets).where(eq(markets.id, marketId));
+  expect(m.status).toBe("open");
+  const [s] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
+  expect(s.status).toBe("approved");
+  expect(s.marketId).toBe(marketId);
+});
+
+test("rejectSuggestion fires dispatchPush once after commit with the suggestion_rejected event", async () => {
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "הצעה שתידחה עם פוש", category: "security",
+  });
+
+  await rejectSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", note: "לא ספציפי מספיק" });
+
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(events).toEqual([
+    {
+      type: "suggestion_rejected",
+      userId: "proposer",
+      suggestionId: id,
+      questionHe: "הצעה שתידחה עם פוש",
+      note: "לא ספציפי מספיק",
+    },
+  ]);
 });

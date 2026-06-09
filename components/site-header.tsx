@@ -52,49 +52,57 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        {/* Desktop action cluster — too wide for mobile, so md+ only. */}
-        <div className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/search"
-            aria-label="חיפוש"
-            className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Search className="h-5 w-5" />
-          </Link>
-          <ThemeToggle initial={theme} />
-          {user ? (
-            <>
-              <FaucetButton />
-              <CoinPill amount={balance} />
-              <NotificationBell unreadCount={unread} />
-              <Link
-                href="/profile"
-                aria-label="פרופיל"
-                className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
-              >
-                <span aria-hidden="true">{initial}</span>
-              </Link>
-              <SignOutButton />
-            </>
-          ) : (
+        <div className="flex items-center gap-3">
+          {/* Desktop (md+): the full inline action cluster. */}
+          <div className="hidden items-center gap-3 md:flex">
             <Link
-              href="/login"
-              className="rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+              href="/search"
+              aria-label="חיפוש"
+              className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
             >
-              התחברות
+              <Search className="h-5 w-5" />
             </Link>
-          )}
-        </div>
+            <ThemeToggle initial={theme} />
+            {user ? (
+              <>
+                <FaucetButton />
+                <CoinPill amount={balance} />
+                <NotificationBell unreadCount={unread} />
+                <Link
+                  href="/profile"
+                  className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+                >
+                  פרופיל
+                </Link>
+                <Link
+                  href="/profile"
+                  aria-label="פרופיל"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
+                >
+                  <span aria-hidden="true">{initial}</span>
+                </Link>
+                <SignOutButton />
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
+              >
+                התחברות
+              </Link>
+            )}
+          </div>
 
-        {/* Mobile action cluster — glanceable balance + alerts, rest behind the menu. */}
-        <div className="flex items-center gap-2 md:hidden">
-          {user ? (
-            <>
-              <CoinPill amount={balance} />
-              <NotificationBell unreadCount={unread} />
-            </>
-          ) : null}
-          <MobileMenu nav={NAV} isLoggedIn={Boolean(user)} theme={theme} />
+          {/* Mobile (<md): balance + bell stay one tap away; everything else folds into the menu. */}
+          <div className="flex items-center gap-2 md:hidden">
+            {user && (
+              <>
+                <CoinPill amount={balance} />
+                <NotificationBell unreadCount={unread} />
+              </>
+            )}
+            <MobileMenu nav={NAV} theme={theme} loggedIn={!!user} />
+          </div>
         </div>
       </div>
     </header>
