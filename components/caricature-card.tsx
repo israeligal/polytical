@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Politician } from "@/lib/types";
 import { marketsForPolitician } from "@/lib/mock-data";
-import { rarityForRole, suitForCat, RARITY_HE, RARITY_TEXT, RARITY_BORDER } from "@/lib/rarity";
+import { statureTierForPolitician, suitForCat, RARITY_HE, RARITY_TEXT, RARITY_BORDER } from "@/lib/rarity";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { ChevronForward, Crest, Gem, Lock } from "@/components/icons";
 
@@ -26,7 +26,8 @@ export function CaricatureCard({
   owned?: boolean;
 }) {
   const count = realData ? 0 : marketsForPolitician(politician.id).length;
-  const rarity = rarityForRole(politician.role);
+  // Stature ladder: gold=sitting PM, silver=former PM, bronze=great office, base=MK.
+  const rarity = statureTierForPolitician({ personId: Number(politician.id), role: politician.role });
   const suit = suitForCat(politician.cat);
   return (
     <article

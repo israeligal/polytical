@@ -21,6 +21,7 @@ function row(overrides: Partial<PoliticianRow>): PoliticianRow {
     roleHe: "שר",
     inKnessetSince: "2015-03-17",
     dob: null,
+    imageUrl: null,
     facts: {},
     active: true,
     searchName: "israel israeli",

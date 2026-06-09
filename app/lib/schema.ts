@@ -119,6 +119,7 @@ export const politicians = pgTable(
     inKnessetSince: date("inKnessetSince"),            // MIN(StartDate) of PositionID-54 rows
     dob: date("dob"),                                  // NULL — not in OData; editorial-sourced later
     facts: jsonb("facts").notNull().default({}),       // roles[], ministries[], counts, etc. (see normalize)
+    imageUrl: text("imageUrl"),                        // AI caricature path (e.g. /caricatures/<personId>.png); null → styled fallback
     active: boolean("active").notNull().default(true),
     searchName: text("searchName").notNull().default(""), // unaccent(lower(nameHe)), niqqud/finals/particles normalized
     sourceDataset: text("sourceDataset").notNull(),

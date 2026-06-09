@@ -65,6 +65,7 @@
 
   /* Rarity tiers (collectible cards) */
   --color-rarity-common: var(--rarity-common);
+  --color-rarity-uncommon: var(--rarity-uncommon);
   --color-rarity-rare: var(--rarity-rare);
   --color-rarity-epic: var(--rarity-epic);
   --color-rarity-legendary: var(--rarity-legendary);
@@ -152,11 +153,13 @@
   --blue: #2563eb;
   --purple: #7c3aed;
 
-  /* Rarity tiers (legible on white) */
-  --rarity-common: #6b7280;
-  --rarity-rare: #2563eb;
-  --rarity-epic: #7c3aed;
-  --rarity-legendary: #b07d00;
+  /* Rarity tiers — political-stature metal ladder (legible on white).
+     base=slate · bronze=great office · silver=former PM · gold=sitting PM */
+  --rarity-common: #6b7280;   /* base / slate */
+  --rarity-uncommon: #2546c7; /* sapphire — minister / cabinet */
+  --rarity-rare: #a15c2b;     /* bronze — party leader */
+  --rarity-epic: #5878a0;     /* silver (cool steel, distinct from base grey) */
+  --rarity-legendary: #b07d00; /* gold */
 
   /* Categorical (parties / multi-option) — saturated enough to read on white */
   --cat-1: #2563eb; /* blue */
@@ -218,10 +221,11 @@
   --blue: #5b8def;
   --purple: #b36bff;
 
-  --rarity-common: #8a93b8;
-  --rarity-rare: #3fa9f5;
-  --rarity-epic: #b36bff;
-  --rarity-legendary: #ffc23d;
+  --rarity-common: #8a93b8;   /* base / slate */
+  --rarity-uncommon: #6a8cf0; /* sapphire — minister / cabinet */
+  --rarity-rare: #e0a062;     /* bronze — party leader */
+  --rarity-epic: #c3d2e6;     /* silver */
+  --rarity-legendary: #ffc23d; /* gold */
 
   --cat-1: #5b8def;
   --cat-2: #00e0a4;

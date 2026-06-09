@@ -30,9 +30,20 @@ if (typeof window !== "undefined") {
 
 export function subscribeBip(cb: () => void): () => void {
   bipListeners.add(cb);
-  return () => bipListeners.delete(cb);
+  if (typeof window !== "undefined") {
+    window.addEventListener(BIP_DISMISS_EVENT, cb);
+  }
+  return () => {
+    bipListeners.delete(cb);
+    if (typeof window !== "undefined") {
+      window.removeEventListener(BIP_DISMISS_EVENT, cb);
+    }
+  };
 }
 export function getBipSnapshot(): boolean {
+  if (typeof window !== "undefined" && window.localStorage.getItem(BIP_DISMISSED_KEY) === "1") {
+    return false;
+  }
   return stashedEvent !== null;
 }
 export function getServerSnapshot(): boolean {
@@ -45,6 +56,15 @@ export async function promptInstall(): Promise<"accepted" | "dismissed" | "unava
   notifyBip();
   await event.prompt();
   return (await event.userChoice).outcome;
+}
+
+// ---------- Chromium: dismiss (persistent) ----------
+export const BIP_DISMISSED_KEY = "polytical-install-dismissed";
+export const BIP_DISMISS_EVENT = "polytical-install-dismiss";
+
+export function dismissBipHint(): void {
+  window.localStorage.setItem(BIP_DISMISSED_KEY, "1");
+  window.dispatchEvent(new Event(BIP_DISMISS_EVENT));
 }
 
 // ---------- iOS: manual add-to-home-screen hint ----------

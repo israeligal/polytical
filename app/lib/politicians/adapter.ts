@@ -60,6 +60,6 @@ export function dbToCard(row: PoliticianRow): Politician {
     cat: catFor(row.factionId),
     tagline: row.roleHe?.trim() ?? "",
     facts,
-    imageUrl: undefined,
+    imageUrl: row.imageUrl ?? undefined,
   };
 }
