@@ -45,7 +45,7 @@ export function CaricatureCard({
           <Gem rarity={rarity} className="h-4 w-4" />
           {RARITY_HE[rarity]}
         </span>
-        <span className={`grid h-7 w-7 place-items-center rounded-[9px] ${RARITY_TEXT[rarity]}`} style={{ backgroundColor: "rgba(0,0,0,.25)" }}>
+        <span className={`grid h-7 w-7 place-items-center rounded-[9px] bg-foreground/10 ${RARITY_TEXT[rarity]}`}>
           <Crest suit={suit} className="h-[18px] w-[18px]" />
         </span>
       </div>
@@ -65,7 +65,7 @@ export function CaricatureCard({
           </p>
         ) : null}
 
-        <dl className="mt-3 divide-y divide-border overflow-hidden rounded-[12px]" style={{ backgroundColor: "var(--bg-sunken)" }}>
+        <dl className="mt-3 divide-y divide-border overflow-hidden rounded-[12px] bg-sunken">
           {politician.facts.map((f) => (
             <div key={f.label} className="flex items-center justify-between px-3 py-1.5">
               <dt className="font-accent text-xs font-bold text-muted-foreground">{f.label}</dt>
