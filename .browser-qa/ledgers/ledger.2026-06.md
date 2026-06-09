@@ -2,6 +2,7 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-09 | 34ca9c3 | notification prefs on `/profile` (per-category toggles) | ✅ | 4 category switches render all-on; toggle off → persists across reload; others independent; re-enable works; 0 console errors |
 | 2026-06-09 | fabb59a | push: EnablePush CTA on `/notifications` (PR #15, prod:3211) | ✅ | SW active at /sw.js (scope /), perm=default, "🔔 קבלו התראות" renders, 0 console errors |
 | 2026-06-09 | fabb59a | push: notifications feed render (widened FeedItem) | ✅ | bet_won (mint) + market_resolved (neutral) correct copy/accents/timestamps; 0 errors; new types not in data |
 | 2026-06-09 | c24ef5b | mobile header overflow FIX (MobileMenu collapse) | ✅ | 390px now 0 overflow on `/` + `/notifications`; hamburger menu holds nav + theme + bonus + logout; desktop unchanged; verified in browser |

@@ -34,6 +34,7 @@ import { users, pushSubscriptions } from "@/app/lib/schema";
 import { listByUser, upsertSubscription } from "@/app/lib/push/repo";
 import { eventToPush, type PushPayload } from "@/app/lib/push/payload";
 import { type NotificationEvent } from "@/app/lib/notifications/service";
+import { setPushCategoryMuted } from "@/app/lib/notifications/prefs";
 import { sendToUser, dispatchPush } from "@/app/lib/push/service";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
@@ -181,6 +182,27 @@ test("sendToUser counts successful sends across all of a user's devices", async 
   });
 
   expect(result).toEqual({ sent: 2 });
+  expect(webpush.sendNotification).toHaveBeenCalledTimes(2);
+});
+
+test("dispatchPush skips a type the user muted, but still sends unmuted types", async () => {
+  await seedTwoSubs();
+  // U1 mutes the "outcomes" category → bet_won is in the muted set.
+  await setPushCategoryMuted({ db: h.db, userId: U1, category: "outcomes", muted: true });
+
+  await dispatchPush({ db: h.db, events: [betWon] });
+  expect(webpush.sendNotification).not.toHaveBeenCalled(); // muted → no push
+
+  // A type in a different (un-muted) category still fans out to both devices.
+  const seasonReward: NotificationEvent = {
+    type: "season_reward",
+    userId: U1,
+    tierId: "t1",
+    seasonId: "s1",
+    tierNameHe: "ברונזה",
+    amount: 50,
+  };
+  await dispatchPush({ db: h.db, events: [seasonReward] });
   expect(webpush.sendNotification).toHaveBeenCalledTimes(2);
 });
 

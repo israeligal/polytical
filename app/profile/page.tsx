@@ -15,6 +15,8 @@ import { EmptyState } from "@/components/empty-state";
 import { getCelebrations } from "@/app/lib/bets/service";
 import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { PushSettings } from "@/components/pwa/push-settings";
+import { NotificationPrefs } from "@/components/pwa/notification-prefs";
+import { getMutedPushTypes } from "@/app/lib/notifications/prefs";
 import { Flame, Trophy } from "@/components/icons";
 
 export default async function ProfilePage() {
@@ -24,11 +26,12 @@ export default async function ProfilePage() {
   // callbackUrl) so a direct hit without a session still lands on login → back.
   if (!user) redirect("/login?callbackUrl=%2Fprofile");
 
-  const [stats, allBets, mySuggestions, celebrations] = await Promise.all([
+  const [stats, allBets, mySuggestions, celebrations, mutedPushTypes] = await Promise.all([
     getUserStats({ userId: user.id }),
     getUserBets({ userId: user.id }),
     getMySuggestions({ userId: user.id }),
     getCelebrations({ userId: user.id }),
+    getMutedPushTypes({ userId: user.id }),
   ]);
 
   const open = allBets.filter((b) => b.betStatus === "open");
@@ -112,6 +115,7 @@ export default async function ProfilePage() {
 
       {/* SETTINGS — push notifications */}
       <PushSettings />
+      <NotificationPrefs mutedPushTypes={mutedPushTypes} />
 
       {/* OPEN POSITIONS */}
       <section className="mb-10">

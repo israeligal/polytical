@@ -9,6 +9,7 @@ import {
   type PushPayload,
 } from "@/app/lib/push/payload";
 import { type NotificationEvent } from "@/app/lib/notifications/service";
+import { getMutedPushTypesForUsers } from "@/app/lib/notifications/prefs";
 import { logger } from "@/app/lib/logger";
 
 // The web-push DISPATCHER — Node-only (it reaches the push services over HTTP).
@@ -114,7 +115,18 @@ export async function dispatchPush({
     logger.error("push.dispatch_failed", { err: String(err) });
     return;
   }
+  // Per-user push opt-outs (one batched query): skip a user's event if they've
+  // muted that type. Fail OPEN — a prefs read error sends the push rather than
+  // silently dropping it. In-app notifications were already written regardless.
+  let mutedByUser: Map<string, Set<string>>;
+  try {
+    mutedByUser = await getMutedPushTypesForUsers({ db, userIds: deduped.map((e) => e.userId) });
+  } catch (err) {
+    logger.error("push.prefs_load_failed", { err: String(err) });
+    mutedByUser = new Map();
+  }
   for (const e of deduped) {
+    if (mutedByUser.get(e.userId)?.has(e.type)) continue;
     try {
       await sendToUser({ db, userId: e.userId, payload: eventToPush(e) });
     } catch (err) {
