@@ -69,7 +69,7 @@ export default async function MarketPage({
         <div className="lg:col-start-1 lg:row-start-1">
           <div className="mb-3 flex items-center gap-3">
             <CategoryBadge category={market.category} />
-            {market.hot ? <HotBadge /> : <Countdown closeAt={market.closeAt} />}
+            {market.hot && <HotBadge />}
           </div>
 
           <h1 className="font-display text-3xl font-black leading-tight text-foreground sm:text-4xl">

@@ -40,15 +40,23 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   const [pending, startTransition] = useTransition();
 
   function open(item: FeedItem) {
-    startTransition(async () => {
-      if (!item.read) await markNotificationReadAction({ id: item.id });
-      const href = item.refMarketId
-        ? `/market/${item.refMarketId}`
-        : item.type === "season_reward"
-          ? "/seasons"
-          : "/profile";
-      router.push(href);
-    });
+    const href = item.refMarketId
+      ? `/market/${item.refMarketId}`
+      : item.type === "season_reward"
+        ? "/seasons"
+        : "/profile";
+    // Navigate first — marking-read is best-effort and must never block or abort
+    // the navigation (a failed read-mark previously left the user stuck).
+    if (!item.read) {
+      startTransition(async () => {
+        try {
+          await markNotificationReadAction({ id: item.id });
+        } catch {
+          // best-effort; the click already navigated
+        }
+      });
+    }
+    router.push(href);
   }
 
   function readAll() {
