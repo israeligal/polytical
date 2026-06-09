@@ -2,6 +2,7 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-09 | 7e2fc16 | `/notifications` #418 hydration fix (Israel-time formatter) | 🔴 | repro'd prod cond. (prod build TZ=UTC + browser Asia/Jerusalem, 3h gap) → 0 console errors, times in Israel time; lib/time + eslint guard |
 | 2026-06-09 | 34ca9c3 | notification prefs on `/profile` (per-category toggles) | ✅ | 4 category switches render all-on; toggle off → persists across reload; others independent; re-enable works; 0 console errors |
 | 2026-06-09 | fabb59a | push: EnablePush CTA on `/notifications` (PR #15, prod:3211) | ✅ | SW active at /sw.js (scope /), perm=default, "🔔 קבלו התראות" renders, 0 console errors |
 | 2026-06-09 | fabb59a | push: notifications feed render (widened FeedItem) | ✅ | bet_won (mint) + market_resolved (neutral) correct copy/accents/timestamps; 0 errors; new types not in data |
