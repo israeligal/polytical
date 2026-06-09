@@ -36,14 +36,16 @@ test("muting the 'outcomes' category adds its three types; unmuting removes them
   expect(back.mutedPushTypes).toEqual([]);
 });
 
-test("categories are independent — muting 'closing' leaves 'season' alone", async () => {
+test("categories are independent — muting 'closing' leaves 'suggestions' alone", async () => {
   await setPushCategoryMuted({ db: h.db, userId: "u1", category: "closing", muted: true });
-  await setPushCategoryMuted({ db: h.db, userId: "u1", category: "season", muted: true });
+  await setPushCategoryMuted({ db: h.db, userId: "u1", category: "suggestions", muted: true });
   const muted = new Set(await getMutedPushTypes({ db: h.db, userId: "u1" }));
-  expect(muted).toEqual(new Set(["market_closing_soon", "season_reward"]));
+  expect(muted).toEqual(new Set(["market_closing_soon", "suggestion_approved", "suggestion_rejected"]));
 
   await setPushCategoryMuted({ db: h.db, userId: "u1", category: "closing", muted: false });
-  expect(await getMutedPushTypes({ db: h.db, userId: "u1" })).toEqual(["season_reward"]);
+  expect(new Set(await getMutedPushTypes({ db: h.db, userId: "u1" }))).toEqual(
+    new Set(["suggestion_approved", "suggestion_rejected"]),
+  );
 });
 
 test("getMutedPushTypesForUsers batches; users with nothing muted are absent from the map", async () => {

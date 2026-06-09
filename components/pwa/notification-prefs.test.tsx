@@ -14,10 +14,10 @@ afterEach(() => {
 });
 
 describe("NotificationPrefs", () => {
-  it("renders all four categories ON when nothing is muted", () => {
+  it("renders all three categories ON when nothing is muted", () => {
     render(<NotificationPrefs mutedPushTypes={[]} />);
     const switches = screen.getAllByRole("switch");
-    expect(switches.length).toBe(4);
+    expect(switches.length).toBe(3);
     expect(switches.every((s) => s.getAttribute("aria-checked") === "true")).toBe(true);
   });
 
@@ -26,24 +26,24 @@ describe("NotificationPrefs", () => {
     expect(
       screen.getByRole("switch", { name: "שווקים שנסגרים" }).getAttribute("aria-checked"),
     ).toBe("false");
-    // independent: season stays on
+    // independent: suggestions stays on
     expect(
-      screen.getByRole("switch", { name: "תגמולי עונה" }).getAttribute("aria-checked"),
+      screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
     ).toBe("true");
   });
 
   it("toggling a category off calls the action with enabled:false and reflects the returned muted set", async () => {
-    setPushCategoryAction.mockResolvedValue({ ok: true, mutedPushTypes: ["season_reward"] });
+    setPushCategoryAction.mockResolvedValue({ ok: true, mutedPushTypes: ["suggestion_approved", "suggestion_rejected"] });
     render(<NotificationPrefs mutedPushTypes={[]} />);
 
-    screen.getByRole("switch", { name: "תגמולי עונה" }).click();
+    screen.getByRole("switch", { name: "הצעות שוק" }).click();
 
     await waitFor(() =>
-      expect(setPushCategoryAction).toHaveBeenCalledWith({ category: "season", enabled: false }),
+      expect(setPushCategoryAction).toHaveBeenCalledWith({ category: "suggestions", enabled: false }),
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("switch", { name: "תגמולי עונה" }).getAttribute("aria-checked"),
+        screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
       ).toBe("false"),
     );
   });
@@ -52,14 +52,14 @@ describe("NotificationPrefs", () => {
     setPushCategoryAction.mockResolvedValue({ ok: false, message: "האטו לרגע" });
     render(<NotificationPrefs mutedPushTypes={[]} />);
 
-    const sw = screen.getByRole("switch", { name: "תגמולי עונה" });
+    const sw = screen.getByRole("switch", { name: "הצעות שוק" });
     sw.click();
 
     await waitFor(() => expect(setPushCategoryAction).toHaveBeenCalled());
     // failed → reverts back to ON
     await waitFor(() =>
       expect(
-        screen.getByRole("switch", { name: "תגמולי עונה" }).getAttribute("aria-checked"),
+        screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
       ).toBe("true"),
     );
   });

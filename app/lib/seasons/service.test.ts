@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, markets, outcomes, bets, seasons } from "@/app/lib/schema";
+import { users, markets, outcomes, seasons } from "@/app/lib/schema";
 import { dispatchPush } from "@/app/lib/push/service";
 import { makePrediction, resolveMarket } from "@/app/lib/markets/service";
 import { getActiveSeason } from "./repo";

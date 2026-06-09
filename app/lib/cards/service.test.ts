@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, politicians, markets, outcomes, marketPoliticians, bets, cardCollections, cardProgress } from "@/app/lib/schema";
+import { users, politicians, markets, outcomes, marketPoliticians, cardCollections } from "@/app/lib/schema";
 import { isOwned, getOwnedPersonIds, listCollection, getProgressByPerson } from "./service";
 import { resolveMarket, makePrediction } from "@/app/lib/markets/service";
 
