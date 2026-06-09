@@ -76,18 +76,6 @@ export function statureTierForPolitician({
   return "common"; // BASE — rank-and-file MK
 }
 
-/**
- * @deprecated Role-keyword rarity over-inflates (every minister → legendary).
- * Use {@link statureTierForPolitician}. Retained only until all call sites move.
- */
-export function rarityForRole(role: string | undefined | null): Rarity {
-  const r = role ?? "";
-  if (/ראש הממשלה|^שר|\bשר\b|שרה|יושב.?ראש הכנסת|יו״ר הכנסת/.test(r)) return "legendary";
-  if (/יו.?ר|סגן|סגנית/.test(r)) return "epic";
-  if (/חבר|חברת/.test(r)) return "common"; // a plain MK
-  return "rare";
-}
-
 /** Derive a faction "suit" from the categorical color slot (1–8), cyclically. */
 export function suitForCat(cat: number): Suit {
   const suits: Suit[] = ["knesset", "ballot", "podium", "mandate"];

@@ -61,6 +61,8 @@ export function SuggestionReviewRow({
   }
 
   function reject() {
+    // Rejection is terminal — guard against a mis-tap (mirrors the void-market confirm).
+    if (!window.confirm("לדחות את ההצעה? הפעולה סופית.")) return;
     setMessage(null);
     startTransition(async () => {
       try {

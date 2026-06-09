@@ -98,7 +98,13 @@ export function CollectionGallery({ items }: { items: CollectionItem[] }) {
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-border bg-card px-4 py-10 text-center text-muted-foreground">
-          {filter === "owned" ? "עדיין לא אספתם אף קלף." : "לא נמצאו קלפים."}
+          {query.trim()
+            ? "לא נמצאו קלפים."
+            : filter === "owned"
+              ? "עדיין לא אספתם אף קלף."
+              : filter === "locked"
+                ? "אספתם את כל הקלפים! 🎉"
+                : "לא נמצאו קלפים."}
         </p>
       )}
     </div>
