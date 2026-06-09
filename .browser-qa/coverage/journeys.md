@@ -26,17 +26,17 @@
 **Steps:**
 - ✅ `/notifications` (prod, logged-in): SW registers + active at `/sw.js` (scope `/`); the "🔔 קבלו התראות" CTA renders when `Notification.permission=default`; 0 console errors
 - ✅ in-app feed renders existing types — bet_won (mint accent) + market_resolved (neutral) — correct Hebrew copy, accents, timestamps; widened FeedItem type doesn't break render
-- ✅ mobile 390px: push content (CTA + cards) is built correctly (inherits a PRE-EXISTING SiteHeader overflow — see Known gaps)
+- ✅ mobile 390px: 0 horizontal overflow on `/notifications` + `/`; SiteHeader collapses to a hamburger menu (fixed in c24ef5b); push content (CTA + cards) full-width + readable
 - ❌ click CTA → grant permission → subscribe POST `/api/push/subscribe` → row created → status flips to "subscribed" (blocked: automation can't grant the OS Notification permission)
 - ❌ real push delivery on an installed PWA (iOS-after-install + Android) — HARD GATE, needs a device + VAPID handshake
 
 **Notable history:**
 - `fabb59a` (2026-06-09): first walk — PR #15 web-push feature. CTA + SW + feed green.
+- `c24ef5b` (2026-06-09): fixed the authed SiteHeader mobile overflow (MobileMenu hamburger) — also gave the nav its first mobile surface.
 
 **Known gaps:**
 - Subscribe round-trip + delivery un-walkable in automation (OS permission prompt + real push service). Covered by route + service integration tests instead.
 - New notification types (season_reward / market_voided / market_closing_soon) not visually exercised — no data for the test account; render path is type-safe + ACCENT map exhaustive.
-- **Pre-existing (not push):** the authenticated SiteHeader needs ~590px and overflows ~200px on phones (identical on `/`); breaks the mobile-PWA experience this feature targets — fix in a separate SiteHeader-responsive pass.
 
 ## seasons-claim
 
