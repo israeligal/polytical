@@ -2,6 +2,16 @@
 
 Newest on top. Entries immutable.
 
+## 2026-06-09 — Per-category push preferences gate web-push only (PR #16)
+
+**Decision.** `user.mutedPushTypes[]` filters `dispatchPush` (post-commit, one
+batched query, **fail-OPEN** — a prefs-read error sends rather than silently
+drops), but `emitNotifications` always writes the in-app row regardless. Push is
+the intrusive channel worth muting; the inbox is cheap + ignorable. The UI exposes
+**4 category toggles** (outcomes / closing / season / suggestions) mapping to the
+underlying `notification_type` values — cleaner than 7 raw per-type toggles.
+Stored as `text[]` (the enum is declared later in `schema.ts`; validated in the service).
+
 ## 2026-06-03 — Web push layered on the in-app notification pipeline
 
 **Context.** The app already had (a) an in-app `notifications` log written via
