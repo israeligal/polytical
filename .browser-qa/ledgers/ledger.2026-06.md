@@ -2,6 +2,11 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-09 | d738eab+wip | 🔴 logged-in header overflow (mobile, app-wide ROOT CAUSE) | 🔴 | logged-in action cluster (search+theme+faucet+coin+bell+avatar+signout) 438px>390px → layout viewport 601px → EVERY logged-in page shifts right + clips (incl. /market — the user's report). Fixed: new MobileMenu drawer + slim mobile bar (logo·coin·bell·☰). Verified market/onboarding/collection/seasons/profile clientW==scrollW==390 |
+| 2026-06-09 | d738eab+wip | mobile navigation (was absent) | 🔴 | nav was `hidden md:flex` w/ no mobile fallback — couldn't reach collection/seasons/suggest/leaderboard on phone. Added hamburger→top-sheet drawer (nav + search + faucet + theme + profile + signout); closes on link/backdrop/X/Esc; light+dark verified |
+| 2026-06-09 | d738eab+wip | `/market/[id]` bet panel order (mobile) | 🔴 | aside was source-last → bet UI buried below card+comments on phone. Reordered grid (head→aside→body via col/row placement): mobile = odds→bet→politicians→comments; desktop sticky sidebar unchanged. Verified betTop<polTop<commentsTop |
+| 2026-06-09 | d738eab+wip | PWA install pill dismiss (app-wide) | 🔴 | `fixed bottom-4` pill floated over bottom content everywhere, no dismiss, overlapped market CTA. Added × dismiss + localStorage persistence mirroring iOS hint (dismissBipHint). Verified click→pill gone, flag persists. (sonnet-agent fix) |
+| 2026-06-09 | d738eab+wip | mobile sweep — home/politicians/politician/collection/seasons/profile/notifications/suggest/search/login/signup | ✅ | all 0-overflow at 390px after header fix; cards/forms/tables render; light+dark spot-checked on market+home+menu. Admin not walked (no admin acct). |
 | 2026-06-02 | 849c33d | light Israeli theme (default) | ✅ | white bg, BLUE=כן / RED=לא odds bars, blue CTAs, gold coins+hot badge; header/portrait/pill theme-fixed; 0 console errors |
 | 2026-06-02 | 849c33d | dark toggle (Sun/Moon) | ✅ | click moon → dark "trading floor" (mint=כן/coral=לא) instantly, no flash; cookie-persisted; click sun → back to light |
 | 2026-06-02 | 849c33d | multi-persona dogfood (7 accts) | ⚠️ | money/ledger invariants ALL held across 45+ adversarial probes; leaderboard now populated; 5 bugs found (1 HIGH season-unreachable, see dogfood-fixes) |

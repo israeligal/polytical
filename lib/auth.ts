@@ -5,6 +5,7 @@ import { db } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { grantStartingStack } from "@/app/lib/ledger/service";
 import { logger } from "@/app/lib/logger";
+import { sendResetPassword, sendVerificationEmail } from "@/lib/email";
 
 // Enable Google only when credentials are present so local/dev boots without them.
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
@@ -32,7 +33,20 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 8,
     maxPasswordLength: 128,
-    // TODO(foundation): wire sendResetPassword once transactional email lands.
+    // Forgot-password flow: Better Auth builds the tokened reset URL; we mail it.
+    sendResetPassword: async ({ user, url }) => {
+      await sendResetPassword({ to: user.email, url });
+    },
+  },
+
+  // Verification mail on signup. `requireEmailVerification` stays false, so this
+  // is a soft nudge — it never blocks login (and never blocks an unverified
+  // existing/test account). Best-effort: a mail failure is logged, not thrown.
+  emailVerification: {
+    sendOnSignUp: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationEmail({ to: user.email, url });
+    },
   },
 
   // `isAdmin` lives on the user table and gates admin routes (PRD P0).

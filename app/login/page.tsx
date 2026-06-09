@@ -3,6 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ballot } from "@/components/icons";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { OrDivider } from "@/components/or-divider";
 import { signIn } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -82,7 +84,18 @@ export default function LoginPage() {
           >
             {pending ? "מתחבר…" : "התחברות"}
           </button>
+
+          <Link
+            href="/forgot-password"
+            className="text-center text-sm font-semibold text-primary hover:underline"
+          >
+            שכחתם סיסמה?
+          </Link>
         </form>
+
+        <OrDivider />
+
+        <GoogleSignInButton label="התחברות עם Google" />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}

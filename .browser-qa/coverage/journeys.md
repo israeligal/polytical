@@ -4,8 +4,8 @@
 |---|---|---|---|
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
-| [onboarding](#onboarding) | 2026-06-02 `46f0770` | 1 | 5/5 |
-| [card-collection](#card-collection) | 2026-06-02 `46f0770` | 1 | 5/5 |
+| [onboarding](#onboarding) | 2026-06-09 `d738eab+wip` | 2 | 5/5 |
+| [card-collection](#card-collection) | 2026-06-09 `d738eab+wip` | 2 | 5/5 |
 | [community-suggestion](#community-suggestion) | 2026-06-02 `a7135e3` | 1 | 6/6 |
 | [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
 | [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
@@ -13,7 +13,7 @@
 | [market-of-the-day](#market-of-the-day) | 2026-06-02 `8547d36` | 1 | 2/3 |
 | [browse-politicians](#browse-politicians) | 2026-06-01 `8649d61` | 1 | 4/4 |
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
-| [place-bet-resolve](#place-bet-resolve) | 2026-06-01 `c55699b` | 1 | 4/4 |
+| [place-bet-resolve](#place-bet-resolve) | 2026-06-09 `d738eab+wip` | 2 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
 
 ## seasons-claim
@@ -203,13 +203,17 @@
 
 **What it is:** A logged-in user stakes coins on a market outcome; an admin resolves it; winners are paid from the pot.
 
-**Last walked:** 2026-06-01 `c55699b`. **Walks:** 1. **Coverage:** 4/4
+**Last walked:** 2026-06-09 `d738eab+wip` (mobile layout). **Walks:** 2. **Coverage:** 4/4
 
 **Steps:**
 - ✅ place bet (browser): select outcome + stake → balance debits (1000→900), outcome pool/odds move (0%→100%), "ההימור נרשם!"
 - ✅ resolve (service, live Neon): winner paid `floor(total × stake / winningPool)`; balance 900→1000, bet `won`, market `resolved`
 - ✅ resolved market detail: bet panel hidden, resolved state shown, balance reflects payout
 - ✅ ledger integrity: bet debit + payout land as `transactions` rows (type bet/payout); never-negative enforced
+- ✅ mobile layout (390px, logged-in, light+dark): page no longer clips (header overflow root-cause fixed); bet panel now sits above politicians+comments, not buried below
+
+**Notable history:**
+- `d738eab+wip` (2026-06-09): mobile fix — logged-in header overflow that expanded the layout viewport to 601px and clipped every logged-in page (this journey's literal "not rendering" report) fixed via MobileMenu; market grid reordered so the bet panel is reachable on phones.
 
 **Known gaps:** admin **resolve via the /admin UI** not browser-walked (5-min session cookieCache delays a fresh `isAdmin` promotion) — resolution verified via the service against live Neon + 11 unit tests. Multi-bettor split + void not browser-walked (unit-tested).
 

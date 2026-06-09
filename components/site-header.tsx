@@ -6,6 +6,7 @@ import { FaucetButton } from "@/components/faucet-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
+import { MobileMenu } from "@/components/mobile-menu";
 import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, type Theme } from "@/lib/theme";
 import { getOrInitBalance } from "@/app/lib/ledger/service";
@@ -51,7 +52,8 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* Desktop action cluster — too wide for mobile, so md+ only. */}
+        <div className="hidden items-center gap-3 md:flex">
           <Link
             href="/search"
             aria-label="חיפוש"
@@ -65,12 +67,6 @@ export async function SiteHeader() {
               <FaucetButton />
               <CoinPill amount={balance} />
               <NotificationBell unreadCount={unread} />
-              <Link
-                href="/profile"
-                className="hidden text-sm font-semibold text-muted-foreground transition-colors hover:text-primary sm:inline"
-              >
-                פרופיל
-              </Link>
               <Link
                 href="/profile"
                 aria-label="פרופיל"
@@ -88,6 +84,17 @@ export async function SiteHeader() {
               התחברות
             </Link>
           )}
+        </div>
+
+        {/* Mobile action cluster — glanceable balance + alerts, rest behind the menu. */}
+        <div className="flex items-center gap-2 md:hidden">
+          {user ? (
+            <>
+              <CoinPill amount={balance} />
+              <NotificationBell unreadCount={unread} />
+            </>
+          ) : null}
+          <MobileMenu nav={NAV} isLoggedIn={Boolean(user)} theme={theme} />
         </div>
       </div>
     </header>
