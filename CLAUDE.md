@@ -59,6 +59,7 @@
 - A schema change updates schema + test-DB DDL + seed helpers + fixtures **in lockstep**.
 
 ## Process
+- **Isolate feature work in a git worktree** off `main` and **commit/push early** — uncommitted work in a worktree can be lost, and Workflow/Agent subagents run in the **repo root, not the worktree** (do isolation-sensitive steps inline, not via background agents).
 - **Decision log**: record non-obvious decisions in `docs/decisions/<feature>.md`, newest-on-top, entries immutable.
 - **Before finishing a code session**: run `pnpm lint` (add a `typecheck` script and run it too); fix failures before stopping.
 - **Before pushing**: run `/code-review`; never `--no-verify`. Keep relevant `CLAUDE.md` files fresh when structure changes.
