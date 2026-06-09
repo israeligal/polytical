@@ -87,11 +87,12 @@ export function Crest({ suit = "knesset", className }: IconProps & { suit?: Suit
 }
 
 export type Rarity = "common" | "rare" | "epic" | "legendary";
+// Metal-ladder gem fills: base slate · bronze · silver · gold.
 const RARITY_FILL: Record<Rarity, string> = {
-  common: "#8A93B8",
-  rare: "#3FA9F5",
-  epic: "#B36BFF",
-  legendary: "#FFC23D",
+  common: "#8A93B8", // base / slate
+  rare: "#E0A062", // bronze
+  epic: "#C8D4E2", // silver
+  legendary: "#FFC23D", // gold
 };
 
 /** Faceted rarity gem. Body color baked per tier; size via className. */

@@ -46,3 +46,7 @@ next-env.d.ts
 # browser-qa per-session scratch (durable ledger+coverage ARE tracked)
 .browser-qa/qa-plan.md
 .browser-qa/screenshots/
+.env*.local
+
+# AI caricature capture scratch (style explorations; not for commit)
+.caricature-capture/
