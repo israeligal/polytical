@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { resolveMarketAction, voidMarketAction } from "@/app/actions/admin-markets";
+import { formatDateTime } from "@/lib/time";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
@@ -71,7 +72,7 @@ export function MarketAdminRow({
         <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-0.5">{category}</span>
           <span className="rounded-full bg-muted px-2 py-0.5">{status}</span>
-          <span className="nums">{new Date(closeAtIso).toLocaleString("he-IL")}</span>
+          <span className="nums">{formatDateTime(closeAtIso)}</span>
         </span>
       </div>
 

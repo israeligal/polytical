@@ -2,12 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { upvoteCommentAction, hideCommentAction } from "@/app/actions/comments";
-
-/** Compact Hebrew date for a comment, e.g. "1 ביוני 2026". */
-const dateFmt = new Intl.DateTimeFormat("he-IL", {
-  day: "numeric",
-  month: "long",
-});
+import { formatDate } from "@/lib/time";
 
 /**
  * A single comment: author initial + name, posted date, body, an upvote pill
@@ -95,7 +90,7 @@ export function CommentRow({
           <span className="font-bold text-foreground">{authorName}</span>
           <span className="text-border">•</span>
           <time dateTime={createdAtIso} className="text-muted-foreground">
-            {dateFmt.format(new Date(createdAtIso))}
+            {formatDate(createdAtIso)}
           </time>
         </div>
 
