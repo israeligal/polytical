@@ -1,54 +1,27 @@
 import { beforeEach, afterEach, expect, test } from "vitest";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { users, markets, outcomes, bets } from "@/app/lib/schema";
+import { users } from "@/app/lib/schema";
 import { getLeaderboard, getUserStats } from "./repo";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 
-// Identifiers filled by seed(): one market with a single outcome (just somewhere
-// for the open bets to point), plus three users with hand-set balances + stat
-// columns and open stakes that drive the net-worth + accuracy expectations.
-let outcomeId: string;
-
 /**
- * Seeds three users so the orderings are unambiguous:
+ * Seeds three users with hand-set prediction-record columns so the orderings
+ * are unambiguous:
  *
- *  user   balance   open stakes   netWorth   resolved/wins   accuracy
- *  alice    1000        500         1500         10 / 9         90
- *  bob      2000          0         2000          4 / 1         25
- *  carol     200        100          300          0 / 0          0  (never resolved → last by accuracy)
+ *  user   totalResolved   totalWins   accuracy
+ *  alice       10              9         90
+ *  bob          4              1         25
+ *  carol        0              0          0   (never resolved → last by accuracy)
  *
- * net-worth order: bob (2000) > alice (1500) > carol (300)
- * accuracy  order: alice (90) > bob (25) > carol (0)
+ * wins order:    alice (9) > bob (1) > carol (0)
+ * accuracy order: alice (90) > bob (25) > carol (0)
  */
 async function seed() {
   await h.db.insert(users).values([
-    { id: "alice", name: "Alice", email: "a@x.co", balance: 1000, totalResolved: 10, totalWins: 9 },
-    { id: "bob", name: "Bob", email: "b@x.co", balance: 2000, totalResolved: 4, totalWins: 1 },
-    { id: "carol", name: "Carol", email: "c@x.co", balance: 200, totalResolved: 0, totalWins: 0 },
-  ]);
-
-  const [m] = await h.db
-    .insert(markets)
-    .values({
-      questionHe: "שוק לדוגמה",
-      category: "coalition",
-      status: "open",
-      closeAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
-    })
-    .returning({ id: markets.id });
-  const [o] = await h.db
-    .insert(outcomes)
-    .values({ marketId: m.id, labelHe: "כן", ordinal: 0 })
-    .returning({ id: outcomes.id });
-  outcomeId = o.id;
-
-  // Open stakes — these add to net worth at cost. carol also has a *settled*
-  // (won) bet that must NOT count toward net worth (already in her balance).
-  await h.db.insert(bets).values([
-    { userId: "alice", marketId: m.id, outcomeId, amount: 500, status: "open" },
-    { userId: "carol", marketId: m.id, outcomeId, amount: 100, status: "open" },
-    { userId: "carol", marketId: m.id, outcomeId, amount: 9999, status: "won", payout: 1 },
+    { id: "alice", name: "Alice", email: "a@x.co", totalResolved: 10, totalWins: 9 },
+    { id: "bob",   name: "Bob",   email: "b@x.co", totalResolved:  4, totalWins: 1 },
+    { id: "carol", name: "Carol", email: "c@x.co", totalResolved:  0, totalWins: 0 },
   ]);
 }
 
@@ -59,20 +32,21 @@ afterEach(async () => {
   await h.close();
 });
 
-test("getLeaderboard by networth orders by balance + open stakes desc with ranks", async () => {
+test("getLeaderboard by wins orders by totalWins desc with accuracy tiebreak and ranks", async () => {
   await seed();
-  const rows = await getLeaderboard({ db: h.db, by: "networth" });
+  const rows = await getLeaderboard({ db: h.db, by: "wins" });
 
-  expect(rows.map((r) => r.userId)).toEqual(["bob", "alice", "carol"]);
+  expect(rows.map((r) => r.userId)).toEqual(["alice", "bob", "carol"]);
   expect(rows.map((r) => r.rank)).toEqual([1, 2, 3]);
-  expect(rows.map((r) => r.netWorth)).toEqual([2000, 1500, 300]);
-  // names carried through (we surface name as the handle for now)
-  expect(rows[0].name).toBe("Bob");
-  // accuracy is computed even when ordering by net worth
-  expect(rows[1].accuracy).toBe(90); // alice
+  expect(rows.map((r) => r.totalWins)).toEqual([9, 1, 0]);
+  expect(rows[0].name).toBe("Alice");
+  // accuracy is included even when ordering by wins
+  expect(rows[0].accuracy).toBe(90);
+  expect(rows[1].accuracy).toBe(25);
+  expect(rows[2].accuracy).toBe(0);
 });
 
-test("getLeaderboard by accuracy orders by win ratio desc, 0-resolved last", async () => {
+test("getLeaderboard by accuracy orders by win ratio desc, then wins, 0-resolved last", async () => {
   await seed();
   const rows = await getLeaderboard({ db: h.db, by: "accuracy" });
 
@@ -81,51 +55,91 @@ test("getLeaderboard by accuracy orders by win ratio desc, 0-resolved last", asy
   expect(rows.map((r) => r.rank)).toEqual([1, 2, 3]);
 });
 
+test("getLeaderboard accuracy tiebreak: same ratio ordered by totalWins desc", async () => {
+  // Add two users with identical 100% accuracy but different win counts.
+  await h.db.insert(users).values([
+    { id: "high", name: "High", email: "high@x.co", totalResolved: 5, totalWins: 5 },
+    { id: "low",  name: "Low",  email: "low@x.co",  totalResolved: 1, totalWins: 1 },
+  ]);
+
+  const rows = await getLeaderboard({ db: h.db, by: "accuracy" });
+
+  // Both 100% — "high" (5 wins) should rank ahead of "low" (1 win).
+  expect(rows[0].userId).toBe("high");
+  expect(rows[1].userId).toBe("low");
+  expect(rows[0].accuracy).toBe(100);
+  expect(rows[1].accuracy).toBe(100);
+});
+
+test("getLeaderboard wins tiebreak: same wins ordered by accuracy desc", async () => {
+  // Two users with the same totalWins but different accuracy.
+  await h.db.insert(users).values([
+    { id: "accurate", name: "Accurate", email: "acc@x.co", totalResolved: 2, totalWins: 2 },
+    { id: "lucky",    name: "Lucky",    email: "lky@x.co", totalResolved: 10, totalWins: 2 },
+  ]);
+
+  const rows = await getLeaderboard({ db: h.db, by: "wins" });
+
+  // Same wins (2) — "accurate" (100%) should rank ahead of "lucky" (20%).
+  expect(rows[0].userId).toBe("accurate");
+  expect(rows[1].userId).toBe("lucky");
+});
+
 test("getLeaderboard respects limit", async () => {
   await seed();
-  const rows = await getLeaderboard({ db: h.db, by: "networth", limit: 2 });
-  expect(rows.map((r) => r.userId)).toEqual(["bob", "alice"]);
+  const rows = await getLeaderboard({ db: h.db, by: "wins", limit: 2 });
+  expect(rows.map((r) => r.userId)).toEqual(["alice", "bob"]);
   expect(rows.length).toBe(2);
 });
 
-test("getUserStats returns balance, netWorth, accuracy, totals, and rank", async () => {
+test("getLeaderboard returns correct totalResolved on each entry", async () => {
+  await seed();
+  const rows = await getLeaderboard({ db: h.db, by: "wins" });
+
+  expect(rows.find((r) => r.userId === "alice")?.totalResolved).toBe(10);
+  expect(rows.find((r) => r.userId === "bob")?.totalResolved).toBe(4);
+  expect(rows.find((r) => r.userId === "carol")?.totalResolved).toBe(0);
+});
+
+test("getUserStats returns accuracy, totals, totalWrong, and rank", async () => {
   await seed();
 
-  // alice: balance 1000 + 500 open = 1500 net worth; rank 2 (bob is higher).
+  // alice: 10 resolved, 9 wins → 1 wrong, 90% accuracy; rank 1 (most wins).
   expect(await getUserStats({ db: h.db, userId: "alice" })).toEqual({
-    balance: 1000,
-    netWorth: 1500,
-    accuracy: 90,
     totalResolved: 10,
     totalWins: 9,
-    streakCount: 0,
-    bestStreak: 0,
-    rank: 2,
-  });
-
-  // bob: top net worth → rank 1; round(1*100/4) = 25.
-  expect(await getUserStats({ db: h.db, userId: "bob" })).toEqual({
-    balance: 2000,
-    netWorth: 2000,
-    accuracy: 25,
-    totalResolved: 4,
-    totalWins: 1,
-    streakCount: 0,
-    bestStreak: 0,
+    totalWrong: 1,
+    accuracy: 90,
     rank: 1,
   });
 
-  // carol: never resolved → accuracy 0; lowest net worth → rank 3.
+  // bob: 4 resolved, 1 win → 3 wrong, round(1*100/4)=25%; rank 2 (alice has more wins).
+  expect(await getUserStats({ db: h.db, userId: "bob" })).toEqual({
+    totalResolved: 4,
+    totalWins: 1,
+    totalWrong: 3,
+    accuracy: 25,
+    rank: 2,
+  });
+
+  // carol: never resolved → accuracy 0, 0 wrong; rank 3 (fewest wins).
   expect(await getUserStats({ db: h.db, userId: "carol" })).toEqual({
-    balance: 200,
-    netWorth: 300,
-    accuracy: 0,
     totalResolved: 0,
     totalWins: 0,
-    streakCount: 0,
-    bestStreak: 0,
+    totalWrong: 0,
+    accuracy: 0,
     rank: 3,
   });
+});
+
+test("getUserStats rank reflects count of users with strictly more wins", async () => {
+  // Single user: no one has more wins → rank 1.
+  await h.db.insert(users).values([
+    { id: "solo", name: "Solo", email: "solo@x.co", totalResolved: 5, totalWins: 5 },
+  ]);
+
+  const stats = await getUserStats({ db: h.db, userId: "solo" });
+  expect(stats?.rank).toBe(1);
 });
 
 test("getUserStats returns null for an unknown user", async () => {

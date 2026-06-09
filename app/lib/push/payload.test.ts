@@ -14,11 +14,10 @@ describe("eventToPush", () => {
       marketId: "m1",
       betId: "b1",
       questionHe: "מי ינצח בבחירות?",
-      payout: 1500,
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "זכית בהימור!",
-      body: "קיבלת 1,500 שקוינים · מי ינצח בבחירות?",
+      title: "ניחשת נכון! 🎯",
+      body: "צדקת בתחזית · מי ינצח בבחירות?",
       url: "/market/m1",
     });
   });
@@ -31,7 +30,7 @@ describe("eventToPush", () => {
       questionHe: "מי ינצח בבחירות?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "שוק שהימרת בו הוכרע",
+      title: "שוק שניחשת בו הוכרע",
       body: "מי ינצח בבחירות?",
       url: "/market/m2",
     });
@@ -66,22 +65,6 @@ describe("eventToPush", () => {
     });
   });
 
-  it("maps season_reward to the reward copy + the seasons url (no market)", () => {
-    const event: NotificationEvent = {
-      type: "season_reward",
-      userId: "u1",
-      tierId: "t1",
-      seasonId: "se1",
-      tierNameHe: "ברונזה",
-      amount: 200,
-    };
-    expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "זכית בתגמול עונה! 🏆",
-      body: "קיבלת 200 שקוינים — ברונזה",
-      url: "/seasons",
-    });
-  });
-
   it("maps market_voided to the void copy + the market url", () => {
     const event: NotificationEvent = {
       type: "market_voided",
@@ -91,7 +74,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "השוק בוטל",
-      body: "הימורך הוחזר במלואו · האם יעבור התקציב?",
+      body: "התחזית שלך בוטלה · האם יעבור התקציב?",
       url: "/market/m4",
     });
   });
@@ -105,7 +88,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "שוק נסגר בקרוב ⏰",
-      body: "מהרו להמר לפני הסגירה · האם יעבור התקציב?",
+      body: "הספיקו לנחש לפני הסגירה · האם יעבור התקציב?",
       url: "/market/m5",
     });
   });
@@ -119,7 +102,6 @@ describe("dedupeEventsPerUser", () => {
       marketId: "m1",
       betId: "b1",
       questionHe: "מי ינצח?",
-      payout: 100,
     };
     const resolved: NotificationEvent = {
       type: "market_resolved",

@@ -44,13 +44,13 @@ const ENDPOINT_A = "https://fcm.example/u1-device-a";
 const ENDPOINT_B = "https://fcm.example/u1-device-b";
 
 // A winning bet event for U1 — drives eventToPush({ title, body, url }).
+// No payout field: predictions are stake-less; scoring is stat-only.
 const betWon: NotificationEvent = {
   type: "bet_won",
   userId: U1,
   marketId: "m1",
   betId: "b1",
   questionHe: "האם יתקיימו בחירות?",
-  payout: 1234,
 };
 
 // market_resolved for the SAME user — dedupe must collapse this away in favor
@@ -194,15 +194,14 @@ test("dispatchPush skips a type the user muted, but still sends unmuted types", 
   expect(webpush.sendNotification).not.toHaveBeenCalled(); // muted → no push
 
   // A type in a different (un-muted) category still fans out to both devices.
-  const seasonReward: NotificationEvent = {
-    type: "season_reward",
+  // "closing" category contains market_closing_soon — not muted.
+  const closingSoon: NotificationEvent = {
+    type: "market_closing_soon",
     userId: U1,
-    tierId: "t1",
-    seasonId: "s1",
-    tierNameHe: "ברונזה",
-    amount: 50,
+    marketId: "m2",
+    questionHe: "מי יהיה ראש הממשלה?",
   };
-  await dispatchPush({ db: h.db, events: [seasonReward] });
+  await dispatchPush({ db: h.db, events: [closingSoon] });
   expect(webpush.sendNotification).toHaveBeenCalledTimes(2);
 });
 

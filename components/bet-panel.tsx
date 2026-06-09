@@ -3,21 +3,17 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Market } from "@/lib/types";
-import { formatCoins, pct, totalPool } from "@/lib/format";
-import { MIN_BET } from "@/app/lib/economy";
-import { placeBetAction } from "@/app/actions/bet";
-import { Coin } from "@/components/icons";
-
-const QUICK_STAKES = [10, 50, 100] as const;
+import { pct } from "@/lib/format";
+import { makePredictionAction } from "@/app/actions/bet";
 
 /**
- * Interactive parimutuel bet panel: pick an outcome, set a stake, see the
- * potential payout *at current odds*, and place a real bet via the server
- * action. Odds and payout are indicative — the actual payout is computed from
- * the FINAL pools on resolution (final-odds parimutuel).
+ * Interactive prediction panel: pick ONE outcome and lock in a (stake-less)
+ * prediction via the server action. You can change your pick until the market
+ * closes — the action upserts one prediction per market. The percentage on each
+ * outcome is the crowd split (share of predictors), not odds or money.
  *
  * `isLoggedIn` is passed from the server page; logged-out users see a sign-in
- * link instead of the place-bet button (the action also re-checks the session).
+ * link instead of the predict button (the action also re-checks the session).
  */
 export function BetPanel({
   market,
@@ -26,40 +22,22 @@ export function BetPanel({
   market: Market;
   isLoggedIn: boolean;
 }) {
-  const total = totalPool(market.outcomes);
+  const total = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
   const [outcomeId, setOutcomeId] = useState<string>(market.outcomes[0]?.id ?? "");
-  const [stake, setStake] = useState<number>(100);
   const [message, setMessage] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const selected = market.outcomes.find((o) => o.id === outcomeId) ?? market.outcomes[0];
 
-  // Indicative payout at CURRENT odds: your stake joins the chosen pool, then
-  // claims your share of the new grand total. Final payout uses resolution-time
-  // pools, so this is a live estimate, not a promise.
-  const validStake = Number.isInteger(stake) && stake >= MIN_BET;
-  const potential =
-    selected && validStake
-      ? Math.floor(((total + stake) * stake) / (selected.pool + stake))
-      : 0;
-
   function submit() {
-    if (!selected || !validStake) {
-      setOk(false);
-      setMessage(`הסכום נמוך מהמינימום (${MIN_BET})`);
-      return;
-    }
+    if (!selected) return;
     setMessage(null);
     startTransition(async () => {
       try {
-        const res = await placeBetAction({
-          marketId: market.id,
-          outcomeId: selected.id,
-          amount: stake,
-        });
+        const res = await makePredictionAction({ marketId: market.id, outcomeId: selected.id });
         setOk(res.ok);
-        setMessage(res.ok ? "ההימור נרשם!" : res.message ?? "שגיאה");
+        setMessage(res.ok ? "הניחוש נרשם!" : res.message ?? "שגיאה");
       } catch {
         setOk(false);
         setMessage("אירעה שגיאה — נסו שוב");
@@ -69,7 +47,8 @@ export function BetPanel({
 
   return (
     <div className="rounded-card border border-border bg-card p-5 shadow-2">
-      <h3 className="mb-3 font-display text-xl text-foreground">הימור</h3>
+      <h3 className="mb-1 font-display text-xl text-foreground">הניחוש שלך</h3>
+      <p className="mb-3 text-sm text-muted-foreground">בחרו תוצאה אחת — אפשר לשנות עד הסגירה</p>
 
       <div className="flex flex-wrap gap-2">
         {market.outcomes.map((o, i) => {
@@ -94,65 +73,27 @@ export function BetPanel({
               aria-pressed={active}
               className={`rounded-[12px] border-[1.5px] px-3 py-1.5 text-sm font-extrabold transition-colors ${tone}`}
             >
-              {o.label} <span className="nums opacity-70">{pct(o.pool, total)}%</span>
+              {o.label} <span className="nums opacity-70">{pct(o.predictors, total)}%</span>
             </button>
           );
         })}
-      </div>
-
-      <div className="mt-4 rounded-[12px] px-3 py-2.5" style={{ backgroundColor: "var(--bg-sunken)" }}>
-        <label className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">סכום</span>
-          <span className="inline-flex items-center gap-1.5">
-            <Coin className="h-[18px] w-[18px]" />
-            <input
-              type="number"
-              inputMode="numeric"
-              min={MIN_BET}
-              value={stake}
-              onChange={(e) => setStake(Math.floor(Number(e.target.value)) || 0)}
-              className="nums w-24 bg-transparent text-end text-lg font-black text-foreground outline-none"
-            />
-          </span>
-        </label>
-        <div className="mt-2 flex gap-2">
-          {QUICK_STAKES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setStake(c)}
-              className={`nums rounded-md px-2.5 py-1 text-xs font-bold ring-1 transition-colors ${
-                stake === c
-                  ? "bg-primary text-primary-foreground ring-primary"
-                  : "bg-card text-muted-foreground ring-border hover:ring-primary"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">תשלום פוטנציאלי</span>
-        <span className="nums font-extrabold text-positive">+{formatCoins(potential)}</span>
       </div>
 
       {isLoggedIn ? (
         <button
           type="button"
           onClick={submit}
-          disabled={pending || !validStake}
+          disabled={pending || !selected}
           className="mt-4 w-full rounded-[12px] bg-primary py-3 font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {pending ? "רושם…" : "הניחו ניחוש"}
+          {pending ? "רושם…" : "קבעו ניחוש"}
         </button>
       ) : (
         <Link
           href="/login"
           className="mt-4 block w-full rounded-[12px] bg-primary py-3 text-center font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint"
         >
-          התחברו כדי להמר
+          התחברו כדי לנחש
         </Link>
       )}
 

@@ -1,19 +1,20 @@
 import type { Market } from "@/lib/types";
-import { pct, totalPool } from "@/lib/format";
+import { pct } from "@/lib/format";
 import { catBg } from "@/lib/cat";
 
 /**
- * The signature component: the YES/NO odds duel. Binary renders one split bar —
+ * The signature component: the YES/NO crowd split. Binary renders one split bar —
  * mint YES segment (at the start/right in RTL) vs coral NO segment — with the
  * label + percentage set INSIDE each segment in dark ink, widths animating as
- * the crowd moves. Multi uses categorical segments + a legend.
+ * the crowd of predictors moves. Multi uses categorical segments + a legend.
+ * The split is the share of predictors (people) on each outcome.
  */
 export function OddsBar({ market }: { market: Market }) {
-  const total = totalPool(market.outcomes);
+  const total = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
 
   if (market.type === "binary") {
     const [yes, no] = market.outcomes;
-    const yp = pct(yes.pool, total);
+    const yp = pct(yes.predictors, total);
     const np = 100 - yp;
     return (
       <div className="flex h-10 overflow-hidden rounded-[12px] border border-border">
@@ -33,7 +34,7 @@ export function OddsBar({ market }: { market: Market }) {
     );
   }
 
-  const sorted = [...market.outcomes].sort((a, b) => b.pool - a.pool);
+  const sorted = [...market.outcomes].sort((a, b) => b.predictors - a.predictors);
   return (
     <div className="space-y-2.5">
       <div className="flex h-10 gap-0.5 overflow-hidden rounded-[12px] border border-border">
@@ -41,7 +42,7 @@ export function OddsBar({ market }: { market: Market }) {
           <div
             key={o.id}
             className={`h-full transition-[width] duration-500 ease-out ${catBg[o.color ?? 1]}`}
-            style={{ width: `${pct(o.pool, total)}%` }}
+            style={{ width: `${pct(o.predictors, total)}%` }}
           />
         ))}
       </div>
@@ -50,7 +51,7 @@ export function OddsBar({ market }: { market: Market }) {
           <li key={o.id} className="inline-flex items-center gap-1.5 text-sm">
             <span className={`h-2.5 w-2.5 rounded-full ${catBg[o.color ?? 1]}`} />
             <span className="font-semibold text-foreground">{o.label}</span>
-            <span className="nums font-bold text-muted-foreground">{pct(o.pool, total)}%</span>
+            <span className="nums font-bold text-muted-foreground">{pct(o.predictors, total)}%</span>
           </li>
         ))}
       </ul>

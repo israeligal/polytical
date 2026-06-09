@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { FaucetButton } from "@/components/faucet-button";
 import { SignOutButton } from "@/components/auth-buttons";
 import type { Theme } from "@/lib/theme";
 
@@ -87,10 +86,7 @@ export function MobileMenu({
             <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
               <ThemeToggle initial={theme} />
               {loggedIn ? (
-                <>
-                  <FaucetButton />
-                  <SignOutButton />
-                </>
+                <SignOutButton />
               ) : (
                 <Link
                   href="/login"

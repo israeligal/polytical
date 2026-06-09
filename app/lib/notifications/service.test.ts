@@ -2,8 +2,7 @@ import { beforeEach, afterEach, expect, test } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { users, markets, outcomes, notifications } from "@/app/lib/schema";
-import { grantStartingStack } from "@/app/lib/ledger/service";
-import { placeBet, resolveMarket } from "@/app/lib/markets/service";
+import { makePrediction, resolveMarket } from "@/app/lib/markets/service";
 import {
   emitNotifications,
   listNotifications,
@@ -24,8 +23,6 @@ beforeEach(async () => {
     { id: "winner", name: "מנצח", email: "w@x.co" },
     { id: "loser", name: "מפסיד", email: "l@x.co" },
   ]);
-  await grantStartingStack({ db: h.db, userId: "winner" });
-  await grantStartingStack({ db: h.db, userId: "loser" });
   const [m] = await h.db
     .insert(markets)
     .values({ questionHe: "האם זה יקרה?", category: "coalition", closeAt: new Date(Date.now() + 7 * 864e5) })
@@ -53,9 +50,9 @@ test("emitNotifications rolls back with a throwing transaction (atomic)", async 
   expect((await h.db.select().from(notifications)).length).toBe(0);
 });
 
-test("resolveMarket emits bet_won for the winner + market_resolved per participant", async () => {
-  await placeBet({ db: h.db, userId: "winner", marketId, outcomeId: yesId, amount: 100 });
-  await placeBet({ db: h.db, userId: "loser", marketId, outcomeId: noId, amount: 100 });
+test("resolveMarket emits bet_won for the correct predictor + market_resolved per participant", async () => {
+  await makePrediction({ db: h.db, userId: "winner", marketId, outcomeId: yesId });
+  await makePrediction({ db: h.db, userId: "loser", marketId, outcomeId: noId });
   await resolveMarket({ db: h.db, marketId, winningOutcomeId: yesId });
 
   const winnerNotifs = await listNotifications({ db: h.db, userId: "winner" });
@@ -69,11 +66,13 @@ test("resolveMarket emits bet_won for the winner + market_resolved per participa
 
   const won = winnerNotifs.find((n) => n.type === "bet_won");
   expect(won?.refMarketId).toBe(marketId);
-  expect(won?.bodyHe).toContain("שקוינים");
+  // New copy: no coins — just accuracy confirmation.
+  expect(won?.titleHe).toBe("ניחשת נכון! 🎯");
+  expect(won?.bodyHe).toContain("צדקת בתחזית");
 });
 
 test("getUnreadCount + markNotificationRead are scope-guarded", async () => {
-  await placeBet({ db: h.db, userId: "winner", marketId, outcomeId: yesId, amount: 100 });
+  await makePrediction({ db: h.db, userId: "winner", marketId, outcomeId: yesId });
   await resolveMarket({ db: h.db, marketId, winningOutcomeId: yesId });
 
   expect(await getUnreadCount({ db: h.db, userId: "winner" })).toBeGreaterThan(0);
