@@ -4,13 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markNotificationReadAction, markAllReadAction } from "@/app/actions/notifications";
 import { EmptyState } from "@/components/empty-state";
-
-const dateFmt = new Intl.DateTimeFormat("he-IL", {
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+import { formatDateTime } from "@/lib/time";
 
 export interface FeedItem {
   id: string;
@@ -100,7 +94,7 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
               </span>
               <span className="text-sm text-muted-foreground">{item.bodyHe}</span>
               <time dateTime={item.createdAtIso} className="font-accent text-xs text-muted-foreground">
-                {dateFmt.format(new Date(item.createdAtIso))}
+                {formatDateTime(item.createdAtIso)}
               </time>
             </button>
           </li>

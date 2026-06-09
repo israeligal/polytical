@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { approveSuggestionAction, rejectSuggestionAction } from "@/app/actions/suggestions";
+import { formatDate } from "@/lib/time";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
@@ -73,7 +74,7 @@ export function SuggestionReviewRow({
     });
   }
 
-  const created = new Date(createdAtIso).toLocaleDateString("he-IL");
+  const created = formatDate(createdAtIso);
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
