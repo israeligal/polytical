@@ -207,8 +207,8 @@ export function OnboardingWizard({
           </div>
           <h2 className="font-display text-2xl text-foreground">הכול מוכן, @{normalized}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            יש לכם <span className="font-bold text-gold">1,000 שקוינים</span> להתחיל איתם. הימרו על אירועים,
-            אספו קלפים, וטפסו בטבלת המובילים.
+            הגיע הזמן <span className="font-bold text-gold">לנחש</span>. בחרו תוצאה בכל שוק,
+            אספו קלפים לפי הדיוק שלכם, וטפסו בטבלת המובילים.
           </p>
           {error && <p className="mt-3 text-sm font-semibold text-negative">{error}</p>}
           <div className="mt-6 flex gap-3">

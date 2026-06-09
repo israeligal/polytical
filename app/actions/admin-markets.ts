@@ -15,9 +15,9 @@ import {
 // for non-admins — the `/admin` route is gated by proxy.ts, but server actions
 // can be invoked directly, so this is the authoritative enforcement boundary.
 //
-// Coin movement on resolve/void happens inside the service (resolveMarket /
-// voidMarket → applyEntry); these wrappers only authorize, parse the form input,
-// and revalidate the affected pages.
+// The right/wrong tally on resolve happens inside the service (resolveMarket /
+// voidMarket); these wrappers only authorize, parse the form input, and
+// revalidate the affected pages.
 
 type ActionResult = { ok: boolean; message?: string };
 
@@ -88,9 +88,8 @@ export async function createMarketAction({
   return { ok: true, message: "השוק נוצר" };
 }
 
-/** Resolves a market to its winning outcome — settles every open bet via the
- *  parimutuel service (winners split the whole pot; if nobody bet the winning
- *  outcome, all bets are refunded). */
+/** Resolves a market to its winning outcome — tallies right/wrong for every
+ *  predictor and advances accuracy-based card unlocks (via the service). */
 export async function resolveMarketAction({
   marketId,
   winningOutcomeId,
@@ -120,10 +119,10 @@ export async function resolveMarketAction({
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק הוכרע וההימורים סולקו" };
+  return { ok: true, message: "השוק הוכרע והניחושים סוכמו" };
 }
 
-/** Voids a market — refunds every open bet in full and marks it voided. */
+/** Voids a market — marks it voided; predictions are left uncounted (no stakes). */
 export async function voidMarketAction({
   marketId,
 }: {
@@ -140,5 +139,5 @@ export async function voidMarketAction({
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק בוטל וההימורים הוחזרו" };
+  return { ok: true, message: "השוק בוטל" };
 }

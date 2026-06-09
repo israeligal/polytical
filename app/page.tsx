@@ -98,8 +98,8 @@ export default async function Home({
                   <span className="text-primary">בלי כסף</span> — רק על הכבוד.
                 </h1>
                 <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-                  המרו מטבעות משחק על אירועים ועל החלטות של פוליטיקאים, צפו
-                  בסיכויים זזים עם הקהל, ואספו קלפי קריקטורה עם עובדות אמיתיות.
+                  נחשו מה יקרה באירועים ובהחלטות של פוליטיקאים, צפו
+                  בקהל זז עם כל ניחוש, ואספו קלפי קריקטורה לפי דיוק הניחושים שלכם.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -138,7 +138,7 @@ export default async function Home({
           <div className="mb-5">
             <p className="text-sm font-bold text-primary">השווקים</p>
             <h2 className="font-display text-3xl font-bold text-foreground">
-              על מה מהמרים עכשיו
+              על מה מנחשים עכשיו
             </h2>
           </div>
           <div className="mb-6">
@@ -218,7 +218,7 @@ export default async function Home({
             </div>
           ) : (
             <EmptyState className="mx-auto max-w-2xl">
-              עוד אין מספיק פעילות לטבלה. המרו על שוק ראשון כדי לפתוח את הדירוג.
+              עוד אין מספיק פעילות לטבלה. נחשו על שוק ראשון כדי לפתוח את הדירוג.
             </EmptyState>
           )}
         </section>

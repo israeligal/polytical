@@ -37,8 +37,8 @@ export default async function AdminPage() {
         <p className="text-sm font-bold text-primary">קונסולת ניהול</p>
         <h1 className="font-display text-3xl font-black text-foreground">ניהול שווקים</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          יצירת שווקים, הכרעה (חלוקת הקופה לזוכים) וביטול (החזר מלא). כל תנועת מטבעות
-          עוברת דרך ספר החשבונות.
+          יצירת שווקים, הכרעה (סיכום מי ניחש נכון) וביטול שוק. ההכרעה מעדכנת את
+          רשומת הניחושים של כל מי שניחש.
         </p>
       </header>
 

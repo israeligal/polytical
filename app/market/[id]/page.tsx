@@ -121,7 +121,7 @@ export default async function MarketPage({
               </h3>
               {status === "voided" ? (
                 <p className="text-sm text-muted-foreground">
-                  כל ההימורים הוחזרו במלואם.
+                  השוק בוטל — הניחושים לא נספרים.
                 </p>
               ) : (
                 <>
