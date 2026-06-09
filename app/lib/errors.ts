@@ -42,6 +42,7 @@ export class NotificationNotFoundError extends Error { constructor() { super("No
 // --- Push notifications ---
 export class PushSubscriptionNotFoundError extends Error { constructor() { super("Push subscription not found"); this.name = "PushSubscriptionNotFoundError"; } }
 export class InvalidPushSubscriptionError extends Error { constructor() { super("Invalid push subscription"); this.name = "InvalidPushSubscriptionError"; } }
+export class InvalidPushPrefError extends Error { constructor() { super("Invalid push preference category"); this.name = "InvalidPushPrefError"; } }
 // --- Onboarding + card collection (Phase 2) ---
 export class InvalidHandleError extends Error { constructor() { super("Handle must be 3–20 chars: a–z, 0–9, _"); this.name = "InvalidHandleError"; } }
 export class HandleTakenError extends Error { constructor() { super("Handle already taken"); this.name = "HandleTakenError"; } }

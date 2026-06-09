@@ -27,6 +27,10 @@ export const users = pgTable("user", {
   handle: text("handle").unique(),       // @-handle (3–20 [a-z0-9_]); nullable — Postgres treats multiple NULLs as distinct, so legacy rows are fine
   arena: text("arena"),                  // the user's chosen focus — a CATEGORIES key, stored as text
   onboardedAt: timestamp("onboardedAt"), // null = onboarding gate not yet cleared
+  // Push notification opt-outs: notification_type values the user muted (default
+  // none = all on). Gates web-push only — the in-app log always records the event.
+  // Stored as text[] (the enum is declared later in this file); validated in the service.
+  mutedPushTypes: text("mutedPushTypes").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

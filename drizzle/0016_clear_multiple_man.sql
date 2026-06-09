@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "mutedPushTypes" text[] DEFAULT '{}'::text[] NOT NULL;
