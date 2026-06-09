@@ -120,6 +120,13 @@
       "when": 1781031388468,
       "tag": "0016_clear_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781042632223,
+      "tag": "0017_remove_coins",
+      "breakpoints": true
     }
   ]
 }
