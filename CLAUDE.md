@@ -18,10 +18,14 @@
 - **Read the session server-side** (`auth.api.getSession({ headers })`) in RSCs/route handlers; centralize auth + rate-limit + error handling in route wrappers, never inline per-route checks.
 - Map the PRD's `users.is_admin` onto the Better Auth user (extra field or `admin` plugin) and gate admin routes on it. Providers: Google + email (per PRD).
 
-## The ledger & money invariants (P0, from the PRD)
-- **Every coin movement is a `transactions` ledger row** (grant, faucet, bet, payout, refund). The ledger is the source of truth; `users.balance` and `outcomes.pool_total` are caches updated **inside the same DB transaction**.
-- **Bet placement and resolution are atomic Drizzle transactions.** Balance can never go negative; winners are paid `total_pool × stake / winning_pool`; void refunds every stake in full.
-- Pattern to follow: **one authoritative writer + idempotent + terminal states** (see the `payment` webhook pattern referenced in PROVENANCE). A settled/resolved row is never overwritten.
+## The prediction record & invariants (P0)
+> The coin economy (ledger, balance, pools, payouts, faucet, streaks, season coin rewards) was **removed** in migration `0017_remove_coins`. There is no money in the app. See `docs/decisions/no-coins.md`.
+- **A prediction is a stake-less pick of one outcome per market**, enforced by `unique(userId, marketId)` on the `bets` table (DB name kept). `makePrediction` UPSERTs on it, so re-predicting changes the pick in place until the market closes.
+- **Resolution tallies right/wrong in one atomic Drizzle transaction**: every predictor gets `users.totalResolved += 1`; a correct pick (outcome === winning outcome) also gets `users.totalWins += 1`. No pools, payouts, or refunds. Void leaves predictions uncounted and stats untouched.
+- **The only score is the prediction record** — `totalWins` / `totalResolved` (`wrong = totalResolved − totalWins`). A market's crowd split is the live COUNT of predictions per outcome (`getOutcomeCounts`), never a coin pool.
+- **Cards unlock by accuracy**: N correct predictions on a politician's markets (N scales with the card's rarity — `lib/rarity.ts` `RARITY_UNLOCK_THRESHOLD`: legendary 10 / epic 7 / rare 5 / common 2) auto-grant the card inside `resolveMarket`'s tx, tracked by `card_progress`.
+- **Seasons are an accuracy track**: each tier needs N correct predictions resolved within the season window, derived live (no claim, no reward).
+- Pattern to follow: **one authoritative writer + idempotent + terminal states**. A resolved/voided market is never re-resolved (`AlreadyResolvedError`).
 
 ## Sourcing & data integrity (the trust backbone)
 - **Facts on a card and every market resolution carry a cited source URL** and are attributed only by an exact identifier — never inferred, never fuzzy-matched. Fuzzy / `ILIKE` / trigram lookups are for *discovery* only; an absent fact shows an explicit "not found" state, it is never guessed (dirot's "reputation rule").
