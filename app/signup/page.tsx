@@ -3,6 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ballot } from "@/components/icons";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { OrDivider } from "@/components/or-divider";
 import { signUp } from "@/lib/auth-client";
 
 export default function SignUpPage() {
@@ -99,6 +101,10 @@ export default function SignUpPage() {
             {pending ? "נרשם…" : "הרשמה"}
           </button>
         </form>
+
+        <OrDivider />
+
+        <GoogleSignInButton label="הרשמה עם Google" />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           כבר יש לכם חשבון?{" "}

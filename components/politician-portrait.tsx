@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Politician } from "@/lib/types";
 import { Sparkle } from "@/components/icons";
 
@@ -9,6 +10,13 @@ const SIZE: Record<Size, string> = {
   card: "w-full aspect-[4/5] rounded-[14px] text-6xl",
 };
 
+// next/image `sizes` per slot, so the optimizer serves a sensibly-scaled file.
+const IMG_SIZES: Record<Size, string> = {
+  sm: "36px",
+  md: "64px",
+  card: "(max-width: 640px) 50vw, 320px",
+};
+
 function initials(name: string): string {
   return name
     .split(" ")
@@ -18,9 +26,9 @@ function initials(name: string): string {
 }
 
 /**
- * The caricature portrait. v1 renders a styled fallback: a dark category-tinted
- * radial dome (per the design's rarity-tinted placeholder) + halftone + display
- * initials. A real caricature image swaps in via next/image once available.
+ * The caricature portrait. With a real `imageUrl` (AI caricature) it renders the
+ * image filling the frame; otherwise a styled fallback — a dark category-tinted
+ * radial dome + halftone + display initials.
  */
 export function PoliticianPortrait({
   politician,
@@ -29,6 +37,25 @@ export function PoliticianPortrait({
   politician: Politician;
   size?: Size;
 }) {
+  // Real caricature: fill the frame, keep the same ring/rounding.
+  if (politician.imageUrl) {
+    return (
+      <div
+        role="img"
+        aria-label={`קריקטורה של ${politician.name}`}
+        className={`relative overflow-hidden ring-1 ring-border ${SIZE[size]}`}
+      >
+        <Image
+          src={politician.imageUrl}
+          alt={`קריקטורה של ${politician.name}`}
+          fill
+          sizes={IMG_SIZES[size]}
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       role="img"

@@ -14,7 +14,7 @@ import { MarketCard } from "@/components/market-card";
 import { ChevronForward, Trophy, Lock } from "@/components/icons";
 import { getSession } from "@/lib/auth";
 import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
-import { unlockThresholdForRole } from "@/lib/rarity";
+import { unlockThreshold } from "@/lib/rarity";
 
 export default async function PoliticianPage({
   params,
@@ -35,7 +35,7 @@ export default async function PoliticianPage({
   // this MK's markets auto-grants the card. Show ownership or progress toward it.
   const session = await getSession();
   const owned = session?.user ? await isOwned({ userId: session.user.id, personId }) : false;
-  const threshold = unlockThresholdForRole(row.roleHe);
+  const threshold = unlockThreshold({ personId, role: row.roleHe });
   const correctCount = session?.user
     ? (await getProgressByPerson({ userId: session.user.id })).get(personId) ?? 0
     : 0;

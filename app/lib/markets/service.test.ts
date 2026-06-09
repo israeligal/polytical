@@ -617,7 +617,8 @@ test("markClosingSoonNotified won't claim a market that stopped being open (TOCT
 // ---------------------------------------------------------------------------
 
 test("resolveMarket advances card progress for EVERY featured politician independently", async () => {
-  // One market featuring a common MK (threshold 2) AND a minister (legendary, threshold 10).
+  // One market featuring a common MK (threshold 2) AND a minister (sapphire/uncommon,
+  // threshold 3 under the stature ladder). 2 correct calls unlock the MK but not the minister.
   await seedUser("multi");
   const m1 = await seedMarket();
   const commonId = await seedPoliticianLinkedToMarket(m1.marketId); // 9001, "חבר הכנסת" → common (2)

@@ -2,6 +2,11 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-09 | d738eab+wip | 🔴 logged-in header overflow (mobile, app-wide ROOT CAUSE) | 🔴 | logged-in action cluster (search+theme+faucet+coin+bell+avatar+signout) 438px>390px → layout viewport 601px → EVERY logged-in page shifts right + clips (incl. /market — the user's report). Fixed: new MobileMenu drawer + slim mobile bar (logo·coin·bell·☰). Verified market/onboarding/collection/seasons/profile clientW==scrollW==390 |
+| 2026-06-09 | d738eab+wip | mobile navigation (was absent) | 🔴 | nav was `hidden md:flex` w/ no mobile fallback — couldn't reach collection/seasons/suggest/leaderboard on phone. Added hamburger→top-sheet drawer (nav + search + faucet + theme + profile + signout); closes on link/backdrop/X/Esc; light+dark verified |
+| 2026-06-09 | d738eab+wip | `/market/[id]` bet panel order (mobile) | 🔴 | aside was source-last → bet UI buried below card+comments on phone. Reordered grid (head→aside→body via col/row placement): mobile = odds→bet→politicians→comments; desktop sticky sidebar unchanged. Verified betTop<polTop<commentsTop |
+| 2026-06-09 | d738eab+wip | PWA install pill dismiss (app-wide) | 🔴 | `fixed bottom-4` pill floated over bottom content everywhere, no dismiss, overlapped market CTA. Added × dismiss + localStorage persistence mirroring iOS hint (dismissBipHint). Verified click→pill gone, flag persists. (sonnet-agent fix) |
+| 2026-06-09 | d738eab+wip | mobile sweep — home/politicians/politician/collection/seasons/profile/notifications/suggest/search/login/signup | ✅ | all 0-overflow at 390px after header fix; cards/forms/tables render; light+dark spot-checked on market+home+menu. Admin not walked (no admin acct). |
 | 2026-06-09 | 7e2fc16 | `/notifications` #418 hydration fix (Israel-time formatter) | 🔴 | repro'd prod cond. (prod build TZ=UTC + browser Asia/Jerusalem, 3h gap) → 0 console errors, times in Israel time; lib/time + eslint guard |
 | 2026-06-09 | 34ca9c3 | notification prefs on `/profile` (per-category toggles) | ✅ | 4 category switches render all-on; toggle off → persists across reload; others independent; re-enable works; 0 console errors |
 | 2026-06-09 | fabb59a | push: EnablePush CTA on `/notifications` (PR #15, prod:3211) | ✅ | SW active at /sw.js (scope /), perm=default, "🔔 קבלו התראות" renders, 0 console errors |

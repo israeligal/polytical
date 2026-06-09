@@ -127,6 +127,13 @@
       "when": 1781042632223,
       "tag": "0017_remove_coins",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781047199103,
+      "tag": "0018_add_politician_image",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { Close } from "@/components/icons";
 import {
+  dismissBipHint,
   dismissIosHint,
   getBipSnapshot,
   getIosSnapshot,
@@ -26,13 +28,21 @@ export function PwaInstall() {
 
   if (androidAvailable) {
     return (
-      <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+      <div className="fixed inset-x-0 bottom-4 z-40 flex items-center justify-center gap-2 px-4">
         <button
           type="button"
           onClick={install}
           className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-extrabold text-primary-foreground shadow-glow-mint transition-colors hover:bg-primary-hover"
         >
           התקינו את פוליטיקל
+        </button>
+        <button
+          type="button"
+          onClick={dismissBipHint}
+          aria-label="לא עכשיו"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Close className="h-4 w-4" />
         </button>
       </div>
     );

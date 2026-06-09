@@ -43,21 +43,23 @@ export function CommentRow({
   const initial = authorName.trim().charAt(0) || "?";
 
   function toggleVote() {
-    // Optimistic flip; the action reconciles via revalidatePath. Roll back on a
-    // not-ok result OR a thrown action so the count never silently desyncs.
+    // Optimistic flip; the action reconciles via revalidatePath. Roll back by
+    // INVERTING this flip (functional update) rather than resetting to the
+    // original props, so a rapid double-vote can't snap the count to a stale
+    // baseline and permanently desync.
     const next = !voted;
+    const rollback = () => {
+      setVoted(!next);
+      setCount((c) => c + (next ? -1 : 1));
+    };
     setVoted(next);
     setCount((c) => c + (next ? 1 : -1));
     startVote(async () => {
       try {
         const res = await upvoteCommentAction({ marketId, commentId });
-        if (!res.ok) {
-          setVoted(voted);
-          setCount(upvotes);
-        }
+        if (!res.ok) rollback();
       } catch {
-        setVoted(voted);
-        setCount(upvotes);
+        rollback();
       }
     });
   }

@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Storybook static build output (generated, not source).
     "storybook-static/**",
+    // Local git worktrees + tooling artifacts — full checkouts, never repo source.
+    ".claude/worktrees/**",
+    ".playwright-mcp/**",
   ]),
   // Force all displayed dates/times through the central Asia/Jerusalem module
   // (lib/time.ts). Ad-hoc Intl.DateTimeFormat / toLocale*String format in the

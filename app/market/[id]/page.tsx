@@ -60,11 +60,17 @@ export default async function MarketPage({
         חזרה לשווקים
       </Link>
 
+      {/*
+        Mobile (single column) source order = head → bet → body, so the primary
+        betting action sits right under the odds, not buried below the comments.
+        Desktop restores the two-column layout: head + body stack in the 1fr
+        column, the bet panel is a sticky sidebar spanning both rows.
+      */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div>
+        <div className="lg:col-start-1 lg:row-start-1">
           <div className="mb-3 flex items-center gap-3">
             <CategoryBadge category={market.category} />
-            {market.hot ? <HotBadge /> : <Countdown closeAt={market.closeAt} />}
+            {market.hot && <HotBadge />}
           </div>
 
           <h1 className="font-display text-3xl font-black leading-tight text-foreground sm:text-4xl">
@@ -86,34 +92,9 @@ export default async function MarketPage({
           <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
             <OddsBar market={market} />
           </div>
-
-          <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">
-            הפוליטיקאים בשוק
-          </h2>
-          {pols.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2">
-              {pols.map((p) => (
-                <CaricatureCard key={p.id} politician={p} realData />
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-muted-foreground">
-              לא שויכו פוליטיקאים לשוק הזה.
-            </p>
-          )}
-
-          <h2 className="mb-3 mt-8 inline-flex items-center gap-2 font-display text-xl font-bold text-foreground">
-            <ChatBubble className="h-5 w-5 text-primary" />
-            דעות חמות
-          </h2>
-          <CommentThread
-            marketId={market.id}
-            viewerId={session?.user?.id}
-            isAdmin={!!session?.user?.isAdmin}
-          />
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:self-start">
           {settled ? (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
               <h3 className="mb-2 font-display text-lg font-bold text-foreground">
@@ -146,6 +127,33 @@ export default async function MarketPage({
             <BetPanel market={market} isLoggedIn={isLoggedIn} />
           )}
         </aside>
+
+        <div className="lg:col-start-1 lg:row-start-2">
+          <h2 className="mb-3 font-display text-xl font-bold text-foreground">
+            הפוליטיקאים בשוק
+          </h2>
+          {pols.length > 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2">
+              {pols.map((p) => (
+                <CaricatureCard key={p.id} politician={p} realData />
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-muted-foreground">
+              לא שויכו פוליטיקאים לשוק הזה.
+            </p>
+          )}
+
+          <h2 className="mb-3 mt-8 inline-flex items-center gap-2 font-display text-xl font-bold text-foreground">
+            <ChatBubble className="h-5 w-5 text-primary" />
+            דעות חמות
+          </h2>
+          <CommentThread
+            marketId={market.id}
+            viewerId={session?.user?.id}
+            isAdmin={!!session?.user?.isAdmin}
+          />
+        </div>
       </div>
     </main>
   );

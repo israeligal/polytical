@@ -6,7 +6,7 @@ import * as cardsRepo from "@/app/lib/cards/repo";
 import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
 import { dispatchPush } from "@/app/lib/push/service";
 import { logger } from "@/app/lib/logger";
-import { unlockThresholdForRole } from "@/lib/rarity";
+import { unlockThreshold } from "@/lib/rarity";
 import * as schema from "@/app/lib/schema";
 import {
   AlreadyResolvedError,
@@ -99,7 +99,7 @@ export async function resolveMarket({
         // the rarity threshold → grant the card (idempotent on the unique index).
         for (const person of persons) {
           const count = await cardsRepo.bumpCardProgress({ tx, userId: p.userId, personId: person.personId });
-          if (count >= unlockThresholdForRole(person.roleHe))
+          if (count >= unlockThreshold({ personId: person.personId, role: person.roleHe }))
             await cardsRepo.insertOwnership({ tx, userId: p.userId, personId: person.personId });
         }
         events.push({ type: "bet_won", userId: p.userId, marketId, betId: p.id, questionHe: market.questionHe });
