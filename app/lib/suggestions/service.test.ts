@@ -12,7 +12,10 @@ import { users, politicians, markets, outcomes, marketPoliticians, marketSuggest
 import {
   AlreadyReviewedError,
   ClosePastError,
+  CloseRequiredError,
+  CloseTooFarError,
   InvalidCategoryError,
+  SourceNoteTooLongError,
   SuggestionTooLongError,
   SuggestionTooShortError,
   UnknownPoliticianError,
@@ -46,7 +49,7 @@ afterEach(async () => {
 
 test("createSuggestion inserts a pending row with a resolved politician", async () => {
   const { id } = await createSuggestion({
-    db: h.db, userId: "proposer", questionHe: "האם יקודם חוק כלשהו?", category: "legislation", personId: 100,
+    db: h.db, userId: "proposer", questionHe: "האם יקודם חוק כלשהו?", category: "legislation", personId: 100, proposedCloseAt: CLOSE,
   });
   const [row] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
   expect(row.status).toBe("pending");
@@ -56,11 +59,11 @@ test("createSuggestion inserts a pending row with a resolved politician", async 
 });
 
 test("createSuggestion rejects short / long / bad-category / unknown politician", async () => {
-  const base = { db: h.db, userId: "proposer", category: "elections" as const };
+  const base = { db: h.db, userId: "proposer", category: "elections" as const, proposedCloseAt: CLOSE };
   await expect(createSuggestion({ ...base, questionHe: "קצר" })).rejects.toBeInstanceOf(SuggestionTooShortError);
   await expect(createSuggestion({ ...base, questionHe: "א".repeat(201) })).rejects.toBeInstanceOf(SuggestionTooLongError);
   await expect(
-    createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה תקינה לגמרי", category: "not-a-category" }),
+    createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה תקינה לגמרי", category: "not-a-category", proposedCloseAt: CLOSE }),
   ).rejects.toBeInstanceOf(InvalidCategoryError);
   await expect(
     createSuggestion({ ...base, questionHe: "שאלה תקינה עם חבר כנסת לא קיים", personId: 999 }),
@@ -69,7 +72,7 @@ test("createSuggestion rejects short / long / bad-category / unknown politician"
 
 test("approveSuggestion creates an open binary market, links the MK, and flips status (idempotent)", async () => {
   const { id } = await createSuggestion({
-    db: h.db, userId: "proposer", questionHe: "האם הקואליציה תשרוד את הקיץ?", category: "coalition", personId: 100,
+    db: h.db, userId: "proposer", questionHe: "האם הקואליציה תשרוד את הקיץ?", category: "coalition", personId: 100, proposedCloseAt: CLOSE,
   });
   const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
 
@@ -97,7 +100,7 @@ test("approveSuggestion creates an open binary market, links the MK, and flips s
 });
 
 test("approveSuggestion rejects a past closeAt (no un-bettable market is minted)", async () => {
-  const { id } = await createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה עם מועד עבר", category: "elections" });
+  const { id } = await createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה עם מועד עבר", category: "elections", proposedCloseAt: CLOSE });
   await expect(
     approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: new Date("2020-01-01T00:00:00Z") }),
   ).rejects.toBeInstanceOf(ClosePastError);
@@ -108,7 +111,7 @@ test("approveSuggestion rejects a past closeAt (no un-bettable market is minted)
 });
 
 test("rejectSuggestion records the note and is terminal", async () => {
-  const { id } = await createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה שתידחה בסוף", category: "scandals" });
+  const { id } = await createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה שתידחה בסוף", category: "scandals", proposedCloseAt: CLOSE });
   await rejectSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", note: "לא מספיק ספציפי" });
 
   const [s] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
@@ -122,8 +125,8 @@ test("rejectSuggestion records the note and is terminal", async () => {
 });
 
 test("getMySuggestions returns only the caller's rows; listSuggestions filters by status", async () => {
-  await createSuggestion({ db: h.db, userId: "proposer", questionHe: "הצעה של המציע הראשון", category: "security" });
-  await createSuggestion({ db: h.db, userId: "other", questionHe: "הצעה של מישהו אחר לגמרי", category: "personnel" });
+  await createSuggestion({ db: h.db, userId: "proposer", questionHe: "הצעה של המציע הראשון", category: "security", proposedCloseAt: CLOSE });
+  await createSuggestion({ db: h.db, userId: "other", questionHe: "הצעה של מישהו אחר לגמרי", category: "personnel", proposedCloseAt: CLOSE });
 
   const mine = await getMySuggestions({ db: h.db, userId: "proposer" });
   expect(mine.length).toBe(1);
@@ -139,7 +142,7 @@ test("getMySuggestions returns only the caller's rows; listSuggestions filters b
 
 test("approveSuggestion fires dispatchPush once after commit with the suggestion_approved event", async () => {
   const { id } = await createSuggestion({
-    db: h.db, userId: "proposer", questionHe: "האם תוקם ועדת חקירה?", category: "scandals",
+    db: h.db, userId: "proposer", questionHe: "האם תוקם ועדת חקירה?", category: "scandals", proposedCloseAt: CLOSE,
   });
 
   const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
@@ -161,7 +164,7 @@ test("approveSuggestion succeeds even when dispatchPush rejects (push cannot bre
   dispatchPushMock.mockRejectedValueOnce(new Error("push service down"));
 
   const { id } = await createSuggestion({
-    db: h.db, userId: "proposer", questionHe: "האם יתקיימו בחירות מוקדמות?", category: "elections",
+    db: h.db, userId: "proposer", questionHe: "האם יתקיימו בחירות מוקדמות?", category: "elections", proposedCloseAt: CLOSE,
   });
 
   // Must NOT throw — the post-commit push failure is swallowed.
@@ -178,7 +181,7 @@ test("approveSuggestion succeeds even when dispatchPush rejects (push cannot bre
 
 test("rejectSuggestion fires dispatchPush once after commit with the suggestion_rejected event", async () => {
   const { id } = await createSuggestion({
-    db: h.db, userId: "proposer", questionHe: "הצעה שתידחה עם פוש", category: "security",
+    db: h.db, userId: "proposer", questionHe: "הצעה שתידחה עם פוש", category: "security", proposedCloseAt: CLOSE,
   });
 
   await rejectSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", note: "לא ספציפי מספיק" });
@@ -194,4 +197,40 @@ test("rejectSuggestion fires dispatchPush once after commit with the suggestion_
       note: "לא ספציפי מספיק",
     },
   ]);
+});
+
+// --- Proposed close date + resolution source ------------------------------------
+
+test("createSuggestion stores proposedCloseAt and resolutionSourceNote", async () => {
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם יקודם חוק כלשהו השנה?", category: "legislation",
+    proposedCloseAt: CLOSE, resolutionSourceNote: "  אתר הכנסת  ",
+  });
+  const [row] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
+  expect(row.proposedCloseAt).toEqual(CLOSE);
+  expect(row.resolutionSourceNote).toBe("אתר הכנסת"); // trimmed
+});
+
+test("createSuggestion rejects missing / past / too-far proposedCloseAt", async () => {
+  const base = { db: h.db, userId: "proposer", questionHe: "האם משהו יקרה עד סוף השנה?", category: "elections" };
+  await expect(createSuggestion({ ...base, proposedCloseAt: new Date(NaN) })).rejects.toBeInstanceOf(CloseRequiredError);
+  await expect(createSuggestion({ ...base, proposedCloseAt: new Date("2020-01-01") })).rejects.toBeInstanceOf(ClosePastError);
+  await expect(createSuggestion({ ...base, proposedCloseAt: new Date("2031-01-01") })).rejects.toBeInstanceOf(CloseTooFarError);
+});
+
+test("createSuggestion rejects an over-long source note", async () => {
+  await expect(createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם משהו יקרה עד סוף השנה?", category: "elections",
+    proposedCloseAt: CLOSE, resolutionSourceNote: "א".repeat(301),
+  })).rejects.toBeInstanceOf(SourceNoteTooLongError);
+});
+
+test("suggestion lists expose proposedCloseAt + resolutionSourceNote", async () => {
+  await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם יקודם חוק כלשהו השנה?", category: "legislation",
+    proposedCloseAt: CLOSE, resolutionSourceNote: "רשומות",
+  });
+  const [v] = await listSuggestions({ db: h.db, status: "pending" });
+  expect(v.proposedCloseAt).toEqual(CLOSE);
+  expect(v.resolutionSourceNote).toBe("רשומות");
 });

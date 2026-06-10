@@ -28,6 +28,8 @@ export interface SuggestionView {
   questionHe: string;
   category: string;
   personId: number | null;
+  proposedCloseAt: Date | null;
+  resolutionSourceNote: string | null;
   status: SuggestionStatus;
   reviewNote: string | null;
   marketId: string | null;
@@ -41,6 +43,8 @@ const VIEW_COLUMNS = {
   questionHe: marketSuggestions.questionHe,
   category: marketSuggestions.category,
   personId: marketSuggestions.personId,
+  proposedCloseAt: marketSuggestions.proposedCloseAt,
+  resolutionSourceNote: marketSuggestions.resolutionSourceNote,
   status: marketSuggestions.status,
   reviewNote: marketSuggestions.reviewNote,
   marketId: marketSuggestions.marketId,
@@ -54,6 +58,8 @@ export async function insertSuggestion({
   questionHe,
   category,
   personId,
+  proposedCloseAt,
+  resolutionSourceNote,
 }: {
   tx?: Tx;
   db?: DB;
@@ -61,11 +67,20 @@ export async function insertSuggestion({
   questionHe: string;
   category: string;
   personId?: number | null;
+  proposedCloseAt: Date;
+  resolutionSourceNote?: string | null;
 }): Promise<{ id: string }> {
   const exec = tx ?? db;
   const [row] = await exec
     .insert(marketSuggestions)
-    .values({ userId, questionHe, category, personId: personId ?? null })
+    .values({
+      userId,
+      questionHe,
+      category,
+      personId: personId ?? null,
+      proposedCloseAt,
+      resolutionSourceNote: resolutionSourceNote ?? null,
+    })
     .returning({ id: marketSuggestions.id });
   return row;
 }

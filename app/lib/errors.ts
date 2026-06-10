@@ -19,6 +19,9 @@ export class SuggestionNotFoundError extends Error { constructor() { super("Sugg
 export class AlreadyReviewedError extends Error { constructor() { super("Suggestion already reviewed"); this.name = "AlreadyReviewedError"; } }
 export class UnknownPoliticianError extends Error { constructor() { super("Politician not found"); this.name = "UnknownPoliticianError"; } }
 export class ClosePastError extends Error { constructor() { super("Close date must be in the future"); this.name = "ClosePastError"; } }
+export class CloseRequiredError extends Error { constructor() { super("Proposed close date is required"); this.name = "CloseRequiredError"; } }
+export class CloseTooFarError extends Error { constructor() { super("Proposed close date is too far in the future"); this.name = "CloseTooFarError"; } }
+export class SourceNoteTooLongError extends Error { constructor() { super("Resolution source note too long"); this.name = "SourceNoteTooLongError"; } }
 export class NotificationNotFoundError extends Error { constructor() { super("Notification not found"); this.name = "NotificationNotFoundError"; } }
 // --- Push notifications ---
 export class PushSubscriptionNotFoundError extends Error { constructor() { super("Push subscription not found"); this.name = "PushSubscriptionNotFoundError"; } }
