@@ -53,7 +53,9 @@ function isSittingPmRole(role: string): boolean {
 
 /** A serving government minister or Knesset Speaker (NOT a deputy). */
 function isMinisterRole(role: string): boolean {
-  if (/סגן/.test(role)) return false; // exclude deputy minister / deputy speaker
+  // Exclude deputies — both masculine "סגן" (final nun ן) and feminine/plural
+  // "סגנית"/"סגני" (regular nun נ). `/סגן/` alone misses "סגנית".
+  if (/סג[ןנ]/.test(role)) return false; // deputy minister / deputy speaker
   return /^שר|\bשר\b|שרה|יושב.?ראש הכנסת|יו״ר הכנסת/.test(role);
 }
 
