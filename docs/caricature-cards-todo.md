@@ -1,52 +1,24 @@
-# Caricature cards — remaining work toward all-120
+# Caricature cards — roster coverage
 
-**Status: 85 of ~120 MKs carded and live on prod.** Generation uses the interactive Gemini-in-Chrome pipeline (see `.claude/skills/caricature-cards`), so the rest needs the Claude Chrome extension connected. Resume: reconnect https://claude.ai/chrome, then dispatch Sonnet subagents per the skill (sequential — shared clipboard).
+**✅ COMPLETE: every active Knesset member is carded (120 cards live on prod).**
+The only DB row without a card is Merav Michaeli (personId 23565) — intentionally excluded by the maintainer (no longer relevant).
 
-## A. Photo-ready — generate immediately (refs already in `.caricature-capture/refs/ref-<id>.png`)
-All common → slate frame.
+## How coverage was reached
+Cards are generated with the interactive Gemini-in-Chrome pipeline (see `.claude/skills/caricature-cards`). Photos were sourced, in order of preference, from:
+1. he-Wikipedia `pageimages` lead image,
+2. Wikidata Commons by exact / fuzzy Hebrew name and by English name (politician-verified),
+3. the **official Knesset member photos** (`fs.knesset.gov.il/globaldocs/MK/<internal-id>/…`) — reached via the browser (server-side curl is bot-blocked). This is the authoritative source and resolved the long tail of first-term backbenchers, and corrected two earlier wrong-person matches (Taieb, Tur-Paz).
 
-| personId | name | English (banner) |
-|---|---|---|
-| 30780 | רון כץ | Ron Katz |
-| 30782 | טטיאנה מזרסקי | Tatiana Mazarsky |
-| 30809 | גלית דיסטל אטבריאן | Galit Distel-Atbaryan |
-| 30812 | שמחה רוטמן | Simcha Rothman |
-| 30820 | סימון דוידסון | Simon Davidson |
-| 30702 | חוה אתי עטייה | Hava Eti Atia |
-| 30837 | דבי ביטון | Debbie Biton |
-| 30874 | צבי ידידיה סוכות | Tzvi Sukkot |
+## Rarity tiers (frame baked into the art) — `lib/rarity.ts`
+gold = sitting PM · silver = former PM · bronze = party leader · sapphire = minister/Speaker · slate = rank-and-file MK. Israel Katz + Goldknopf are sapphire; the rest of the backbench is slate.
 
-## B. Need a photo (no free image found server-side; browser-source or user-supplied)
-Tried: he-Wikipedia pageimages, Wikidata Commons (exact + fuzzy + per-MK), Commons category + file search. The Knesset's official member photos on Commons carry a `(NOAM####)` suffix — mine that batch *via the browser* (server-side fetches are bot-blocked), or paste a photo per the Bibi flow.
+## Keeping it current
+The weekly Sonnet routine (`trig_018PkYLFapcB2ddXTcEV42Gs`, Mondays 08:00 Asia/Jerusalem) diffs the live Knesset roster against the cards in `public/caricatures/` and the tiers in `lib/rarity.ts`, then opens a PR listing:
+- **NEW** members with no card (generate via the skill),
+- **DEPARTED** members (stale cards),
+- **TIER CHANGES** (e.g. a backbencher promoted to minister → needs a sapphire re-gen),
+- skill drift.
 
-| personId | name |
-|---|---|
-| 30842 | חנוך דב מלביצקי |
-| 30682 | מיכאל מרדכי ביטון |
-| 30706 | קטי קטרין שטרית |
-| 30810 | מיכל מרים וולדיגר |
-| 30831 | אלי דלל |
-| 30832 | אליהו רביבו |
-| 30835 | בועז ביסמוט |
-| 30839 | דן אילוז |
-| 30840 | ואליד אלהואשלה |
-| 30843 | יאסר חוג'יראת |
-| 30846 | יצחק גולדקנופ (actually a minister → sapphire tier; DB role is stale) |
-| 30849 | לימור סון הר מלך |
-| 30861 | שלום דנינו |
-| 30863 | שרון ניר |
-| 30868 | יונתן מישרקי |
-| 30871 | שלי טל מירון |
-| 30876 | אושר שקלים |
-| 30879 | ששון ששי גואטה |
-| 30894 | סמיר בן סעיד |
-| 30895 | עדי עזוז |
-| 30880 | אביחי אברהם בוארון |
+When the routine flags a new member, source their photo (Knesset CDN preferred) and run the `caricature-cards` skill — typically a single Sonnet subagent per the per-card SOP.
 
-## C. Excluded / wrong photo
-- 23565 מרב מיכאלי — excluded per maintainer (no longer relevant).
-- 30770 (Yosef Taieb), 30777 (Moshe Tur-Paz) — fuzzy match returned the wrong person's photo (Gemini refused); re-source before generating.
-
-## Notes
-- **DB is a 2022 (25th-Knesset) snapshot** — some names/roles are stale (e.g. Goldknopf is a minister, not rank-and-file). A fresh Knesset re-ingest would fix the underlying data and recompute rarity tiers. The weekly roster-check routine (`trig_018PkYLFapcB2ddXTcEV42Gs`) surfaces drift each Monday.
-- Wiring after generation: `sips --resampleWidth 760 → public/caricatures/<id>.png`, set `imageUrl` by personId, commit, PR → main (Vercel auto-deploys).
+> Note: the politicians table is a 25th-Knesset snapshot; a few roles may lag reality between re-ingests (the routine surfaces this). A fresh `pnpm ingest:knesset` recomputes names/roles → rarity tiers.
