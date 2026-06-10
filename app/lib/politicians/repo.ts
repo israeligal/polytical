@@ -23,19 +23,29 @@ type DB = PgDatabase<
 // normalized Hebrew search name (niqqud/finals/particles already stripped).
 const GALLERY_ORDER = [asc(politicians.party), asc(politicians.searchName)] as const;
 
-/** All current MKs, party-then-name ordered (for the full gallery). */
+/**
+ * All CURRENT MKs, party-then-name ordered (for the full gallery). The roster
+ * now also holds departed K25 MKs (`active=false`, needed for vote attribution
+ * — see normalizeK25Members); list surfaces filter them out, while
+ * getPoliticianByPersonId keeps serving their profile pages.
+ */
 export async function getAllPoliticians({
   db = defaultDb,
 }: { db?: DB } = {}): Promise<PoliticianRow[]> {
-  return db.select().from(politicians).orderBy(...GALLERY_ORDER);
+  return db.select().from(politicians).where(eq(politicians.active, true)).orderBy(...GALLERY_ORDER);
 }
 
-/** A capped slice of MKs for the homepage "on the field" section. */
+/** A capped slice of current MKs for the homepage "on the field" section. */
 export async function getFeaturedPoliticians({
   db = defaultDb,
   limit = 12,
 }: { db?: DB; limit?: number } = {}): Promise<PoliticianRow[]> {
-  return db.select().from(politicians).orderBy(...GALLERY_ORDER).limit(limit);
+  return db
+    .select()
+    .from(politicians)
+    .where(eq(politicians.active, true))
+    .orderBy(...GALLERY_ORDER)
+    .limit(limit);
 }
 
 /**
