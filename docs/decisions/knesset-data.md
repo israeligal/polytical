@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-06-10 — SUPERSEDES "votes deferred to P1": live K25 votes ship via the website API
+
+**Decision.** The 2026-05-31 deferral below is superseded. K25 per-MK roll-call votes ARE available — not via OData `Votes.svc` (still frozen at K24, re-verified) but via the Knesset **website API** (`knesset.gov.il/WebSiteApi/knessetapi/Votes/GetVotesHeaders` + `GetVoteDetails/{id}`), live through the previous day's plenum. Ingested into `knesset_votes`/`mk_votes`/`mk_votes_raw` with the same stable-id + provenance invariants; identity resolved through the human-verified `mk_name_mappings` (names only in the source — see `docs/decisions/knesset-votes.md` for the full decision set). Roster extended to all K25-tenured MKs (148 incl. 28 departed) with `faction_stints` intervals for faction-at-vote-time.
+
+---
+
 ## 2026-05-31 — Ingestion shape: 7 stable-id tables, idempotent upsert, refresh cadence
 
 **Decision.** Persist Knesset data in 7 tables (`politicians`, `factions`, `bills`, `bill_sponsors`, `queries`, `committees`, `committee_memberships`), each keyed by a UNIQUE stable Knesset id with `sourceDataset`/`sourceUrl`/`fetchedAt` on every row. Ingest via `scripts/ingest-knesset.ts` (tsx): `assertNonProductionDb()` first, then fetch→normalize→upsert with `onConflict(stableId) do update`, batched 100.
