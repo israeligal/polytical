@@ -7,9 +7,9 @@
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
-| [onboarding](#onboarding) | 2026-06-09 `d738eab+wip` | 2 | 5/5 |
+| [onboarding](#onboarding) | 2026-06-10 `feat/hatzaa-laseder` | 3 | 6/6 |
 | [card-collection](#card-collection) | 2026-06-09 `d738eab+wip` | 2 | 5/5 |
-| [community-suggestion](#community-suggestion) | 2026-06-02 `a7135e3` | 1 | 6/6 |
+| [community-suggestion](#community-suggestion) | 2026-06-10 `feat/hatzaa-laseder` | 2 | 7/8 |
 | [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
 | [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
 | [politician-activity](#politician-activity) | 2026-06-02 `bcdb818` | 1 | 4/4 |
@@ -80,16 +80,18 @@
 
 **What it is:** A new account is gated into a first-run wizard that sets a unique @-handle (live availability check) and a focus "arena", then lands in the app. The gate funnels any not-onboarded logged-in user to /onboarding from anywhere and reverse-bounces a finished user away from it.
 
-**Last walked:** 2026-06-02 `46f0770`. **Walks:** 1. **Coverage:** 5/5
+**Last walked:** 2026-06-10 `feat/hatzaa-laseder`. **Walks:** 2. **Coverage:** 6/6
 
 **Steps:**
 - ✅ fresh email signup → proxy gate redirects to `/onboarding` (not `/`)
-- ✅ handle step live availability: invalid "ab" → "3–20 תווים…" (format), valid "qa_player_p2" → "פנוי ✓" (debounced server check); "המשך" disabled until valid
+- ✅ handle step pre-filled with a generated Hebrew handle marked "פנוי ✓" (server availability-checked); 🎲 reroll swaps it (input: prefill-accept + reroll)
+- ✅ handle step live validation: invalid "ab" → format error; mixed-script "מנדטx" → "3–20 תווים, עברית או אנגלית בלי לערבב"; "המשך" disabled until valid (input: short + mixed-script; all-Latin typed covered 2026-06-02)
 - ✅ arena step: 6 CATEGORIES tiles, single-select (aria-pressed), "המשך" gated on a pick
-- ✅ finish ("יאללה, מתחילים") → completeOnboarding + refreshSession → lands on `/` (gate cleared, no loop)
-- ✅ reverse-bounce: onboarded user visiting `/onboarding` → redirected to `/` (proxy + page's authoritative DB read)
+- ✅ finish ("יאללה, מתחילים") → completeOnboarding + refreshSession → lands on `/` with the Hebrew handle `@הסכם_מסתורי` (gate cleared, no loop)
+- ✅ reverse-bounce: onboarded user visiting `/onboarding` → redirected to `/` (walked 2026-06-02)
 
 **Notable history:**
+- `feat/hatzaa-laseder` (2026-06-10): Hebrew handles (single-script rule) + server-generated prefill + 🎲 reroll; full happy path walked with a Hebrew handle.
 - `46f0770` (2026-06-02): Phase 2 — onboarding gate. additionalFields (handle/arena/onboardedAt) + refreshSession re-issues the 5-min cookie so the gate sees onboardedAt immediately.
 
 **Known gaps:** handle-taken cross-user race + partially-onboarded (handle set, no arena) resume covered by PGlite unit tests, not browser-walked; OAuth (Google) signup path into onboarding not walked (email path only).
@@ -116,17 +118,20 @@
 
 **What it is:** A user proposes a market; an admin approves it (a real market is created + linked) or rejects it with a note; the proposer tracks status on their profile and the approved market surfaces on the related politician's page.
 
-**Last walked:** 2026-06-02 `a7135e3`. **Walks:** 1. **Coverage:** 6/6
+**Last walked:** 2026-06-10 `feat/hatzaa-laseder`. **Walks:** 2. **Coverage:** 7/8
 
 **Steps:**
-- ✅ `/suggest` (gated; `?person=526` pre-selects the MK) — question + category + politician; submit → "ההצעה נשלחה לבדיקה — תודה!", form clears
-- ✅ profile "ההצעות שלי" shows the proposal as ממתין (pending)
-- ✅ admin `/admin` "הצעות מהקהל" queue lists it with proposer + related MK
-- ✅ approve (future closeAt) → ATOMIC: open binary כן/לא market created + linked to personId 526 + suggestion → approved (verified in DB); queue → 0
-- ✅ approved market renders on `/politician/526` (placeholder gone); profile shows אושר + market link
-- ✅ reject with note → terminal; profile shows נדחה + the note
+- ✅ `/suggest` is "הצעה לסדר" (no "מהקהל" eyebrow): question + category + REQUIRED "מתי השאלה תוכרע?" datetime gating the submit + optional "מקור הכרעה"; submit → "מגישים…" → "ההצעה לסדר הוגשה — תודה!", form clears (2026-06-10)
+- ✅ `?person=` pre-selects the MK (2026-06-02)
+- ✅ profile "ההצעות לסדר שלי" shows the proposal as ממתין (walked 2026-06-02 pre-rename; renamed copy not browser-checked)
+- ✅ admin `/admin` "הצעות לסדר" queue lists it with proposer + "מקור הכרעה מוצע"; מועד סגירה PRE-FILLED from proposedCloseAt — 2026-12-31T20:00 exact UTC↔local round-trip (2026-06-10)
+- ✅ approve (future closeAt) → ATOMIC market creation + link (walked 2026-06-02)
+- ❌ approve with the PRE-FILLED date (admin keeps or adjusts the proposer's date through to a real market) — not walked; no approvals against prod DB
+- ✅ approved market renders on the politician page; profile shows אושר + market link (2026-06-02)
+- ✅ reject with note → terminal; queue → 0 (re-walked 2026-06-10)
 
 **Notable history:**
+- `feat/hatzaa-laseder` (2026-06-10): rename to הצעה לסדר; required proposedCloseAt + optional resolutionSourceNote on the form; admin closeAt pre-fill.
 - `a7135e3` (2026-06-02): review fixes — reject past closeAt (ClosePastError); getMarketsForPolitician filtered to `open`.
 
 **Known gaps:** rate-limit (5/10min) not browser-exhausted (unit-tested); admin promotion in this walk used a DB flip + re-login (cookieCache 5min) rather than a real admin-grant UI (none exists).

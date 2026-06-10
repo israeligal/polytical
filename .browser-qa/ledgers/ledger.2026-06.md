@@ -2,6 +2,9 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-10 | b605d11 | onboarding: Hebrew handle prefill + 🎲 reroll + mixed-script reject | ✅ | fresh signup → @סגן_אמיץ_75 פנוי✓; reroll; מנדטx inline error; onboarded @הסכם_מסתורי |
+| 2026-06-10 | b605d11 | /suggest הצעה לסדר rename + required due date + source field | ✅ | submit gated on date; מגישים…; success copy; no מהקהל eyebrow |
+| 2026-06-10 | b605d11 | /admin queue pre-fill from proposedCloseAt + source note | ✅ | closeAt prefilled 2026-12-31T20:00 exact; rejected QA row → queue 0 |
 | 2026-06-10 | f9bb1e4+wip | `/market/[id]` mobile grid blow-out (user: "really bad on android") | 🔴 | ROOT CAUSE: 500-char unbroken comment strings; break-words doesn't reduce min-content → grid col 3770px. Fix: wrap-anywhere on comment/notification/suggestion UGC + min-w-0 on market grid children. Verified 412px docW==vw, yyyy… wraps in-card; desktop + home clean, 0 console errors |
 | 2026-06-10 | f9bb1e4+wip | no-coins on migrated prod DB (post-0017) | ✅ | market page + homepage render against live Neon post-migration; predictor counts real (5 ניחשו), coin-free header/copy live |
 | 2026-06-09 | d738eab+wip | 🔴 logged-in header overflow (mobile, app-wide ROOT CAUSE) | 🔴 | logged-in action cluster (search+theme+faucet+coin+bell+avatar+signout) 438px>390px → layout viewport 601px → EVERY logged-in page shifts right + clips (incl. /market — the user's report). Fixed: new MobileMenu drawer + slim mobile bar (logo·coin·bell·☰). Verified market/onboarding/collection/seasons/profile clientW==scrollW==390 |
