@@ -1,5 +1,21 @@
 # Decisions — market removal flow
 
+## 2026-06-10 — Review-driven hardening (same session)
+
+- **Delete notices carry `refMarketId: null`** so the in-app link falls back to
+  /profile and the push URL to /notifications — a deep link to the deleted
+  market would 404. (`market_voided` event's marketId widened to `string | null`.)
+- **Deleting an already-voided market notifies nobody** — its predictors were
+  already notified at void time; re-emitting would double-notify.
+- **`repo.deleteMarket` carries the status guard in SQL** (`status != 'resolved'`),
+  matching markResolved/markVoided's DB-layer terminal-invariant convention.
+- **`listManageableMarkets` now includes voided markets** so the delete-voided
+  cleanup path is actually reachable from the admin UI (prod ops are UI-only).
+- **`createMarketAction` lost its `type` param** — binary is hardcoded, not
+  validated; the retired capability is unrepresentable instead of rejected.
+- **Predict/comment on a just-deleted market returns a friendly "השוק הוסר"**
+  instead of an unhandled server error (MarketNotFoundError / FK 23503).
+
 ## 2026-06-10 — Hard-delete flow, resolved-market guard, binary-only
 
 - **Admin delete is a hard delete, not a soft hide.** `deleteMarket` removes the

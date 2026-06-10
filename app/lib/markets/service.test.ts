@@ -712,10 +712,11 @@ test("deleteMarket notifies each predictor (rows survive the delete) and pushes 
 
   await deleteMarket({ db: h.db, marketId: mId });
 
-  // In-app market_voided rows survive (notifications carry no FK to markets).
+  // In-app market_voided rows survive the delete, with a NULL market ref so
+  // the feed/push links fall back to /profile//notifications instead of 404ing.
   const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
   expect(voided.map((n) => n.userId).sort()).toEqual(["a", "b"]);
-  expect(voided.every((n) => n.refMarketId === mId)).toBe(true);
+  expect(voided.every((n) => n.refMarketId === null)).toBe(true);
 
   expect(dispatchPushMock).toHaveBeenCalledTimes(1);
   const { events } = dispatchPushMock.mock.calls[0][0];
@@ -743,12 +744,18 @@ test("deleteMarket on an unknown market throws MarketNotFoundError", async () =>
   ).rejects.toBeInstanceOf(MarketNotFoundError);
 });
 
-test("deleteMarket CAN remove a voided market (cleanup path)", async () => {
-  const { marketId: mId } = await seedMarket();
-  await voidMarket({ db: h.db, marketId: mId });
+test("deleteMarket CAN remove a voided market without re-notifying its predictors", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await voidMarket({ db: h.db, marketId: mId }); // predictor notified here
 
   await deleteMarket({ db: h.db, marketId: mId });
+
   expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
+  // Only the void's notice exists — the delete must not send a duplicate.
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.length).toBe(1);
 });
 
 test("deleteMarket survives a push rejection — the delete is not undone", async () => {

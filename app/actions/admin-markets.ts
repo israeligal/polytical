@@ -21,9 +21,11 @@ import {
 
 type ActionResult = { ok: boolean; message?: string };
 
-async function requireAdmin(): Promise<void> {
+/** Throws for non-admins; returns the session so callers don't re-fetch it. */
+async function requireAdmin(): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
   const session = await getSession();
   if (!session?.user?.isAdmin) throw new NotAdminError();
+  return session;
 }
 
 /** A cited resolution source must be a real http(s) URL. Rejecting other schemes
@@ -39,14 +41,15 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-/** Creates a market with its outcomes and featured MKs. `outcomeLabels` are the
- *  ordered outcome labels (≥2); `personIds` the featured MK personIds (optional).
- *  `closeAt` is an ISO/`datetime-local` string. */
+/** Creates a yes/no market with its two outcomes and featured MKs. Yes/no is
+ *  the only market type — multi is retired, so there is no `type` input at all
+ *  (legacy multi rows still render until deleted). `outcomeLabels` are the two
+ *  ordered labels; `personIds` the featured MK personIds (optional); `closeAt`
+ *  is an ISO/`datetime-local` string. */
 export async function createMarketAction({
   questionHe,
   descriptionHe,
   category,
-  type,
   hot,
   closeAt,
   outcomeLabels,
@@ -55,18 +58,12 @@ export async function createMarketAction({
   questionHe: string;
   descriptionHe?: string;
   category: string;
-  type: "binary" | "multi";
   hot: boolean;
   closeAt: string;
   outcomeLabels: string[];
   personIds: number[];
 }): Promise<ActionResult> {
-  await requireAdmin();
-
-  // Yes/no is the only market type — multi is retired (legacy rows may still
-  // render, but no new ones are minted). Guarded here because server actions
-  // can be invoked directly, not only via the form.
-  if (type !== "binary") return { ok: false, message: "נתמכים רק שווקי כן/לא" };
+  const session = await requireAdmin();
 
   const question = questionHe.trim();
   if (!question) return { ok: false, message: "חסרה שאלת שוק" };
@@ -81,16 +78,14 @@ export async function createMarketAction({
   // mint a market that can never accept a bet. Reject it at both creation paths.
   if (close.getTime() <= Date.now()) return { ok: false, message: "מועד הסגירה חייב להיות בעתיד" };
 
-  const session = await getSession();
-
   await repo.createMarket({
     questionHe: question,
     descriptionHe: descriptionHe?.trim() || undefined,
     category: category.trim(),
-    type,
+    type: "binary",
     hot,
     closeAt: close,
-    createdBy: session?.user?.id,
+    createdBy: session.user.id,
     // Binary outcomes carry no categorical color slot — the odds bar renders
     // them as positive/negative.
     outcomes: labels.map((labelHe, i) => ({ labelHe, ordinal: i })),

@@ -53,7 +53,6 @@ export function CreateMarketForm({
           questionHe: String(fd.get("questionHe") ?? ""),
           descriptionHe: String(fd.get("descriptionHe") ?? ""),
           category: String(fd.get("category") ?? ""),
-          type: "binary",
           hot,
           closeAt: String(fd.get("closeAt") ?? ""),
           outcomeLabels: outcomes,

@@ -158,10 +158,13 @@ export async function voidMarket({
 /** Hard-deletes an invalid market: notifies every predictor ("השוק בוטל" —
  *  reuses the market_voided copy; notifications carry no market FK so the rows
  *  survive), then deletes the row — FK cascades wipe outcomes, predictions and
- *  comments atomically. RESOLVED markets are protected (their outcome already
- *  bumped accuracy stats and card progress; deleting one would orphan those),
- *  so an admin first catches an invalid market before resolution — or voids it.
- *  Same market-first lock ordering as resolveMarket. */
+ *  comments atomically. The notice carries marketId: null so its link falls
+ *  back to the inbox/profile instead of 404ing on the deleted market page, and
+ *  an already-VOIDED market notifies nobody (its predictors got the void notice).
+ *  RESOLVED markets are protected (their outcome already bumped accuracy stats
+ *  and card progress; deleting one would orphan those), so an admin catches an
+ *  invalid market before resolution — or voids it. Same market-first lock
+ *  ordering as resolveMarket. */
 export async function deleteMarket({
   db = defaultDb,
   marketId,
@@ -174,13 +177,14 @@ export async function deleteMarket({
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
     if (market.status === "resolved") throw new AlreadyResolvedError();
-    const predictions = await repo.listPredictions({ tx, marketId });
-    // One "market voided" notice per distinct predictor, emitted BEFORE the
-    // delete so both commit (or roll back) together.
-    const events: NotificationEvent[] = [...new Set(predictions.map((p) => p.userId))].map((uid) => ({
+    // One notice per distinct predictor, emitted BEFORE the delete so both
+    // commit (or roll back) together. Skipped for voided markets — those
+    // predictors were already notified when the market was voided.
+    const bettors = market.status === "voided" ? [] : await repo.getMarketBettors({ tx, marketId });
+    const events: NotificationEvent[] = bettors.map((uid) => ({
       type: "market_voided" as const,
       userId: uid,
-      marketId,
+      marketId: null,
       questionHe: market.questionHe,
     }));
     await emitNotifications({ tx, events });
