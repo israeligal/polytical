@@ -6,7 +6,7 @@ import { createBinaryMarket, createMultiMarket } from "@/components/story-mocks"
 /**
  * The signature crowd-odds bar. Binary markets use the reserved
  * positive/negative tokens; multi markets use categorical segments sorted by
- * pool. Widths are pool-derived, so the controls expose the `outcomes` array.
+ * predictor counts. Widths are count-derived, so the controls expose the `outcomes` array.
  */
 const meta = {
   title: "Markets/OddsBar",
@@ -59,7 +59,7 @@ export const EmptyPool: Story = {
   },
 };
 
-/** Interaction test: the rendered percentages must sum to 100 and match the pool split. */
+/** Interaction test: the rendered percentages must sum to 100 and match the predictor split. */
 export const VerifiesPercentages: Story = {
   args: {
     market: createBinaryMarket({

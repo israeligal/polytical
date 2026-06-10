@@ -2,7 +2,7 @@
  * Polytical — Design System token layer  ("Trading Floor", dark)
  * Recreated from the Ploytical design handoff (design_handoff_ploytical).
  * Dark navy canvas; color MEANS direction (mint=YES/win, coral=NO/loss,
- * gold=Shekoins/celebration); surfaces step UP in lightness; accents glow.
+ * gold=wins/celebration); surfaces step UP in lightness; accents glow.
  *
  * Two layers:
  *   @theme inline  — maps tokens to Tailwind v4 utilities (bg-primary, text-foreground, shadow-glow-mint, ...)
@@ -33,7 +33,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
 
-  /* Accent — gold (Shekoins / hot / legendary / celebration). FILLS + currency. */
+  /* Accent — gold (wins / hot / legendary / celebration). FILLS + highlights. */
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-hover: var(--accent-hover);
@@ -104,7 +104,7 @@
 
 /*
  * DEFAULT = light "Israeli" theme: white canvas, techelet BLUE = YES/primary,
- * RED = NO, gold kept for Shekoins/celebration. Dark "trading floor" lives under
+ * RED = NO, gold kept for wins/celebration. Dark "trading floor" lives under
  * [data-theme="dark"] and is opt-in via the header toggle (cookie-persisted; the
  * root layout sets data-theme server-side so there's no flash).
  */
@@ -132,7 +132,7 @@
   --primary-hover: #002e99;
 
   /* Accent = gold. `--accent` is the bright FILL; `--gold` is a darker text-safe
-     gold so Shekoin amounts stay legible on white. */
+     gold so win counts stay legible on white. */
   --accent: #e8a300;
   --accent-foreground: #1a1200; /* dark ink on gold fills */
   --accent-hover: #cc8f00;
@@ -270,7 +270,7 @@
     color: var(--foreground);
   }
 
-  /* Numeric data (odds %, Shekoins, payouts): tabular + lining figures. */
+  /* Numeric data (crowd-split %, win counts): tabular + lining figures. */
   .nums { font-variant-numeric: tabular-nums lining-nums; }
 
   /* App-wide keyboard focus ring in the brand mint (WCAG 2.4.7). */
@@ -292,12 +292,6 @@
   18% { opacity: 1; }
   100% { opacity: 0; transform: translate(var(--bx, 0), var(--by, -160px)) scale(1) rotate(var(--br, 0deg)); }
 }
-@keyframes poly-coin-spin {
-  0% { transform: rotateY(0deg); }
-  100% { transform: rotateY(720deg); }
-}
-@keyframes poly-flash-mint { 0%, 100% { color: var(--foreground); } 40% { color: var(--positive); } }
-@keyframes poly-flash-coral { 0%, 100% { color: var(--foreground); } 40% { color: var(--negative); } }
 @keyframes poly-pulse-glow {
   0%, 100% { box-shadow: 0 0 0 rgba(0, 224, 164, 0); }
   50% { box-shadow: var(--shadow-glow-mint); }

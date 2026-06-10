@@ -2,7 +2,7 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { and, asc, desc, eq, gt, inArray, isNull, lte, notInArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bets, marketPoliticians, markets, outcomes, politicians, users } from "@/app/lib/schema";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
@@ -16,13 +16,12 @@ import { normalizeSearchName } from "@/app/lib/knesset/search-name";
 //  - READ helpers default to the shared `db` (no tx) for server-component reads.
 
 // Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
-// ledger/politicians repos so reads are injectable without an `as any`.
+// politicians repo so reads are injectable without an `as any`.
 type DB = PgDatabase<
   PgQueryResultHKT,
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-type Tx = LedgerTx;
 
 export type MarketRow = typeof markets.$inferSelect;
 export type OutcomeRow = typeof outcomes.$inferSelect;

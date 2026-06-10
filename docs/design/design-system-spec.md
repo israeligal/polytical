@@ -17,7 +17,7 @@
 
 Every decision below traces to this sentence:
 - **Credible** → warm "ballot paper" canvas, near-black ink, a serious editorial serif, crisp hairline rules, restrained motion.
-- **Game / thrill** → a confident blue for action, **gold** for coins & winning, animated odds bars, payout celebration.
+- **Game / thrill** → a confident blue for action, **gold** for wins & accuracy, animated crowd-split bars, right-guess celebration.
 - **Witty / irreverent** → the AI caricatures are the loud, fun focal point against the calm canvas.
 
 ---
@@ -36,7 +36,7 @@ All colors **OKLCH**. Components use the semantic name (`bg-primary`), never the
 | `--primary` | `0.47 0.16 258` | Ballot blue — actions, links, active, overlines, focus |
 | `--primary-foreground` | `0.99 0.005 250` | Text/icons on primary |
 | `--primary-hover` | `0.42 0.16 258` | Primary hover (base L − 0.05) |
-| `--accent` | `0.78 0.14 80` | **Gold** — coins, "hot"/trending/featured. **Fills & icons only** |
+| `--accent` | `0.78 0.14 80` | **Gold** — wins/accuracy, "hot"/trending/featured. **Fills & icons only** |
 | `--accent-foreground` | `0.28 0.03 75` | Ink on gold |
 | `--accent-hover` | `0.73 0.14 80` | Gold hover |
 | `--muted` | `0.955 0.01 85` | Subdued section backgrounds, input fills |
@@ -71,7 +71,7 @@ Polytical is app-first, but the landing page, how-it-works, and politician pages
 |---|---|
 | `--background` (cream) | Default app surface: market feed, detail bodies, content sections |
 | `--muted` (deeper cream) | Grouped/secondary bands: how-it-works steps, leaderboard band, input fills |
-| `--primary` (blue) | Rare, reserved: the landing hero band and the focused "place your bet" panel only |
+| `--primary` (blue) | Rare, reserved: the landing hero band and the focused prediction panel only |
 | `--accent` (gold) | Never a section background — fills/badges only |
 
 **Section header pattern** (apply everywhere identically):
@@ -105,19 +105,18 @@ No tertiary/ghost roles. Need something lighter? Use a plain `text-primary` link
 |---|---|---|
 | **Row card** | Leaderboard rows, list entries, comments. No hover. | `rounded-lg border border-border` · no shadow · tight padding |
 | **Feature card** | **Market cards** in the feed; anything clickable. Hover lift. | `rounded-xl border border-border shadow-sm` · `hover:-translate-y-1 hover:shadow-md` (~300ms `ease-out`) |
-| **Container card** | The bet panel, large info/stat panels. No hover. | `rounded-2xl border border-border shadow-md` · generous padding |
+| **Container card** | The prediction panel, large info/stat panels. No hover. | `rounded-2xl border border-border shadow-md` · generous padding |
 | **Caricature card** | The collectible politician card — the hero artifact. | `rounded-2xl` · **2px frame in the politician's `--cat-*` party color** · `shadow-lg` · portrait + stat block |
 
 Card background always `--card`. Hover only on the Feature tier.
 
 ### Product components (the signature surface)
 
-- **Odds bar** — the iconic element. A horizontal bar: `--positive` segment (YES) + `--negative` segment (NO) sized to pool %, on a `--muted` track, `rounded-full`. Multi-option uses `--cat-*` segments. % labels in `.nums tabular-nums`. **Width animates** when odds move (`transition-[width] ~400ms ease-out`, reduced-motion aware).
-- **Market card** (Feature tier) — category overline · question in `font-display` · odds bar · footer row: volume (`◔ coins`, gold coin glyph) + close countdown + featured politician avatar chips. Entire card links to the market.
+- **Odds bar** — the iconic element. A horizontal bar: `--positive` segment (YES) + `--negative` segment (NO) sized to predictor-count %, on a `--muted` track, `rounded-full`. Multi-option uses `--cat-*` segments. % labels in `.nums tabular-nums`. **Width animates** when odds move (`transition-[width] ~400ms ease-out`, reduced-motion aware).
+- **Market card** (Feature tier) — category overline · question in `font-display` · odds bar · footer row: predictor count (Users glyph + count) + close countdown + featured politician avatar chips. Entire card links to the market.
 - **Caricature card** — party-color top stripe/frame · AI caricature portrait · name in `font-display` · party tag (`--cat-*` chip) + role · **stat block** (`.nums`, label/value rows: age, in politics since, seats history, key positions) · a signature quote in serif italic. Bold, fun, the share-bait.
 - **Outcome chip / toggle** — selectable YES/NO (or A/B/C/D) pills: default `border` + outcome-soft bg; selected → filled `bg-positive`/`bg-negative`/`bg-cat-*` with `-foreground` text. These are toggles, not buttons.
-- **Bet panel** (Container tier) — stake input + quick-chips (10 / 50 / 100 / Max) · live "potential payout at current odds" in `.nums` · place-bet **primary** button. May sit on a `--primary` or `--muted` panel.
-- **Coin / balance pill** — `bg-accent text-accent-foreground rounded-full`, gold coin glyph + `.nums` balance. The economy motif.
+- **Prediction panel** (Container tier) — one-pick outcome chips (crowd-split % per chip) · "קבעו ניחוש" **primary** button; pick changeable until close. May sit on a `--primary` or `--muted` panel.
 - **Status badge** — `closes in 3d` (muted), `HOT` (gold accent fill), `RESOLVED` (positive/negative by result), `VOID` (muted). Small `rounded-full` pills.
 
 ---
@@ -170,8 +169,8 @@ The page H1 must win — in-article headings are deliberately smaller.
 |---|---|
 | Button hover | `-translate-y-0.5` + shadow, ~150ms |
 | Feature/market card hover | `-translate-y-1` + shadow, ~300ms `ease-out` |
-| Odds bar | width transition ~400ms `ease-out` when pools change |
-| Coin balance | brief count-up on change; **+payout celebration** on a win |
+| Odds bar | width transition ~400ms `ease-out` when the crowd split changes |
+| Win reveal | one-shot right/wrong overlay on first view of a resolved prediction |
 | Status → RESOLVED | quick fade/scale; not a bounce |
 | Sticky header | border/shadow appears on scroll |
 

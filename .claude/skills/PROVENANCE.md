@@ -6,7 +6,7 @@ These skills were gathered from four sibling projects (`dirot`, `shift-manager-s
 
 | Skill | Source project | Status / what to reskin |
 |---|---|---|
-| `better-auth` | dirot | **Reference implementation** — dirot runs Better Auth + Drizzle + Neon on this exact Next 16 stack. Server config + client hooks + session + route protection + Drizzle schema. Swap dirot's `ALLOWED_EMAILS` invite gate for Polytical's open Google+email sign-up + starting-stack grant. |
+| `better-auth` | dirot | **Reference implementation** — dirot runs Better Auth + Drizzle + Neon on this exact Next 16 stack. Server config + client hooks + session + route protection + Drizzle schema. Swap dirot's `ALLOWED_EMAILS` invite gate for Polytical's open Google+email sign-up. |
 | `tailwind-v4` | gcg-platform | Drop-in. Includes RTL logical-props guidance. |
 | `zod-4` | shift-manager | Drop-in (most complete copy, ~795 lines). |
 | `react-hook-form` | gcg-platform | Drop-in API patterns; the `Connected*`-field layer is GCG scaffolding — ignore. |
@@ -29,7 +29,7 @@ These skills were gathered from four sibling projects (`dirot`, `shift-manager-s
 ## Deliberately NOT copied — domain-specific, but the MECHANIC is worth adapting
 | Skill (source) | Pattern to lift into Polytical |
 |---|---|
-| `payment` (gcg-platform, Stripe) | Webhook-authoritative + idempotent + terminal-state machine + atomic DB → **the parimutuel coin ledger**. |
+| `payment` (gcg-platform, Stripe) | Webhook-authoritative + idempotent + terminal-state machine + atomic DB → **the atomic prediction-resolution + card-unlock transaction** (the coin ledger it originally seeded was removed in 0017_remove_coins). |
 | `async-pdf-package` (gcg-platform) | Async job pkg: enqueue → cron worker w/ `FOR UPDATE SKIP LOCKED` lease → dedup → TTL → signed callback → **AI caricature generation + market resolution/settlement jobs**. |
 | `questionnaire` (gcg-platform) | Multi-step form engine (debounced save, JSONB merge) → suggest-a-market / admin forms. |
 | `local-page` / `form-question-page` (gcg-marketing) | Research → cache → synthesize → AI-tell grep-lint → multi-persona review-panel → wire-up **page factory** → Hebrew SEO/content pages. |

@@ -31,11 +31,8 @@ export class InvalidArenaError extends Error { constructor() { super("Invalid ar
 export class HandleRequiredError extends Error { constructor() { super("Handle must be set before onboarding completes"); this.name = "HandleRequiredError"; } }
 export class AlreadyOnboardedError extends Error { constructor() { super("User already onboarded"); this.name = "AlreadyOnboardedError"; } }
 export class AlreadyOwnedError extends Error { constructor() { super("Card already collected"); this.name = "AlreadyOwnedError"; } }
-// --- Seasons (Phase 3) ---
+// --- Seasons (accuracy track) ---
 export class SeasonEndedError extends Error { constructor() { super("Season has ended"); this.name = "SeasonEndedError"; } }
-export class AlreadyClaimedError extends Error { constructor() { super("Tier already claimed"); this.name = "AlreadyClaimedError"; } }
-export class TierNotReachedError extends Error { constructor() { super("Tier goal not reached"); this.name = "TierNotReachedError"; } }
-export class TierNotFoundError extends Error { constructor() { super("Tier not found"); this.name = "TierNotFoundError"; } }
 export class NoActiveSeasonError extends Error { constructor() { super("No active season"); this.name = "NoActiveSeasonError"; } }
 export class AnotherSeasonActiveError extends Error { constructor() { super("Another season is already active"); this.name = "AnotherSeasonActiveError"; } }
 export class SeasonNotFoundError extends Error { constructor() { super("Season not found"); this.name = "SeasonNotFoundError"; } }

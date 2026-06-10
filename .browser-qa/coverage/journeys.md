@@ -1,5 +1,7 @@
 # Journey coverage map
 
+> **⚠️ STALE ENTRIES (pre-`0017_remove_coins`, 2026-06-10):** `seasons-claim`, `card-collection`, `auth-signup-grant-faucet`, `daily-streak`, `place-bet-resolve`, and `leaderboard-profile` describe the REMOVED coin economy (grants, faucet, stakes, payouts, claims, net-worth). The live model is stake-less predictions + right/wrong tally + accuracy-unlocked cards + accuracy seasons. Re-walk and rewrite these journeys before trusting their steps.
+
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |

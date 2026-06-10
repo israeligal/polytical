@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/nextjs-vite";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -20,16 +19,6 @@ const config: StorybookConfig = {
   viteFinal: async (viteConfig) => {
     viteConfig.plugins = viteConfig.plugins ?? [];
     viteConfig.plugins.push(tailwindcss());
-
-    // Alias the faucet Server Action to a browser-safe stub so FaucetButton's
-    // real client component renders without dragging the DB/auth chain in.
-    viteConfig.resolve = viteConfig.resolve ?? {};
-    viteConfig.resolve.alias = {
-      ...(viteConfig.resolve.alias ?? {}),
-      "@/app/actions/faucet": fileURLToPath(
-        new URL("./mocks/faucet-action.ts", import.meta.url),
-      ),
-    };
     return viteConfig;
   },
 };

@@ -10,7 +10,7 @@ import type {
   MemberRow, FactionRow, BillRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow,
 } from "./normalize";
 
-// Driver-agnostic DB handle (mirrors the ledger repo's LedgerTx pattern): the
+// Driver-agnostic DB handle (mirrors the markets repo's injectable-DB pattern): the
 // production postgres-js `db` and the PGlite test db share Drizzle's PG types
 // and differ only by the query-result HKT. Keeping `TQueryResult` generic lets
 // every upsert accept either without `as any`.

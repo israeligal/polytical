@@ -29,7 +29,7 @@ Polytical's collectible cards have a rarity frame, but rarity is derived from a 
 ## Non-Goals
 1. **Subjective "importance" ranking.** Tier is office-held only. We never editorialize who's a "bigger" politician — the seat decides, per official record. (Neutrality + defensibility.)
 2. **Former PMs who aren't sitting MKs** (Bennett, Olmert, Barak…). The card universe is the current 120 MKs for now. A "Hall of Fame" expansion is P2.
-3. **Tying rarity to the Shekoin economy** (collect cost / payout weighting by tier). Compelling, but a separate initiative — P2.
+3. **Tying rarity to any token economy.** ~~(collect cost / payout weighting by tier)~~ — SUPERSEDED: the Shekoin economy was removed in `0017_remove_coins`; rarity now drives the accuracy-unlock threshold instead (see `docs/decisions/no-coins.md`).
 4. **Re-theming non-card surfaces.** This is about the card frame/tier only.
 5. **Regenerating caricature art per tier.** Art is person-permanent; the *frame* carries the tier (see Key Decision).
 
@@ -87,4 +87,4 @@ Prompt Gemini for the full gold/silver/bronze card per politician.
 ## Phasing
 1. **Phase 1 (this branch):** palette recolor + `statureTierForPolitician` + whitelist + wire card → ship the 5 top with correct tiers. (Frame approach per Key Decision.)
 2. **Phase 2:** backfill tiers across all 120; design Silver/Bronze frame flourishes.
-3. **Phase 3 (P2):** economy weighting / Hall of Fame.
+3. **Phase 3 (P2):** Hall of Fame. ~~economy weighting~~ (superseded — no coin economy; rarity drives the accuracy-unlock threshold).

@@ -2,7 +2,7 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { notifications } from "@/app/lib/schema";
 import { MissingUserError } from "@/app/lib/errors";
@@ -17,7 +17,6 @@ type DB = PgDatabase<
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-type Tx = LedgerTx;
 
 export type NotificationRow = typeof notifications.$inferSelect;
 export type NotificationType = (typeof schema.notificationType.enumValues)[number];

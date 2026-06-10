@@ -4,11 +4,10 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bets, markets, seasons, seasonTiers } from "@/app/lib/schema";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import { MissingUserError } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
-type Tx = LedgerTx;
 
 export type SeasonRow = typeof seasons.$inferSelect;
 export type SeasonTierRow = typeof seasonTiers.$inferSelect;

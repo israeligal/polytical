@@ -4,13 +4,12 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import { MissingUserError } from "@/app/lib/errors";
 
 // Driver-agnostic handles (postgres-js in prod, PGlite in tests). Mirrors the
-// ledger repo so identity reads/writes are injectable without an `as any`.
+// markets repo so identity reads/writes are injectable without an `as any`.
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
-type Tx = LedgerTx;
 
 function reqUser(userId: string): string {
   if (!userId) throw new MissingUserError();

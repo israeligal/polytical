@@ -1,5 +1,7 @@
 # Polytical — Product Requirements Document (PRD)
 
+> **⚠️ ARCHIVED (2026-06-10):** the coin economy described throughout this PRD (Shekoins, betting, parimutuel pools, payouts, faucet, streaks, season rewards) was **removed** in migration `0017_remove_coins`. The live model is a stake-less prediction record (right/wrong per market) with accuracy-unlocked cards. See `docs/decisions/no-coins.md`. Kept as the original point-in-time spec — do not implement from it.
+
 > **A play-money prediction market for Israeli politics, where every question is backed by an AI-generated caricature "card" of the politicians involved.** Bet virtual coins on what will happen and on what politicians will do, watch the crowd's odds move, and build a reputation as a forecaster.
 
 | | |
