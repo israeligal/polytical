@@ -325,6 +325,8 @@ export const marketSuggestions = pgTable("market_suggestions", {
   questionHe: text("questionHe").notNull(),
   category: text("category").notNull(),                 // Category union, stored as text
   personId: integer("personId"),                        // optional featured MK → politicians.personId (no FK; resolve by id)
+  proposedCloseAt: timestamp("proposedCloseAt"),        // proposer's intended decision date — required by the service for NEW rows; legacy rows null
+  resolutionSourceNote: text("resolutionSourceNote"),   // optional "how would this resolve" hint for the reviewer
   status: suggestionStatus("status").notNull().default("pending"),
   reviewNote: text("reviewNote"),                       // admin note (esp. on reject)
   reviewedBy: text("reviewedBy").references(() => users.id),
