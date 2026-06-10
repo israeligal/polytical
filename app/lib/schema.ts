@@ -6,9 +6,8 @@ import {
 // --- Better Auth tables ---
 // Canonical Better Auth Drizzle schema (pg). Generated/maintained to match
 // `better-auth` expectations; mapped in lib/auth.ts via drizzleAdapter.
-// Polytical-specific user fields (balance, accuracy, faucet, ...) arrive with
-// the coin-ledger foundation; `isAdmin` is here now because admin routes are
-// role-gated from day one (PRD P0).
+// Polytical-specific user fields (prediction win/resolved counts, handle, arena)
+// live here; `isAdmin` is here because admin routes are role-gated from day one (PRD P0).
 
 export const users = pgTable("user", {
   id: text("id").primaryKey(),
@@ -17,12 +16,11 @@ export const users = pgTable("user", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAdmin: boolean("isAdmin").notNull().default(false),
-  balance: integer("balance").notNull().default(0),     // coin balance CACHE; ledger is source of truth
-  lastFaucetAt: timestamp("lastFaucetAt"),
-  totalResolved: integer("totalResolved").notNull().default(0), // markets the user had a bet in that resolved
-  totalWins: integer("totalWins").notNull().default(0),         // of those, the user's top stake was on the winner
-  streakCount: integer("streakCount").notNull().default(0),     // consecutive-day faucet claims (48h grace)
-  bestStreak: integer("bestStreak").notNull().default(0),       // longest streak ever reached
+  // The user's prediction record — the only "score" in the app. One stake-less
+  // prediction per market; on resolve we bump totalResolved (always) and totalWins
+  // (when the picked outcome won). wrong = totalResolved − totalWins.
+  totalResolved: integer("totalResolved").notNull().default(0), // markets the user predicted that resolved
+  totalWins: integer("totalWins").notNull().default(0),         // of those, the user picked the winning outcome
   // --- Identity / onboarding (Phase 2) ---
   handle: text("handle").unique(),       // @-handle (3–20 [a-z0-9_]); nullable — Postgres treats multiple NULLs as distinct, so legacy rows are fine
   arena: text("arena"),                  // the user's chosen focus — a CATEGORIES key, stored as text
@@ -74,28 +72,6 @@ export const verifications = pgTable("verification", {
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow(),
 });
-
-// --- Coin ledger (the money source of truth) ---
-export const txType = pgEnum("tx_type", ["grant", "faucet", "bet", "payout", "refund", "collect", "season_reward"]);
-
-export const transactions = pgTable(
-  "transactions",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    type: txType("type").notNull(),
-    amount: integer("amount").notNull(),          // signed: credits +, debits −
-    balanceAfter: integer("balanceAfter").notNull(),
-    refMarketId: text("refMarketId"),
-    refBetId: text("refBetId"),
-    createdAt: timestamp("createdAt").notNull().defaultNow(),
-  },
-  (t) => [
-    index("tx_user_created_idx").on(t.userId, t.createdAt),
-    // DB-enforced one-grant-per-user — defense-in-depth behind the lock-first grant logic.
-    uniqueIndex("one_grant_per_user").on(t.userId).where(sql`${t.type} = 'grant'`),
-  ],
-);
 
 // ===================================================================
 // Knesset ingestion domain (system of record: official OData v3).
@@ -243,14 +219,13 @@ export const committeeMemberships = pgTable(
 );
 
 // ===================================================================
-// Markets & parimutuel betting (Phase 2). All coin movement still flows
-// through the append-only ledger (`transactions` + applyEntry); these
-// tables hold market state + the per-outcome pool caches + bet records.
+// Markets & predictions (Phase 2). A "prediction" is a stake-less pick of one
+// outcome per market, changeable until close (unique per user+market). On
+// resolve we tally right/wrong onto the user — no pools, no payouts, no coins.
 // ===================================================================
 
 export const marketStatus = pgEnum("market_status", ["draft", "open", "closed", "resolved", "voided"]);
 export const marketType = pgEnum("market_type", ["binary", "multi"]);
-export const betStatus = pgEnum("bet_status", ["open", "won", "lost", "refunded"]);
 
 export const markets = pgTable("markets", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -285,7 +260,6 @@ export const outcomes = pgTable("outcomes", {
   id: uuid("id").primaryKey().defaultRandom(),
   marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
   labelHe: text("labelHe").notNull(),
-  poolTotal: integer("poolTotal").notNull().default(0), // cache: Σ bet amounts on this outcome
   cat: integer("cat"),                                  // categorical color slot (multi)
   ordinal: integer("ordinal").notNull().default(0),
 });
@@ -295,17 +269,23 @@ export const marketPoliticians = pgTable("market_politicians", {
   personId: integer("personId").notNull(),              // → politicians.personId
 }, (t) => [primaryKey({ columns: [t.marketId, t.personId] })]);
 
+// A prediction record (table kept as `bets` for migration continuity): one
+// stake-less pick of an outcome per (user, market). The unique(userId, marketId)
+// is the "one prediction per market" invariant — makePrediction upserts on it,
+// changing the pick in place until the market closes. seenAt drives the one-time
+// right/wrong reveal after resolution.
 export const bets = pgTable("bets", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   marketId: uuid("marketId").notNull().references(() => markets.id, { onDelete: "cascade" }),
   outcomeId: uuid("outcomeId").notNull().references(() => outcomes.id, { onDelete: "cascade" }),
-  amount: integer("amount").notNull(),
-  payout: integer("payout").notNull().default(0),
-  status: betStatus("status").notNull().default("open"),
-  seenAt: timestamp("seenAt"),   // null until the user first views the RESOLVED bet → one-time win/loss celebration
+  seenAt: timestamp("seenAt"),   // null until the user first views the RESOLVED prediction → one-time right/wrong reveal
   createdAt: timestamp("createdAt").notNull().defaultNow(),
-}, (t) => [index("bets_market_idx").on(t.marketId), index("bets_user_idx").on(t.userId)]);
+}, (t) => [
+  uniqueIndex("bets_user_market_uq").on(t.userId, t.marketId),
+  index("bets_market_idx").on(t.marketId),
+  index("bets_user_idx").on(t.userId),
+]);
 
 // ===================================================================
 // Comments (Phase 4) — per-market discussion. NO coin movement: these
@@ -362,13 +342,12 @@ export const marketSuggestions = pgTable("market_suggestions", {
 // ===================================================================
 
 export const notificationType = pgEnum("notification_type", [
-  "bet_won",
+  "bet_won",             // the user predicted the winning outcome ("ניחשת נכון!")
   "market_resolved",
   "suggestion_approved",
   "suggestion_rejected",
-  "season_reward",       // a season reward tier was claimed
-  "market_voided",       // a market the user bet on was voided (stakes refunded)
-  "market_closing_soon", // a market the user bet on is about to close
+  "market_voided",       // a market the user predicted on was voided
+  "market_closing_soon", // a market the user predicted on is about to close
 ]);
 
 export const notifications = pgTable("notifications", {
@@ -389,12 +368,14 @@ export const notifications = pgTable("notifications", {
 ]);
 
 // ===================================================================
-// Card collection (Phase 2) — the collectible hook. Spending `collect` coins
-// (a ledger row, like any coin movement) buys permanent ownership of an MK's
-// caricature card. personId references politicians.personId by STABLE id (no
-// FK — resolve by canonical id, never fuzzy); the unique(userId, personId)
-// index is BOTH the one-card-per-user ownership invariant AND the idempotency
-// backstop that rolls back the debit on a concurrent double-collect.
+// Card collection (Phase 2) — the collectible hook. A card is UNLOCKED BY
+// ACCURACY: N correct predictions on markets featuring a politician (N scales
+// with the card's rarity, RARITY_UNLOCK_THRESHOLD) auto-grants permanent
+// ownership. personId references politicians.personId by STABLE id (no FK —
+// resolve by canonical id, never fuzzy); the unique(userId, personId) index is
+// BOTH the one-card-per-user ownership invariant AND the idempotency backstop on
+// a concurrent double-unlock. `card_progress` holds the running correct-count
+// per (user, politician) that drives the threshold.
 // ===================================================================
 
 export const cardCollections = pgTable("card_collections", {
@@ -407,12 +388,21 @@ export const cardCollections = pgTable("card_collections", {
   index("card_collections_user_idx").on(t.userId),
 ]);
 
+// Running tally of a user's CORRECT predictions on markets featuring each
+// politician. Bumped inside resolveMarket's tx; when correctCount reaches the
+// rarity threshold the card_collections ownership row is granted (idempotent).
+export const cardProgress = pgTable("card_progress", {
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  personId: integer("personId").notNull(), // → politicians.personId (no FK; resolve by id)
+  correctCount: integer("correctCount").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.userId, t.personId] })]);
+
 // ===================================================================
-// Seasons (Phase 3) — time-boxed reward tracks for retention. Progress is the
-// net Shekoins won in the season window, computed LIVE from the ledger (no
-// tally column, no cron). A user CLAIMS a tier on demand once their progress
-// reaches its goal; the claim credits `season_reward` coins (a ledger row, via
-// applyEntry) and is terminal — a later dip below goal never revokes it.
+// Seasons (Phase 3) — time-boxed ACCURACY tracks for retention. A season has
+// ordered tiers, each requiring N correct predictions on markets RESOLVED within
+// the season window. Tier achievement is DERIVED LIVE (count the user's correct
+// predictions in [startAt, endAt]) — no claim, no coins, just a badge. Counts
+// only grow, so a reached tier stays reached.
 // ===================================================================
 
 export const seasonStatus = pgEnum("season_status", ["active", "ended"]);
@@ -429,27 +419,16 @@ export const seasons = pgTable("seasons", {
   uniqueIndex("seasons_one_active_uq").on(t.status).where(sql`${t.status} = 'active'`),
 ]);
 
-export const seasonRewardTiers = pgTable("season_reward_tiers", {
+// Table/column DB names kept (`season_reward_tiers`, `goalAmount`) so no physical
+// rename is needed; the clean JS names (seasonTiers, goalCorrect) alias them.
+export const seasonTiers = pgTable("season_reward_tiers", {
   id: uuid("id").primaryKey().defaultRandom(),
   seasonId: uuid("seasonId").notNull().references(() => seasons.id, { onDelete: "cascade" }),
-  ordinal: integer("ordinal").notNull(),       // tier order within the season (1..n)
+  ordinal: integer("ordinal").notNull(),          // tier order within the season (1..n)
   nameHe: text("nameHe").notNull(),
-  goalAmount: integer("goalAmount").notNull(), // net Shekoins won to unlock the tier
-  rewardAmount: integer("rewardAmount").notNull(), // coins credited on claim
+  goalCorrect: integer("goalAmount").notNull(),   // # correct predictions in-window to reach the tier
 }, (t) => [
   uniqueIndex("season_reward_tiers_season_ordinal_uq").on(t.seasonId, t.ordinal),
-]);
-
-export const seasonRewardClaims = pgTable("season_reward_claims", {
-  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tierId: uuid("tierId").notNull().references(() => seasonRewardTiers.id, { onDelete: "cascade" }),
-  seasonId: uuid("seasonId").notNull().references(() => seasons.id, { onDelete: "cascade" }),
-  amount: integer("amount").notNull(),         // coins credited (snapshot of tier.rewardAmount)
-  claimedAt: timestamp("claimedAt").notNull().defaultNow(),
-}, (t) => [
-  // One claim per (user, tier) — the idempotency invariant behind AlreadyClaimedError.
-  primaryKey({ columns: [t.userId, t.tierId] }),
-  index("season_reward_claims_user_idx").on(t.userId),
 ]);
 
 // ===================================================================

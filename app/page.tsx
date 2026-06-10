@@ -3,7 +3,7 @@ import type { Category, Politician } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, getMarketOfTheDay, listOpenMarkets } from "@/app/lib/markets/repo";
+import { getMarketBundle, getMarketOfTheDay, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { CategoryRail } from "@/components/category-rail";
@@ -36,8 +36,12 @@ export default async function Home({
   const featuredFor = (personIds: number[]): Politician[] =>
     personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
 
+  // Live predictor counts for every card in one query so each OddsBar shows the
+  // real crowd split (not a blank 0/0 bar).
+  const countsByMarket = await getOutcomeCountsForMarkets({ marketIds: bundles.map((b) => b.market.id) });
+
   const cards = bundles.map((b) => ({
-    market: bundleToMarket(b),
+    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
     featured: featuredFor(b.personIds),
   }));
 
@@ -54,16 +58,17 @@ export default async function Home({
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
 
-  // Real leaderboard: top 8 by net worth (handle = display name for now). If the
-  // viewer is logged in but outside the top 8, append their own row so they can
-  // always find themselves. Empty state until there are users to rank.
+  // Real leaderboard: top 8 by correct predictions (handle = display name for
+  // now). If the viewer is logged in but outside the top 8, append their own row
+  // so they can always find themselves. Empty state until there are users to rank.
   const session = await getSession();
   const me = session?.user ?? null;
-  const top = await getLeaderboard({ by: "networth", limit: 8 });
+  const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,
     handle: e.name,
-    netWorth: e.netWorth,
+    totalWins: e.totalWins,
+    totalResolved: e.totalResolved,
     accuracy: e.accuracy,
     you: me?.id === e.userId,
   }));
@@ -74,7 +79,8 @@ export default async function Home({
       ? {
           rank: myStats.rank,
           handle: me.name,
-          netWorth: myStats.netWorth,
+          totalWins: myStats.totalWins,
+          totalResolved: myStats.totalResolved,
           accuracy: myStats.accuracy,
         }
       : null;
@@ -96,8 +102,8 @@ export default async function Home({
                   <span className="text-primary">בלי כסף</span> — רק על הכבוד.
                 </h1>
                 <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-                  המרו מטבעות משחק על אירועים ועל החלטות של פוליטיקאים, צפו
-                  בסיכויים זזים עם הקהל, ואספו קלפי קריקטורה עם עובדות אמיתיות.
+                  נחשו מה יקרה באירועים ובהחלטות של פוליטיקאים, צפו
+                  בקהל זז עם כל ניחוש, ואספו קלפי קריקטורה לפי דיוק הניחושים שלכם.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -136,7 +142,7 @@ export default async function Home({
           <div className="mb-5">
             <p className="text-sm font-bold text-primary">השווקים</p>
             <h2 className="font-display text-3xl font-bold text-foreground">
-              על מה מהמרים עכשיו
+              על מה מנחשים עכשיו
             </h2>
           </div>
           <div className="mb-6">
@@ -216,7 +222,7 @@ export default async function Home({
             </div>
           ) : (
             <EmptyState className="mx-auto max-w-2xl">
-              עוד אין מספיק פעילות לטבלה. המרו על שוק ראשון כדי לפתוח את הדירוג.
+              עוד אין מספיק פעילות לטבלה. נחשו על שוק ראשון כדי לפתוח את הדירוג.
             </EmptyState>
           )}
         </section>

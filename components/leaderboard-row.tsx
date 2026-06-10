@@ -1,5 +1,5 @@
 import type { LeaderboardEntry } from "@/lib/leaderboard";
-import { formatCoins } from "@/lib/format";
+import { formatCount } from "@/lib/format";
 
 export function LeaderboardRow({
   entry,
@@ -33,8 +33,9 @@ export function LeaderboardRow({
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-accent" />
         <span className="nums font-extrabold text-gold">
-          {formatCoins(entry.netWorth)}
+          {formatCount(entry.totalWins)}
         </span>
+        <span className="text-sm text-muted-foreground">נכונים</span>
       </span>
     </div>
   );

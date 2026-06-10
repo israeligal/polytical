@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { formatCoins, totalPool } from "@/lib/format";
-import { getMarketBundle } from "@/app/lib/markets/repo";
+import { formatCount } from "@/lib/format";
+import { getMarketBundle, getOutcomeCounts } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
@@ -13,7 +13,7 @@ import { BetPanel } from "@/components/bet-panel";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { CommentThread } from "@/components/comments/comment-thread";
-import { ChatBubble, ChevronForward, Coin } from "@/components/icons";
+import { ChatBubble, ChevronForward, Users } from "@/components/icons";
 
 export default async function MarketPage({
   params,
@@ -24,7 +24,8 @@ export default async function MarketPage({
   const bundle = await getMarketBundle({ marketId: id });
   if (!bundle) notFound();
 
-  const market = bundleToMarket(bundle);
+  const counts = await getOutcomeCounts({ marketId: id });
+  const market = bundleToMarket({ ...bundle, counts });
   const status = bundle.market.status;
   const settled = status === "resolved" || status === "voided";
   const winningOutcome =
@@ -41,8 +42,8 @@ export default async function MarketPage({
 
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
-  const volume = totalPool(market.outcomes);
-  // One-time win/loss celebration for this market's resolved bet (first view).
+  const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
+  // One-time right/wrong reveal for this market's resolved prediction (first view).
   const celebrations =
     settled && session?.user
       ? await getCelebrations({ userId: session.user.id, marketId: id })
@@ -50,7 +51,7 @@ export default async function MarketPage({
 
   return (
     <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-      <CelebrationHost bets={celebrations} />
+      <CelebrationHost predictions={celebrations} />
       <Link
         href="/#markets"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
@@ -65,8 +66,11 @@ export default async function MarketPage({
         Desktop restores the two-column layout: head + body stack in the 1fr
         column, the bet panel is a sticky sidebar spanning both rows.
       */}
+      {/* min-w-0 on every grid child: grid items default to min-width:auto, so any
+          unbreakable content (long word in a comment, wide image) would otherwise
+          force the column wider than the viewport on mobile. */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           <div className="mb-3 flex items-center gap-3">
             <CategoryBadge category={market.category} />
             {market.hot && <HotBadge />}
@@ -78,11 +82,11 @@ export default async function MarketPage({
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <Coin className="h-4 w-4 text-accent" />
+              <Users className="h-4 w-4 text-accent" />
               <span className="nums font-bold text-foreground">
-                {formatCoins(volume)}
+                {formatCount(predictors)}
               </span>
-              מטבעות בקופה
+              ניחשו
             </span>
             <span className="text-border">•</span>
             <Countdown closeAt={market.closeAt} />
@@ -93,7 +97,7 @@ export default async function MarketPage({
           </div>
         </div>
 
-        <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:self-start">
           {settled ? (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
               <h3 className="mb-2 font-display text-lg font-bold text-foreground">
@@ -101,7 +105,7 @@ export default async function MarketPage({
               </h3>
               {status === "voided" ? (
                 <p className="text-sm text-muted-foreground">
-                  כל ההימורים הוחזרו במלואם.
+                  השוק בוטל — הניחושים לא נספרים.
                 </p>
               ) : (
                 <>
@@ -127,7 +131,7 @@ export default async function MarketPage({
           )}
         </aside>
 
-        <div className="lg:col-start-1 lg:row-start-2">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <h2 className="mb-3 font-display text-xl font-bold text-foreground">
             הפוליטיקאים בשוק
           </h2>

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Market, Politician } from "@/lib/types";
 import { marketPoliticians } from "@/lib/mock-data";
-import { formatCoins, totalPool } from "@/lib/format";
+import { formatCount } from "@/lib/format";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
-import { Coin } from "@/components/icons";
+import { Users } from "@/components/icons";
 
 /**
  * Feed card (Feature tier): the whole card links to the market; hover lifts.
@@ -21,7 +21,7 @@ export function MarketCard({
   featured?: Politician[];
 }) {
   const pols = featured ?? marketPoliticians(market);
-  const volume = totalPool(market.outcomes);
+  const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
 
   return (
     <Link
@@ -42,8 +42,8 @@ export function MarketCard({
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <Coin className="h-[18px] w-[18px]" />
-            <span className="nums font-extrabold text-gold">{formatCoins(volume)}</span>
+            <Users className="h-[18px] w-[18px]" />
+            <span className="nums font-extrabold text-gold">{formatCount(predictors)}</span>
           </span>
           <span className="text-border">•</span>
           <Countdown closeAt={market.closeAt} />

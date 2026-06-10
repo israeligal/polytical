@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
-import { listManageableMarkets } from "@/app/lib/markets/repo";
+import { listManageableMarkets, getOutcomeCounts } from "@/app/lib/markets/repo";
 import { listSuggestions } from "@/app/lib/suggestions/service";
 import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { CreateMarketForm } from "@/components/admin/create-market-form";
@@ -18,6 +18,13 @@ export default async function AdminPage() {
   if (!session.user.isAdmin) redirect("/");
 
   const manageable = await listManageableMarkets();
+  // Live predictor counts per market for the crowd-split display.
+  const countsByMarket = new Map<string, Map<string, number>>();
+  await Promise.all(
+    manageable.map(async ({ market }) => {
+      countsByMarket.set(market.id, await getOutcomeCounts({ marketId: market.id }));
+    }),
+  );
   const pendingSuggestions = await listSuggestions({ status: "pending" });
   const nameByPersonId = new Map<number, string>();
   if (pendingSuggestions.some((s) => s.personId != null)) {
@@ -30,8 +37,8 @@ export default async function AdminPage() {
         <p className="text-sm font-bold text-primary">קונסולת ניהול</p>
         <h1 className="font-display text-3xl font-black text-foreground">ניהול שווקים</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          יצירת שווקים, הכרעה (חלוקת הקופה לזוכים) וביטול (החזר מלא). כל תנועת מטבעות
-          עוברת דרך ספר החשבונות.
+          יצירת שווקים, הכרעה (סיכום מי ניחש נכון) וביטול שוק. ההכרעה מעדכנת את
+          רשומת הניחושים של כל מי שניחש.
         </p>
       </header>
 
@@ -84,7 +91,7 @@ export default async function AdminPage() {
                 outcomes={outcomes.map((o) => ({
                   id: o.id,
                   labelHe: o.labelHe,
-                  poolTotal: o.poolTotal,
+                  predictors: countsByMarket.get(market.id)?.get(o.id) ?? 0,
                 }))}
               />
             ))}

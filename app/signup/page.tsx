@@ -43,7 +43,7 @@ export default function SignUpPage() {
             <Ballot className="h-6 w-6" />
           </span>
           <h1 className="font-display text-2xl font-black text-foreground">הרשמה לפוליטיקל</h1>
-          <p className="text-sm text-muted-foreground">פתחו חשבון וקבלו 1,000 מטבעות התחלה</p>
+          <p className="text-sm text-muted-foreground">פתחו חשבון והתחילו לנחש</p>
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4">

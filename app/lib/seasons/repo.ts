@@ -3,15 +3,15 @@ import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { seasons, seasonRewardTiers, seasonRewardClaims, transactions } from "@/app/lib/schema";
-import type { LedgerTx } from "@/app/lib/ledger/repo";
+import { bets, markets, seasons, seasonTiers } from "@/app/lib/schema";
+import type { Tx as LedgerTx } from "@/app/lib/db";
 import { MissingUserError } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 type Tx = LedgerTx;
 
 export type SeasonRow = typeof seasons.$inferSelect;
-export type SeasonTierRow = typeof seasonRewardTiers.$inferSelect;
+export type SeasonTierRow = typeof seasonTiers.$inferSelect;
 
 function reqUser(userId: string): string {
   if (!userId) throw new MissingUserError();
@@ -45,25 +45,19 @@ export async function getSeasonTiers({
 }): Promise<SeasonTierRow[]> {
   return db
     .select()
-    .from(seasonRewardTiers)
-    .where(eq(seasonRewardTiers.seasonId, seasonId))
-    .orderBy(asc(seasonRewardTiers.ordinal));
+    .from(seasonTiers)
+    .where(eq(seasonTiers.seasonId, seasonId))
+    .orderBy(asc(seasonTiers.ordinal));
 }
 
 /**
- * Shekoins WAGERED in the season window — computed LIVE from the ledger, not a
- * tally column. Sums the (negative) `bet` debits created within [startAt, endAt]
- * and negates them to a positive volume. grant/faucet/collect/season_reward and
- * the payout/refund credits are excluded — only money put at risk counts.
- *
- * (This replaced a "net winnings" metric: winnings only rise on a resolved-market
- * payout, but markets close months out and resolution is admin-only, so a normal
- * player could never move the bar within a season — every tier was unreachable.
- * Wagered volume rewards engagement and is reachable through normal play; bounded
- * by the coins a player can acquire, ~1000 + daily faucet over the season.)
+ * The number of CORRECT predictions the user made on markets RESOLVED within the
+ * season window [startAt, endAt] — computed LIVE (no tally column). A prediction
+ * is correct iff its outcome is the market's resolved winning outcome. This is
+ * the season's accuracy metric: it rewards making good calls during the season.
  * Always >= 0.
  */
-export async function getSeasonWagered({
+export async function getSeasonCorrect({
   db,
   tx,
   userId,
@@ -78,88 +72,19 @@ export async function getSeasonWagered({
 }): Promise<number> {
   const conn = tx ?? db ?? defaultDb;
   const [row] = await conn
-    .select({ wagered: sql<number>`COALESCE(-SUM(${transactions.amount}), 0)::int` })
-    .from(transactions)
+    .select({ correct: sql<number>`count(*)::int` })
+    .from(bets)
+    .innerJoin(markets, eq(markets.id, bets.marketId))
     .where(
       and(
-        eq(transactions.userId, reqUser(userId)),
-        eq(transactions.type, "bet"),
-        gte(transactions.createdAt, startAt),
-        lte(transactions.createdAt, endAt),
+        eq(bets.userId, reqUser(userId)),
+        eq(markets.status, "resolved"),
+        gte(markets.resolvedAt, startAt),
+        lte(markets.resolvedAt, endAt),
+        sql`${bets.outcomeId} = ${markets.resolvedOutcomeId}`,
       ),
     );
-  return row?.wagered ?? 0;
-}
-
-/** The tierIds the user has already claimed in a season. */
-export async function getClaimedTierIds({
-  db = defaultDb,
-  userId,
-  seasonId,
-}: {
-  db?: DB;
-  userId: string;
-  seasonId: string;
-}): Promise<Set<string>> {
-  const rows = await db
-    .select({ tierId: seasonRewardClaims.tierId })
-    .from(seasonRewardClaims)
-    .where(and(eq(seasonRewardClaims.userId, reqUser(userId)), eq(seasonRewardClaims.seasonId, seasonId)));
-  return new Set(rows.map((r) => r.tierId));
-}
-
-/** Locks a tier row FOR UPDATE (+ returns it) so a claim serializes. */
-export async function lockTier({ tx, tierId }: { tx: Tx; tierId: string }): Promise<SeasonTierRow | null> {
-  const [row] = await tx.select().from(seasonRewardTiers).where(eq(seasonRewardTiers.id, tierId)).for("update");
-  return row ?? null;
-}
-
-/** Locks a season row FOR UPDATE (+ returns it) — read the season under the
- *  claim's tx so a concurrent endSeason can't slip in between check and credit. */
-export async function lockSeason({ tx, seasonId }: { tx: Tx; seasonId: string }): Promise<SeasonRow | null> {
-  const [row] = await tx.select().from(seasons).where(eq(seasons.id, seasonId)).for("update");
-  return row ?? null;
-}
-
-/** True if this (user, tier) claim already exists. */
-export async function isClaimed({
-  tx,
-  userId,
-  tierId,
-}: {
-  tx: Tx;
-  userId: string;
-  tierId: string;
-}): Promise<boolean> {
-  const [row] = await tx
-    .select({ userId: seasonRewardClaims.userId })
-    .from(seasonRewardClaims)
-    .where(and(eq(seasonRewardClaims.userId, reqUser(userId)), eq(seasonRewardClaims.tierId, tierId)))
-    .limit(1);
-  return !!row;
-}
-
-/** Records a claim idempotently. Returns false if the (user,tier) row already
- *  existed (the composite PK is the backstop) — caller rolls back the credit. */
-export async function insertClaim({
-  tx,
-  userId,
-  tierId,
-  seasonId,
-  amount,
-}: {
-  tx: Tx;
-  userId: string;
-  tierId: string;
-  seasonId: string;
-  amount: number;
-}): Promise<boolean> {
-  const inserted = await tx
-    .insert(seasonRewardClaims)
-    .values({ userId: reqUser(userId), tierId, seasonId, amount })
-    .onConflictDoNothing({ target: [seasonRewardClaims.userId, seasonRewardClaims.tierId] })
-    .returning({ userId: seasonRewardClaims.userId });
-  return inserted.length > 0;
+  return row?.correct ?? 0;
 }
 
 // --- Admin writes ---
@@ -173,7 +98,7 @@ export async function countActiveSeasons({ db = defaultDb }: { db?: DB } = {}): 
   return row?.n ?? 0;
 }
 
-/** Creates a season + its tiers atomically (one tx). */
+/** Creates a season + its accuracy tiers atomically (one tx). */
 export async function insertSeasonWithTiers({
   db = defaultDb,
   nameHe,
@@ -185,7 +110,7 @@ export async function insertSeasonWithTiers({
   nameHe: string;
   startAt: Date;
   endAt: Date;
-  tiers: { ordinal: number; nameHe: string; goalAmount: number; rewardAmount: number }[];
+  tiers: { ordinal: number; nameHe: string; goalCorrect: number }[];
 }): Promise<{ seasonId: string }> {
   return db.transaction(async (tx) => {
     const [season] = await tx
@@ -193,7 +118,7 @@ export async function insertSeasonWithTiers({
       .values({ nameHe, startAt, endAt, status: "active" })
       .returning({ id: seasons.id });
     if (tiers.length > 0) {
-      await tx.insert(seasonRewardTiers).values(tiers.map((t) => ({ ...t, seasonId: season.id })));
+      await tx.insert(seasonTiers).values(tiers.map((t) => ({ ...t, seasonId: season.id })));
     }
     return { seasonId: season.id };
   });

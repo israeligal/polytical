@@ -7,15 +7,14 @@ import {
   getPoliticianByPersonId,
 } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketsForPolitician } from "@/app/lib/markets/repo";
+import { getMarketsForPolitician, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
-import { CollectButton } from "@/components/collect-button";
 import { MarketCard } from "@/components/market-card";
-import { ChevronForward } from "@/components/icons";
+import { ChevronForward, Trophy, Lock } from "@/components/icons";
 import { getSession } from "@/lib/auth";
-import { isOwned } from "@/app/lib/cards/service";
-import { COLLECT_COST } from "@/app/lib/economy";
+import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
+import { unlockThreshold } from "@/lib/rarity";
 
 export default async function PoliticianPage({
   params,
@@ -32,10 +31,14 @@ export default async function PoliticianPage({
   const politician = dbToCard(row);
   const activity = await getPoliticianActivity({ personId });
 
-  // Collection affordance — only for a signed-in user; anonymous visitors see
-  // the card without a collect button (the action would reject them anyway).
+  // Collection is unlocked by ACCURACY: getting `threshold` correct predictions on
+  // this MK's markets auto-grants the card. Show ownership or progress toward it.
   const session = await getSession();
   const owned = session?.user ? await isOwned({ userId: session.user.id, personId }) : false;
+  const threshold = unlockThreshold({ personId, role: row.roleHe });
+  const correctCount = session?.user
+    ? (await getProgressByPerson({ userId: session.user.id })).get(personId) ?? 0
+    : 0;
 
   // Markets that feature this MK → the same view-model the homepage cards use.
   // Featured portraits resolve against one politicians map (no N+1), mirroring
@@ -45,8 +48,11 @@ export default async function PoliticianPage({
   for (const p of await getAllPoliticians()) polById.set(String(p.personId), dbToCard(p));
   const featuredFor = (ids: number[]): Politician[] =>
     ids.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+  const countsByMarket = await getOutcomeCountsForMarkets({
+    marketIds: marketBundles.map((b) => b.market.id),
+  });
   const marketCards = marketBundles.map((b) => ({
-    market: bundleToMarket(b),
+    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
     featured: featuredFor(b.personIds),
   }));
 
@@ -64,15 +70,37 @@ export default async function PoliticianPage({
         <div className="lg:sticky lg:top-24 lg:self-start">
           <CaricatureCard politician={politician} realData />
           {session?.user ? (
-            <div className="mt-4">
-              <CollectButton personId={personId} owned={owned} cost={COLLECT_COST} />
-            </div>
+            owned ? (
+              <div className="mt-4 flex items-center justify-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-bold text-accent">
+                <Trophy className="h-4 w-4" />
+                הקלף באוסף שלך
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  פתחו את הקלף בדיוק
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  נחשו נכון <span className="nums font-bold text-foreground">{threshold}</span> פעמים בשווקים שמופיע בהם כדי לאסוף את הקלף.
+                </p>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
+                  <div
+                    className="h-full rounded-full bg-accent transition-[width] duration-500"
+                    style={{ width: `${Math.min(100, (correctCount / threshold) * 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  <span className="nums font-bold text-foreground">{correctCount}</span>/{threshold} ניחושים נכונים
+                </p>
+              </div>
+            )
           ) : (
             <Link
               href="/login?callbackUrl=%2Fcollection"
               className="mt-4 block rounded-full border border-border px-4 py-2.5 text-center text-sm font-bold text-muted-foreground transition-colors hover:text-primary"
             >
-              התחברו כדי לאסוף את הקלף
+              התחברו כדי לאסוף את הקלף בדיוק
             </Link>
           )}
         </div>

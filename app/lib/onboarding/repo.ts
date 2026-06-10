@@ -4,7 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
-import type { LedgerTx } from "@/app/lib/ledger/repo";
+import type { Tx as LedgerTx } from "@/app/lib/db";
 import { MissingUserError } from "@/app/lib/errors";
 
 // Driver-agnostic handles (postgres-js in prod, PGlite in tests). Mirrors the

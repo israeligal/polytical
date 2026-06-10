@@ -102,8 +102,8 @@ export const markets: Market[] = [
     closeAt: inDays(3),
     politicianIds: ["smotrich", "bibi"],
     outcomes: [
-      { id: "yes", label: "כן", pool: 7400 },
-      { id: "no", label: "לא", pool: 3100 },
+      { id: "yes", label: "כן", predictors: 7400 },
+      { id: "no", label: "לא", predictors: 3100 },
     ],
   },
   {
@@ -115,8 +115,8 @@ export const markets: Market[] = [
     closeAt: inDays(21),
     politicianIds: ["bibi", "lapid"],
     outcomes: [
-      { id: "yes", label: "כן", pool: 4200 },
-      { id: "no", label: "לא", pool: 9800 },
+      { id: "yes", label: "כן", predictors: 4200 },
+      { id: "no", label: "לא", predictors: 9800 },
     ],
   },
   {
@@ -127,10 +127,10 @@ export const markets: Market[] = [
     closeAt: inDays(10),
     politicianIds: ["smotrich", "liberman"],
     outcomes: [
-      { id: "smotrich", label: "סמוטריץ׳", pool: 5400, color: 5 },
-      { id: "barkat", label: "ניר ברקת", pool: 2100, color: 1 },
-      { id: "liberman", label: "ליברמן", pool: 1200, color: 7 },
-      { id: "other", label: "אחר", pool: 1300, color: 4 },
+      { id: "smotrich", label: "סמוטריץ׳", predictors: 5400, color: 5 },
+      { id: "barkat", label: "ניר ברקת", predictors: 2100, color: 1 },
+      { id: "liberman", label: "ליברמן", predictors: 1200, color: 7 },
+      { id: "other", label: "אחר", predictors: 1300, color: 4 },
     ],
   },
   {
@@ -141,8 +141,8 @@ export const markets: Market[] = [
     closeAt: inDays(60),
     politicianIds: ["bibi"],
     outcomes: [
-      { id: "yes", label: "כן", pool: 8900 },
-      { id: "no", label: "לא", pool: 2600 },
+      { id: "yes", label: "כן", predictors: 8900 },
+      { id: "no", label: "לא", predictors: 2600 },
     ],
   },
   {
@@ -153,8 +153,8 @@ export const markets: Market[] = [
     closeAt: inDays(14),
     politicianIds: ["bengvir", "bibi"],
     outcomes: [
-      { id: "yes", label: "כן", pool: 1900 },
-      { id: "no", label: "לא", pool: 6500 },
+      { id: "yes", label: "כן", predictors: 1900 },
+      { id: "no", label: "לא", predictors: 6500 },
     ],
   },
   {
@@ -165,17 +165,18 @@ export const markets: Market[] = [
     closeAt: inDays(25),
     politicianIds: ["smotrich", "liberman"],
     outcomes: [
-      { id: "yes", label: "כן", pool: 3300 },
-      { id: "no", label: "לא", pool: 4700 },
+      { id: "yes", label: "כן", predictors: 3300 },
+      { id: "no", label: "לא", predictors: 4700 },
     ],
   },
 ];
 
 export const currentUser: CurrentUser = {
   handle: "gal",
-  balance: 1840,
   rank: 142,
   accuracy: 64,
+  totalWins: 32,
+  totalResolved: 50,
 };
 
 export const getPolitician = (id: string): Politician | undefined =>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Close, Menu, PolyticalLogo, Search } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { FaucetButton } from "@/components/faucet-button";
 import { SignOutButton } from "@/components/auth-buttons";
 import type { Theme } from "@/lib/theme";
 
@@ -124,10 +123,7 @@ export function MobileMenu({
             <div className="flex flex-col gap-3 border-t border-line-soft px-4 py-4">
               {loggedIn ? (
                 <>
-                  <div className="flex items-center justify-between gap-3">
-                    <FaucetButton />
-                    <ThemeToggle initial={theme} />
-                  </div>
+                  <ThemeToggle initial={theme} />
                   <Link
                     href="/profile"
                     onClick={close}

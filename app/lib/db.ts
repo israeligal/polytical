@@ -1,5 +1,7 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
 
 // Single-source DB connection for the Polytical app + scripts + tests.
@@ -38,5 +40,17 @@ export const db = drizzle(sharedClient, { schema });
 /** The shared postgres.js Sql client (full postgres.js API for scripts/raw SQL). */
 export const sharedSql = sharedClient;
 
-/** The Drizzle DB type (used by the ledger repo/service for tx typing). */
+/** The Drizzle DB type. */
 export type DB = typeof db;
+
+/**
+ * Driver-agnostic Drizzle transaction handle. The same tx-aware repo code runs
+ * on the production postgres-js `db` and on the PGlite test db, whose Drizzle
+ * types differ only by the query-result HKT — keeping this generic lets a
+ * tx-taking function accept either without `as any`. (Formerly `LedgerTx`.)
+ */
+export type Tx = PgTransaction<
+  PgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;

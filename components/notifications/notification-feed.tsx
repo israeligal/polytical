@@ -67,7 +67,7 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   }
 
   if (items.length === 0) {
-    return <EmptyState>אין התראות עדיין. הימרו על שוק כדי להתחיל.</EmptyState>;
+    return <EmptyState>אין התראות עדיין. נחשו על שוק כדי להתחיל.</EmptyState>;
   }
 
   const hasUnread = items.some((i) => !i.read);
@@ -100,7 +100,9 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
                 <span className="font-bold text-foreground">{item.titleHe}</span>
                 {!item.read && <span className="h-2 w-2 shrink-0 rounded-full bg-blue" />}
               </span>
-              <span className="text-sm text-muted-foreground">{item.bodyHe}</span>
+              {/* wrap-anywhere: bodyHe can carry user text (e.g. a suggestion note) —
+                  an unbroken long string must not blow the layout on mobile. */}
+              <span className="min-w-0 max-w-full wrap-anywhere text-sm text-muted-foreground">{item.bodyHe}</span>
               <time dateTime={item.createdAtIso} className="font-accent text-xs text-muted-foreground">
                 {formatDateTime(item.createdAtIso)}
               </time>

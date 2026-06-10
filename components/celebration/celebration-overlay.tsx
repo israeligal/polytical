@@ -1,24 +1,23 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Shekoin } from "@/components/icons";
-import { formatCoins } from "@/lib/format";
+import { Sparkle, Trophy } from "@/components/icons";
 
 /**
- * A one-shot win/loss celebration. Win = mint glow + a ring of bursting Shekoins
- * (poly-burst-up) + a popping payout card (poly-pop). Loss = a coral X disc.
+ * A one-shot right/wrong reveal. Right = mint glow + a ring of bursting sparkles
+ * (poly-burst-up) + a popping trophy card (poly-pop). Wrong = a coral X disc.
  * Auto-dismisses; tap anywhere to close. Reduced-motion is honored globally
  * (globals.css neutralizes the keyframes), so it degrades to a static card.
  */
 export function CelebrationOverlay({
   kind,
-  payout,
   questionHe,
+  outcomeLabelHe,
   onClose,
 }: {
   kind: "win" | "loss";
-  payout: number;
   questionHe: string;
+  outcomeLabelHe: string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -27,7 +26,7 @@ export function CelebrationOverlay({
   }, [onClose]);
 
   // Deterministic burst ring (no Math.random → no hydration surprises).
-  const coins = useMemo(
+  const sparks = useMemo(
     () =>
       kind === "win"
         ? Array.from({ length: 12 }, (_, i) => {
@@ -46,16 +45,16 @@ export function CelebrationOverlay({
   return (
     <div
       role="dialog"
-      aria-label={kind === "win" ? "זכית" : "הפסדת"}
+      aria-label={kind === "win" ? "ניחשת נכון" : "טעית"}
       onClick={onClose}
       className="fixed inset-0 z-[300] grid place-items-center bg-background/70 px-6 backdrop-blur-sm"
     >
       {/* burst ring (win only) */}
-      {coins.map((c, i) => (
+      {sparks.map((c, i) => (
         <span
           key={i}
           aria-hidden="true"
-          className="pointer-events-none absolute"
+          className="pointer-events-none absolute text-gold"
           style={{
             // @ts-expect-error — CSS custom props for the poly-burst-up keyframe
             "--bx": c.bx,
@@ -64,7 +63,7 @@ export function CelebrationOverlay({
             animation: `poly-burst-up 1.2s var(--ease-out) ${c.delay} forwards`,
           }}
         >
-          <Shekoin className="h-7 w-7" />
+          <Sparkle className="h-7 w-7" />
         </span>
       ))}
 
@@ -75,13 +74,13 @@ export function CelebrationOverlay({
         {kind === "win" ? (
           <>
             <span
-              className="grid h-20 w-20 place-items-center rounded-full"
+              className="grid h-20 w-20 place-items-center rounded-full text-gold"
               style={{ backgroundColor: "rgba(255,194,61,.18)", boxShadow: "var(--shadow-glow-gold)" }}
             >
-              <Shekoin className="h-12 w-12" />
+              <Trophy className="h-12 w-12" />
             </span>
-            <p className="font-display text-3xl text-foreground">זכית!</p>
-            <p className="nums font-display text-2xl text-gold">+{formatCoins(payout)} שקוינים</p>
+            <p className="font-display text-3xl text-foreground">ניחשת נכון!</p>
+            <p className="font-display text-xl text-gold">צדקת בתחזית 🎯</p>
           </>
         ) : (
           <>
@@ -95,6 +94,9 @@ export function CelebrationOverlay({
           </>
         )}
         <p className="max-w-xs text-sm text-muted-foreground">{questionHe}</p>
+        <p className="text-xs text-muted-foreground">
+          ניחשת: <span className="font-bold text-foreground">{outcomeLabelHe}</span>
+        </p>
       </div>
     </div>
   );

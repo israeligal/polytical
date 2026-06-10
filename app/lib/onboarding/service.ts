@@ -4,7 +4,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import * as repo from "@/app/lib/onboarding/repo";
 import type { OnboardingState } from "@/app/lib/onboarding/repo";
-import { lockUser } from "@/app/lib/ledger/repo";
+import { lockUser } from "@/app/lib/users/repo";
 import { CATEGORIES } from "@/lib/categories";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
 import { isUniqueViolation } from "@/app/lib/pg-errors";

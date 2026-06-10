@@ -5,10 +5,10 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
 
-// Leaderboard + portfolio read model. Pure, read-only derivations over the
-// users + bets tables — no coin movement (that stays in applyEntry). Mirrors the
-// driver-agnostic DB handle the ledger/markets repos use so PGlite tests and the
-// production postgres-js client both type-check off the same source.
+// Leaderboard + profile read model. Pure, read-only derivations over the users
+// table — the only score is the prediction record (totalWins / totalResolved).
+// Mirrors the driver-agnostic DB handle the markets repo uses so PGlite tests and
+// the production postgres-js client both type-check off the same source.
 
 type DB = PgDatabase<
   PgQueryResultHKT,
@@ -16,38 +16,24 @@ type DB = PgDatabase<
   ExtractTablesWithRelations<typeof schema>
 >;
 
-/** A leaderboard line: net worth = coins on hand + open stakes at cost. */
+/** A leaderboard line: how many correct calls + the accuracy of those calls. */
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
   name: string;
-  netWorth: number;
+  totalWins: number;
+  totalResolved: number;
   accuracy: number; // 0–100
 }
 
-/** A user's full portfolio stats for the profile page (and own leaderboard row). */
+/** A user's prediction-record stats for the profile page (and own leaderboard row). */
 export interface UserStats {
-  balance: number;
-  netWorth: number;
-  accuracy: number; // 0–100
   totalResolved: number;
   totalWins: number;
-  streakCount: number; // current consecutive-day faucet streak
-  bestStreak: number; // longest streak ever reached
-  rank: number; // 1-based, by net worth
+  totalWrong: number;
+  accuracy: number; // 0–100
+  rank: number; // 1-based, by # correct
 }
-
-// Net worth = settled balance + every still-open stake at cost. The correlated
-// subquery sums `open` bets per user (COALESCE→0 when they hold no positions).
-// `users.id` is referenced via its fully-qualified column so it binds to the
-// OUTER user row, not `bets.id` (which would shadow an unqualified "id").
-const netWorthExpr = sql<number>`(
-  ${users.balance} + COALESCE((
-    SELECT SUM(${schema.bets.amount})
-    FROM ${schema.bets}
-    WHERE ${schema.bets.userId} = "user"."id" AND ${schema.bets.status} = 'open'
-  ), 0)
-)::int`;
 
 // Forecaster accuracy = round(wins / resolved × 100), or 0 before any resolve.
 const accuracyExpr = sql<number>`(
@@ -58,9 +44,10 @@ const accuracyExpr = sql<number>`(
 )::int`;
 
 /**
- * The ranked leaderboard. `by: "networth"` orders by coins-at-risk-plus-balance
- * desc; `by: "accuracy"` orders by win ratio desc (0-resolved users sort last
- * because their accuracy is 0). Rank is the 1-based position in the chosen order.
+ * The ranked leaderboard. `by: "wins"` orders by number of correct predictions
+ * desc (accuracy breaks ties); `by: "accuracy"` orders by win ratio desc (then by
+ * volume of correct calls, so a 1/1 user doesn't outrank a 90/100 one). Rank is
+ * the 1-based position in the chosen order.
  */
 export async function getLeaderboard({
   db = defaultDb,
@@ -68,33 +55,38 @@ export async function getLeaderboard({
   limit = 50,
 }: {
   db?: DB;
-  by: "networth" | "accuracy";
+  by: "wins" | "accuracy";
   limit?: number;
 }): Promise<LeaderboardEntry[]> {
-  const orderExpr = by === "accuracy" ? accuracyExpr : netWorthExpr;
+  const order =
+    by === "accuracy"
+      ? sql`${accuracyExpr} DESC, ${users.totalWins} DESC, ${users.id} ASC`
+      : sql`${users.totalWins} DESC, ${accuracyExpr} DESC, ${users.id} ASC`;
   const rows = await db
     .select({
       userId: users.id,
       name: users.name,
-      netWorth: netWorthExpr,
+      totalWins: users.totalWins,
+      totalResolved: users.totalResolved,
       accuracy: accuracyExpr,
     })
     .from(users)
-    .orderBy(sql`${orderExpr} DESC, ${netWorthExpr} DESC, ${users.id} ASC`)
+    .orderBy(order)
     .limit(limit);
 
   return rows.map((r, i) => ({
     rank: i + 1,
     userId: r.userId,
     name: r.name,
-    netWorth: r.netWorth,
+    totalWins: r.totalWins,
+    totalResolved: r.totalResolved,
     accuracy: r.accuracy,
   }));
 }
 
 /**
- * One user's portfolio stats plus their net-worth rank (count of users with a
- * strictly-higher net worth, + 1). Returns null if the user does not exist.
+ * One user's prediction-record stats plus their rank (count of users with
+ * strictly more correct calls, + 1). Returns null if the user does not exist.
  */
 export async function getUserStats({
   db = defaultDb,
@@ -105,22 +97,31 @@ export async function getUserStats({
 }): Promise<UserStats | null> {
   const [row] = await db
     .select({
-      balance: users.balance,
-      netWorth: netWorthExpr,
-      accuracy: accuracyExpr,
       totalResolved: users.totalResolved,
       totalWins: users.totalWins,
-      streakCount: users.streakCount,
-      bestStreak: users.bestStreak,
+      accuracy: accuracyExpr,
     })
     .from(users)
     .where(eq(users.id, userId));
   if (!row) return null;
 
+  // Rank = how many users sort strictly AHEAD of this one in the SAME order
+  // getLeaderboard("wins") uses (totalWins desc, accuracy desc, id asc), + 1 — so
+  // the profile rank matches the leaderboard table's row number exactly, even on ties.
   const [higher] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(users)
-    .where(sql`${netWorthExpr} > ${row.netWorth}`);
+    .where(sql`
+      ${users.totalWins} > ${row.totalWins}
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} > ${row.accuracy})
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.id} < ${userId})
+    `);
 
-  return { ...row, rank: (higher?.n ?? 0) + 1 };
+  return {
+    totalResolved: row.totalResolved,
+    totalWins: row.totalWins,
+    totalWrong: row.totalResolved - row.totalWins,
+    accuracy: row.accuracy,
+    rank: (higher?.n ?? 0) + 1,
+  };
 }

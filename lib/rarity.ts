@@ -91,6 +91,32 @@ export const RARITY_HE: Record<Rarity, string> = {
   legendary: "זהב",
 };
 
+// Cards unlock by ACCURACY: how many correct predictions on markets featuring a
+// politician are needed to collect their card. Scales with the card's STATURE
+// tier (the more senior the office, the more correct calls it takes), mapping the
+// product spec exactly: PM (gold) 10 · former-PM (silver) 7 · party-leader
+// (bronze) 5 · minister (sapphire) 3 · rank-and-file MK (base) 2.
+export const RARITY_UNLOCK_THRESHOLD: Record<Rarity, number> = {
+  legendary: 10,
+  epic: 7,
+  rare: 5,
+  uncommon: 3,
+  common: 2,
+};
+
+/** Correct predictions needed to unlock a politician's card. Keyed off the
+ *  stable personId + role so the stature tier (party leaders / former PMs are
+ *  identified by personId) is resolved the same way the card frame is. */
+export function unlockThreshold({
+  personId,
+  role,
+}: {
+  personId: number;
+  role: string | undefined | null;
+}): number {
+  return RARITY_UNLOCK_THRESHOLD[statureTierForPolitician({ personId, role })];
+}
+
 /** Tailwind text/border color class per tier (tokens defined in globals.css). */
 export const RARITY_TEXT: Record<Rarity, string> = {
   common: "text-rarity-common",

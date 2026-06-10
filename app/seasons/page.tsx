@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getSeasonBoard } from "@/app/lib/seasons/service";
-import { formatCoins, timeUntil } from "@/lib/format";
+import { formatCount, timeUntil } from "@/lib/format";
 import { Trophy, ChevronForward } from "@/components/icons";
 import { EmptyState } from "@/components/empty-state";
 import { SeasonTierRow } from "@/components/seasons/season-tier-row";
 
 export const metadata = {
   title: "העונה · פוליטיקל",
-  description: "צברו שקוינים בהימורים בעונה הנוכחית ותבעו פרסים בכל דרגה.",
+  description: "צברו ניחושים נכונים בעונה הנוכחית ועלו בדרגות הדיוק.",
 };
 
 // Public season board — anonymous visitors see the tiers + countdown (progress 0
-// until they sign in). No cron: claimability is computed live from the ledger.
+// until they sign in). Tiers unlock by accuracy, derived live from the prediction
+// record — no claims, no coins.
 export default async function SeasonsPage() {
   const session = await getSession();
   const board = await getSeasonBoard({ userId: session?.user?.id ?? null });
@@ -22,7 +23,7 @@ export default async function SeasonsPage() {
       <main className="mx-auto max-w-2xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <header className="mb-6">
           <p className="font-accent text-sm font-bold text-accent">העונה</p>
-          <h1 className="font-display text-4xl text-foreground">פרסי עונה</h1>
+          <h1 className="font-display text-4xl text-foreground">דרגות דיוק</h1>
         </header>
         <EmptyState>אין עונה פעילה כרגע — חזרו בקרוב.</EmptyState>
       </main>
@@ -30,8 +31,8 @@ export default async function SeasonsPage() {
   }
 
   const { season, progress, tiers, ended } = board;
-  const nextGoal = tiers.find((t) => t.state === "locked")?.goalAmount ?? null;
-  const topGoal = tiers.length ? tiers[tiers.length - 1].goalAmount : 0;
+  const nextGoal = tiers.find((t) => !t.reached)?.goalCorrect ?? null;
+  const topGoal = tiers.length ? tiers[tiers.length - 1].goalCorrect : 0;
   const barPct = topGoal > 0 ? Math.min(100, (progress / topGoal) * 100) : 0;
 
   return (
@@ -69,15 +70,15 @@ export default async function SeasonsPage() {
         {/* progress */}
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="font-accent text-xs font-bold text-muted-foreground">השקוינים שהימרתם העונה</span>
-            <span className="nums font-display text-2xl text-gold">{formatCoins(progress)}</span>
+            <span className="font-accent text-xs font-bold text-muted-foreground">ניחושים נכונים העונה</span>
+            <span className="nums font-display text-2xl text-gold">{formatCount(progress)}</span>
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-background">
             <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${barPct}%` }} />
           </div>
           {nextGoal !== null && !ended && (
             <p className="mt-1.5 text-xs text-muted-foreground">
-              עוד <span className="nums font-bold text-foreground">{formatCoins(Math.max(0, nextGoal - progress))}</span> עד הדרגה הבאה
+              עוד <span className="nums font-bold text-foreground">{formatCount(Math.max(0, nextGoal - progress))}</span> ניחושים נכונים עד הדרגה הבאה
             </p>
           )}
         </div>
@@ -93,22 +94,20 @@ export default async function SeasonsPage() {
       </section>
 
       {/* tiers */}
-      <h2 className="mb-3 font-display text-xl text-foreground">דרגות הפרס</h2>
+      <h2 className="mb-3 font-display text-xl text-foreground">דרגות הדיוק</h2>
       <div className="space-y-3">
         {tiers.map((t) => (
           <SeasonTierRow
             key={t.id}
-            tierId={t.id}
             ordinal={t.ordinal}
             nameHe={t.nameHe}
-            goalAmount={t.goalAmount}
-            rewardAmount={t.rewardAmount}
-            state={t.state}
+            goalCorrect={t.goalCorrect}
+            reached={t.reached}
           />
         ))}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        ההתקדמות נמדדת לפי סך השקוינים שהימרתם בחלון העונה. פרס שנתבע נשאר שלכם.
+        ההתקדמות נמדדת לפי מספר הניחושים הנכונים שלכם בחלון העונה. דרגה שהושגה נשארת שלכם.
       </p>
     </main>
   );

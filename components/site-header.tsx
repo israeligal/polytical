@@ -1,15 +1,12 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { PolyticalLogo, Search } from "@/components/icons";
-import { CoinPill } from "@/components/coin-pill";
-import { FaucetButton } from "@/components/faucet-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
 import { MobileMenu } from "@/components/mobile-menu";
 import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, type Theme } from "@/lib/theme";
-import { getOrInitBalance } from "@/app/lib/ledger/service";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 
 const NAV = [
@@ -24,7 +21,6 @@ const NAV = [
 export async function SiteHeader() {
   const session = await getSession();
   const user = session?.user ?? null;
-  const balance = user ? await getOrInitBalance({ userId: user.id }) : 0;
   const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
   const theme: Theme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
@@ -65,8 +61,6 @@ export async function SiteHeader() {
             <ThemeToggle initial={theme} />
             {user ? (
               <>
-                <FaucetButton />
-                <CoinPill amount={balance} />
                 <NotificationBell unreadCount={unread} />
                 <Link
                   href="/profile"
@@ -95,12 +89,7 @@ export async function SiteHeader() {
 
           {/* Mobile (<md): balance + bell stay one tap away; everything else folds into the menu. */}
           <div className="flex items-center gap-2 md:hidden">
-            {user && (
-              <>
-                <CoinPill amount={balance} />
-                <NotificationBell unreadCount={unread} />
-              </>
-            )}
+            {user && <NotificationBell unreadCount={unread} />}
             <MobileMenu nav={NAV} theme={theme} loggedIn={!!user} />
           </div>
         </div>
