@@ -108,7 +108,7 @@ export function OnboardingWizard({
         <section>
           <h2 className="font-display text-xl text-foreground">בחרו כינוי</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            כך תופיעו בטבלת המובילים ובדיונים. אפשר לשנות אותיות, מספרים וקו תחתון (3–20 תווים).
+            כך תופיעו בטבלת המובילים ובדיונים. עברית או אנגלית: אותיות, ספרות וקו תחתון (3–20 תווים).
           </p>
           <div className="mt-4">
             <div className="flex items-center gap-2 rounded-[14px] border-2 border-border bg-background px-3 py-2.5 focus-within:border-primary">
@@ -135,7 +135,7 @@ export function OnboardingWizard({
               )}
               {!checking && avail && !avail.available && avail.reason !== "rate_limited" && (
                 <span className="font-semibold text-negative">
-                  {avail.reason === "taken" ? "הכינוי תפוס — בחרו אחר" : "3–20 תווים: a–z, 0–9, _ בלבד"}
+                  {avail.reason === "taken" ? "הכינוי תפוס — בחרו אחר" : "3–20 תווים, עברית או אנגלית בלי לערבב"}
                 </span>
               )}
             </div>

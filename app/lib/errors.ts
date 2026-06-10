@@ -25,7 +25,7 @@ export class PushSubscriptionNotFoundError extends Error { constructor() { super
 export class InvalidPushSubscriptionError extends Error { constructor() { super("Invalid push subscription"); this.name = "InvalidPushSubscriptionError"; } }
 export class InvalidPushPrefError extends Error { constructor() { super("Invalid push preference category"); this.name = "InvalidPushPrefError"; } }
 // --- Onboarding + card collection (Phase 2) ---
-export class InvalidHandleError extends Error { constructor() { super("Handle must be 3–20 chars: a–z, 0–9, _"); this.name = "InvalidHandleError"; } }
+export class InvalidHandleError extends Error { constructor() { super("Handle must be 3–20 chars, all-latin or all-hebrew: letters, digits, _"); this.name = "InvalidHandleError"; } }
 export class HandleTakenError extends Error { constructor() { super("Handle already taken"); this.name = "HandleTakenError"; } }
 export class InvalidArenaError extends Error { constructor() { super("Invalid arena"); this.name = "InvalidArenaError"; } }
 export class HandleRequiredError extends Error { constructor() { super("Handle must be set before onboarding completes"); this.name = "HandleRequiredError"; } }

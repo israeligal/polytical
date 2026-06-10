@@ -47,7 +47,7 @@ export async function setHandleAction({
   try {
     await setHandle({ userId: s.user.id, handle });
   } catch (e) {
-    if (e instanceof InvalidHandleError) return { ok: false, message: "כינוי לא תקין — 3–20 תווים: a–z, 0–9, _" };
+    if (e instanceof InvalidHandleError) return { ok: false, message: "כינוי לא תקין — 3–20 תווים בעברית או באנגלית (בלי לערבב): אותיות, ספרות ו-_" };
     if (e instanceof HandleTakenError) return { ok: false, message: "הכינוי תפוס — בחרו אחר" };
     throw e;
   }
