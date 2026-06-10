@@ -78,7 +78,7 @@ export default async function AdminPage() {
 
       <section>
         <h2 className="mb-3 font-display text-xl font-bold text-foreground">
-          שווקים פתוחים וסגורים ({manageable.length})
+          שווקים בניהול ({manageable.length})
         </h2>
         {manageable.length > 0 ? (
           <div className="space-y-4">
@@ -100,7 +100,7 @@ export default async function AdminPage() {
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
-            אין שווקים פתוחים או סגורים כרגע.
+            אין שווקים בניהול כרגע.
           </p>
         )}
       </section>

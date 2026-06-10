@@ -227,6 +227,18 @@ export async function markVoided({ tx, marketId }: { tx: Tx; marketId: string })
     .where(and(eq(markets.id, marketId), notInArray(markets.status, ["resolved", "voided"])));
 }
 
+/** Hard-deletes a market row. FK cascades wipe its outcomes, predictions
+ *  (bets), market_politicians links and comments in the same statement;
+ *  notifications survive by design (ref* columns carry no FK). Status-guarded
+ *  in SQL like markResolved/markVoided: a RESOLVED market already bumped
+ *  accuracy stats + card progress, so even a direct caller can't delete it
+ *  (the DELETE matches 0 rows). The service adds the error + notification. */
+export async function deleteMarket({ tx, marketId }: { tx: Tx; marketId: string }): Promise<void> {
+  await tx
+    .delete(markets)
+    .where(and(eq(markets.id, marketId), notInArray(markets.status, ["resolved"])));
+}
+
 // --- Closing-soon sweep (the cron's queries) ---
 
 /** OPEN markets closing within `withinMs` from `now` that haven't had their
@@ -336,9 +348,10 @@ export async function getMarketOfTheDay({
   return row?.market ?? null;
 }
 
-/** Markets an admin can still act on (open + closed, i.e. not yet settled),
- *  each with its ordered outcomes — drives the admin resolve/void list. Newest
- *  first; one query per table (no per-market round-trips). */
+/** Markets an admin can still act on (open + closed, plus voided — those can
+ *  still be hard-deleted for cleanup), each with its ordered outcomes — drives
+ *  the admin resolve/void/delete list. Newest first; one query per table (no
+ *  per-market round-trips). */
 export async function listManageableMarkets({
   db = defaultDb,
 }: {
@@ -347,7 +360,7 @@ export async function listManageableMarkets({
   const rows = await db
     .select()
     .from(markets)
-    .where(inArray(markets.status, ["open", "closed"]))
+    .where(inArray(markets.status, ["open", "closed", "voided"]))
     .orderBy(desc(markets.createdAt));
   if (rows.length === 0) return [];
   const outs = await db

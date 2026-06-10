@@ -16,31 +16,25 @@ function nowLocalInput(): string {
 
 /**
  * Functional-plain admin form to create a market: question, optional description,
- * category, type (binary/multi), hot flag, close date, 2+ outcome labels, and
- * optional featured MK personIds. Submits via the admin server action (which
- * re-checks admin) and shows the result message. Deliberately unpolished — this
- * is an internal console, not a public surface.
+ * category, hot flag, close date, the two yes/no outcome labels, and optional
+ * featured MK personIds. Yes/no is the only market type — the action enforces
+ * it server-side too. Submits via the admin server action (which re-checks
+ * admin) and shows the result message. Deliberately unpolished — this is an
+ * internal console, not a public surface.
  */
 export function CreateMarketForm({
   categories,
 }: {
   categories: { key: string; he: string }[];
 }) {
-  const [type, setType] = useState<"binary" | "multi">("binary");
   const [hot, setHot] = useState(false);
-  const [outcomes, setOutcomes] = useState<string[]>(["כן", "לא"]);
+  const [outcomes, setOutcomes] = useState<[string, string]>(["כן", "לא"]);
   const [message, setMessage] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function setOutcome(i: number, value: string) {
-    setOutcomes((prev) => prev.map((o, idx) => (idx === i ? value : o)));
-  }
-  function addOutcome() {
-    setOutcomes((prev) => [...prev, ""]);
-  }
-  function removeOutcome(i: number) {
-    setOutcomes((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev));
+  function setOutcome(i: 0 | 1, value: string) {
+    setOutcomes((prev) => (i === 0 ? [value, prev[1]] : [prev[0], value]));
   }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -59,7 +53,6 @@ export function CreateMarketForm({
           questionHe: String(fd.get("questionHe") ?? ""),
           descriptionHe: String(fd.get("descriptionHe") ?? ""),
           category: String(fd.get("category") ?? ""),
-          type,
           hot,
           closeAt: String(fd.get("closeAt") ?? ""),
           outcomeLabels: outcomes,
@@ -70,7 +63,6 @@ export function CreateMarketForm({
         if (res.ok) {
           form.reset();
           setOutcomes(["כן", "לא"]);
-          setType("binary");
           setHot(false);
         }
       } catch {
@@ -125,65 +117,27 @@ export function CreateMarketForm({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">סוג:</span>
-          <label className="flex items-center gap-1 text-sm">
-            <input
-              type="radio"
-              name="type"
-              checked={type === "binary"}
-              onChange={() => setType("binary")}
-            />
-            בינארי
-          </label>
-          <label className="flex items-center gap-1 text-sm">
-            <input
-              type="radio"
-              name="type"
-              checked={type === "multi"}
-              onChange={() => setType("multi")}
-            />
-            מרובה
-          </label>
-        </div>
-        <label className="flex items-center gap-1 text-sm font-bold text-foreground">
-          <input type="checkbox" checked={hot} onChange={(e) => setHot(e.target.checked)} />
-          שוק חם
-        </label>
-      </div>
+      <label className="flex items-center gap-1 text-sm font-bold text-foreground">
+        <input type="checkbox" checked={hot} onChange={(e) => setHot(e.target.checked)} />
+        שוק חם
+      </label>
 
       <div>
-        <span className={LABEL}>תוצאות (לפחות שתיים)</span>
-        <div className="space-y-2">
-          {outcomes.map((o, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                value={o}
-                onChange={(e) => setOutcome(i, e.target.value)}
-                className={FIELD}
-                aria-label={`תוצאה ${i + 1}`}
-                placeholder={`תוצאה ${i + 1}`}
-              />
-              {outcomes.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => removeOutcome(i)}
-                  className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-negative"
-                >
-                  הסר
-                </button>
-              )}
-            </div>
-          ))}
+        <span className={LABEL}>תוצאות (כן/לא)</span>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input
+            value={outcomes[0]}
+            onChange={(e) => setOutcome(0, e.target.value)}
+            className={FIELD}
+            aria-label="תוצאה חיובית"
+          />
+          <input
+            value={outcomes[1]}
+            onChange={(e) => setOutcome(1, e.target.value)}
+            className={FIELD}
+            aria-label="תוצאה שלילית"
+          />
         </div>
-        <button
-          type="button"
-          onClick={addOutcome}
-          className="mt-2 rounded-md border border-border px-3 py-1 text-xs font-bold text-primary hover:bg-primary/5"
-        >
-          + הוסף תוצאה
-        </button>
       </div>
 
       <div>

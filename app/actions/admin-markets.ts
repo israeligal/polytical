@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import * as repo from "@/app/lib/markets/repo";
-import { resolveMarket, voidMarket } from "@/app/lib/markets/service";
+import { deleteMarket, resolveMarket, voidMarket } from "@/app/lib/markets/service";
 import {
   AlreadyResolvedError,
   InvalidOutcomeError,
@@ -11,7 +11,7 @@ import {
 } from "@/app/lib/errors";
 
 // Admin-only server actions for the minimal market console (create / resolve /
-// void). Each action independently re-checks the session and throws NotAdminError
+// void / delete). Each action independently re-checks the session and throws NotAdminError
 // for non-admins — the `/admin` route is gated by proxy.ts, but server actions
 // can be invoked directly, so this is the authoritative enforcement boundary.
 //
@@ -21,9 +21,11 @@ import {
 
 type ActionResult = { ok: boolean; message?: string };
 
-async function requireAdmin(): Promise<void> {
+/** Throws for non-admins; returns the session so callers don't re-fetch it. */
+async function requireAdmin(): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
   const session = await getSession();
   if (!session?.user?.isAdmin) throw new NotAdminError();
+  return session;
 }
 
 /** A cited resolution source must be a real http(s) URL. Rejecting other schemes
@@ -39,14 +41,15 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-/** Creates a market with its outcomes and featured MKs. `outcomeLabels` are the
- *  ordered outcome labels (≥2); `personIds` the featured MK personIds (optional).
- *  `closeAt` is an ISO/`datetime-local` string. */
+/** Creates a yes/no market with its two outcomes and featured MKs. Yes/no is
+ *  the only market type — multi is retired, so there is no `type` input at all
+ *  (legacy multi rows still render until deleted). `outcomeLabels` are the two
+ *  ordered labels; `personIds` the featured MK personIds (optional); `closeAt`
+ *  is an ISO/`datetime-local` string. */
 export async function createMarketAction({
   questionHe,
   descriptionHe,
   category,
-  type,
   hot,
   closeAt,
   outcomeLabels,
@@ -55,20 +58,19 @@ export async function createMarketAction({
   questionHe: string;
   descriptionHe?: string;
   category: string;
-  type: "binary" | "multi";
   hot: boolean;
   closeAt: string;
   outcomeLabels: string[];
   personIds: number[];
 }): Promise<ActionResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   const question = questionHe.trim();
   if (!question) return { ok: false, message: "חסרה שאלת שוק" };
   if (!category.trim()) return { ok: false, message: "חסרה קטגוריה" };
 
   const labels = outcomeLabels.map((l) => l.trim()).filter(Boolean);
-  if (labels.length < 2) return { ok: false, message: "צריך לפחות שתי תוצאות" };
+  if (labels.length !== 2) return { ok: false, message: "שוק כן/לא צריך בדיוק שתי תוצאות" };
 
   const close = new Date(closeAt);
   if (Number.isNaN(close.getTime())) return { ok: false, message: "מועד סגירה לא תקין" };
@@ -76,23 +78,17 @@ export async function createMarketAction({
   // mint a market that can never accept a bet. Reject it at both creation paths.
   if (close.getTime() <= Date.now()) return { ok: false, message: "מועד הסגירה חייב להיות בעתיד" };
 
-  const session = await getSession();
-
   await repo.createMarket({
     questionHe: question,
     descriptionHe: descriptionHe?.trim() || undefined,
     category: category.trim(),
-    type,
+    type: "binary",
     hot,
     closeAt: close,
-    createdBy: session?.user?.id,
-    // For multi markets, give each outcome a distinct categorical color slot so
-    // the odds bar renders them in different colors; binary uses positive/negative.
-    outcomes: labels.map((labelHe, i) => ({
-      labelHe,
-      cat: type === "multi" ? ((i % 8) + 1) : undefined,
-      ordinal: i,
-    })),
+    createdBy: session.user.id,
+    // Binary outcomes carry no categorical color slot — the odds bar renders
+    // them as positive/negative.
+    outcomes: labels.map((labelHe, i) => ({ labelHe, ordinal: i })),
     personIds,
   });
 
@@ -157,4 +153,27 @@ export async function voidMarketAction({
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
   return { ok: true, message: "השוק בוטל" };
+}
+
+/** Hard-deletes an invalid market — predictions and comments cascade away,
+ *  predictors are notified. Resolved markets are protected (stats already
+ *  tallied); void is the right tool for those edge cases. */
+export async function deleteMarketAction({
+  marketId,
+}: {
+  marketId: string;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    await deleteMarket({ marketId });
+  } catch (e) {
+    if (e instanceof AlreadyResolvedError)
+      return { ok: false, message: "אי אפשר למחוק שוק שהוכרע — התוצאות כבר נספרו" };
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "השוק לא נמצא" };
+    throw e;
+  }
+  revalidatePath("/admin");
+  revalidatePath(`/market/${marketId}`);
+  revalidatePath("/", "layout");
+  return { ok: true, message: "השוק נמחק לצמיתות" };
 }
