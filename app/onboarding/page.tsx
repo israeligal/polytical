@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { readOnboardingState } from "@/app/lib/onboarding/service";
+import { generateAvailableHandle, readOnboardingState } from "@/app/lib/onboarding/service";
 import { CATEGORIES } from "@/lib/categories";
 import { OnboardingWizard } from "./onboarding-wizard";
 
@@ -14,11 +14,15 @@ export default async function OnboardingPage() {
   const state = await readOnboardingState({ userId: session.user.id });
   if (state?.onboardedAt) redirect("/");
 
+  // Pre-fill the handle step with a generated suggestion so a user can simply
+  // accept it — only when they haven't already claimed one.
+  const suggestedHandle = state?.handle ? null : await generateAvailableHandle({ userId: session.user.id });
+
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-10 sm:px-6">
       <OnboardingWizard
         arenas={CATEGORIES}
-        initialHandle={state?.handle ?? ""}
+        initialHandle={state?.handle ?? suggestedHandle ?? ""}
         displayName={session.user.name}
       />
     </main>

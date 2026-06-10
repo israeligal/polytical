@@ -3,7 +3,12 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Category } from "@/lib/types";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
-import { setHandleAction, checkHandleAction, completeOnboardingAction } from "@/app/actions/onboarding";
+import {
+  setHandleAction,
+  checkHandleAction,
+  completeOnboardingAction,
+  generateHandleAction,
+} from "@/app/actions/onboarding";
 import { PolyticalLogo, Crest, type Suit } from "@/components/icons";
 
 const ARENA_SUITS: Suit[] = ["knesset", "ballot", "podium", "mandate"];
@@ -29,6 +34,7 @@ export function OnboardingWizard({
   const [handle, setHandle] = useState(initialHandle);
   const [avail, setAvail] = useState<Availability>(initialHandle ? { available: true } : null);
   const [checking, setChecking] = useState(false);
+  const [rolling, setRolling] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 2 — arena
@@ -58,6 +64,22 @@ export function OnboardingWizard({
         setChecking(false);
       });
     }, 350);
+  }
+
+  function reroll() {
+    setRolling(true);
+    setError(null);
+    if (debounce.current) clearTimeout(debounce.current);
+    void generateHandleAction().then((res) => {
+      if (res.ok && res.handle) {
+        setHandle(res.handle);
+        setAvail({ available: true }); // server only returns unclaimed handles
+        setChecking(false);
+      } else {
+        setError(res.message ?? "אירעה שגיאה");
+      }
+      setRolling(false);
+    });
   }
 
   function submitHandle() {
@@ -108,14 +130,14 @@ export function OnboardingWizard({
         <section>
           <h2 className="font-display text-xl text-foreground">בחרו כינוי</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            כך תופיעו בטבלת המובילים ובדיונים. עברית או אנגלית: אותיות, ספרות וקו תחתון (3–20 תווים).
+            לא אוהבים את הכינוי שהגרלנו? גלגלו 🎲 או כתבו משלכם. עברית או אנגלית: אותיות, ספרות וקו תחתון (3–20 תווים).
           </p>
           <div className="mt-4">
             <div className="flex items-center gap-2 rounded-[14px] border-2 border-border bg-background px-3 py-2.5 focus-within:border-primary">
               <span className="font-display text-lg text-muted-foreground">@</span>
               <input
                 type="text"
-                dir="ltr"
+                dir="auto"
                 value={handle}
                 onChange={(e) => onHandleChange(e.target.value)}
                 placeholder="your_handle"
@@ -124,11 +146,21 @@ export function OnboardingWizard({
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-start text-base text-foreground outline-none placeholder:text-muted-foreground"
               />
+              <button
+                type="button"
+                onClick={reroll}
+                disabled={rolling || pending}
+                aria-label="הגרילו כינוי"
+                title="הגרילו כינוי"
+                className="shrink-0 rounded-lg px-1.5 py-1 text-lg transition-transform hover:scale-110 disabled:opacity-50"
+              >
+                🎲
+              </button>
             </div>
             <div className="mt-2 min-h-5 text-sm">
               {checking && <span className="text-muted-foreground">בודק זמינות…</span>}
               {!checking && avail?.available && (
-                <span className="font-semibold text-positive">@{normalized} פנוי ✓</span>
+                <span className="font-semibold text-positive"><bdi>@{normalized}</bdi> פנוי ✓</span>
               )}
               {!checking && avail && !avail.available && avail.reason === "rate_limited" && (
                 <span className="font-medium text-muted-foreground">רגע, נסו שוב עוד רגע…</span>
@@ -205,7 +237,7 @@ export function OnboardingWizard({
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent/15 text-accent shadow-glow-gold">
             <PolyticalLogo className="h-9 w-9" />
           </div>
-          <h2 className="font-display text-2xl text-foreground">הכול מוכן, @{normalized}</h2>
+          <h2 className="font-display text-2xl text-foreground">הכול מוכן, <bdi>@{normalized}</bdi></h2>
           <p className="mt-2 text-sm text-muted-foreground">
             הגיע הזמן <span className="font-bold text-gold">לנחש</span>. בחרו תוצאה בכל שוק,
             אספו קלפים לפי הדיוק שלכם, וטפסו בטבלת המובילים.

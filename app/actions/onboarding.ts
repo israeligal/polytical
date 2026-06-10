@@ -2,9 +2,15 @@
 import { revalidatePath } from "next/cache";
 import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { setHandle, checkHandleAvailable, completeOnboarding } from "@/app/lib/onboarding/service";
+import {
+  setHandle,
+  checkHandleAvailable,
+  completeOnboarding,
+  generateAvailableHandle,
+} from "@/app/lib/onboarding/service";
 import {
   AlreadyOnboardedError,
+  HandleGenerationError,
   HandleRequiredError,
   HandleTakenError,
   InvalidArenaError,
@@ -32,6 +38,21 @@ export async function checkHandleAction({
   if (!limit.allowed) return { available: false, reason: "rate_limited" };
   const res = await checkHandleAvailable({ userId: s.user.id, handle });
   return { available: res.available, reason: res.reason };
+}
+
+/** A fresh handle suggestion for the 🎲 reroll button. */
+export async function generateHandleAction(): Promise<{ ok: boolean; handle?: string; message?: string }> {
+  const s = await getSession();
+  if (!s?.user) return { ok: false, message: "התחברו" };
+  const limit = checkRateLimit({ key: `handle-gen:${s.user.id}`, max: 30, windowMs: 60_000 });
+  if (!limit.allowed) return { ok: false, message: "האטו לרגע" };
+  try {
+    const handle = await generateAvailableHandle({ userId: s.user.id });
+    return { ok: true, handle };
+  } catch (e) {
+    if (e instanceof HandleGenerationError) return { ok: false, message: "לא הצלחנו להגריל — נסו שוב" };
+    throw e;
+  }
 }
 
 /** Claims the chosen handle. */
