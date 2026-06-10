@@ -24,7 +24,7 @@ export function LeaderboardRow({
         {entry.handle[0]?.toUpperCase() ?? "?"}
       </span>
       <span className="flex-1 truncate font-semibold text-foreground">
-        @{entry.handle}
+        <bdi>@{entry.handle}</bdi>
         {you && <span className="text-muted-foreground"> · אתה</span>}
       </span>
       <span className="hidden text-sm text-muted-foreground sm:inline">
