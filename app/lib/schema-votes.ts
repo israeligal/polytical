@@ -21,7 +21,11 @@ import { users } from "./schema";
 // `scripts/ingest-votes.ts --probe` (7=בעד observed; official OData domain is
 // {1:בעד,2:נגד,3:נמנע,4:לא הצביע}); an unknown id at ingest THROWS — never guessed.
 export const mkVoteResult = pgEnum("mk_vote_result", ["for", "against", "abstain", "didnt_vote"]);
-export const knessetVoteType = pgEnum("knesset_vote_type", ["electronic", "hand"]);
+// Header VoteType domain enumerated over ALL 6,979 K25 votes (2026-06-10 probe):
+// אלקטרונית 6436 · שמית 458 (roll-call — HAS per-MK rows, ids 7/8) · הרמת יד 77
+// (counters only) · חשאית 8 (secret — candidate totals in DescreetVoteResults,
+// never scoreable). Scoreable types = electronic + roll_call.
+export const knessetVoteType = pgEnum("knesset_vote_type", ["electronic", "hand", "roll_call", "secret"]);
 // pending_details = header landed but GetVoteDetails hasn't (retried next ingest run).
 export const voteDetailsStatus = pgEnum("vote_details_status", ["pending_details", "complete"]);
 export const userStance = pgEnum("user_stance", ["for", "against"]);
@@ -40,7 +44,7 @@ export const knessetVotes = pgTable(
     billId: integer("billId"),                         // = itemId when it resolves to bills.billId (FK-by-value)
     titleHe: text("titleHe").notNull(),                // ItemTitle
     voteDate: timestamp("voteDate").notNull(),         // UTC instant (converted from Jerusalem wall-clock)
-    voteType: knessetVoteType("voteType").notNull(),   // hand votes have NO per-MK rows, ever
+    voteType: knessetVoteType("voteType").notNull(),   // hand/secret votes have NO per-MK rows, ever
     decisionHe: text("decisionHe"),                    // VoteHeader.Decision
     isAccepted: boolean("isAccepted"),                 // VoteHeader.IsForAccepted
     totalFor: integer("totalFor"),                     // VoteCounters; null while pending_details
