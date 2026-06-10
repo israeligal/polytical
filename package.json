@@ -17,6 +17,8 @@
     "build-storybook": "storybook build",
     "ingest:knesset": "tsx --env-file=.env scripts/ingest-knesset.ts",
     "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full",
+    "ingest:votes": "tsx --env-file=.env scripts/ingest-votes.ts",
+    "ingest:votes:backfill": "tsx --env-file=.env scripts/ingest-votes.ts --backfill",
     "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts",
     "seed:season": "tsx --env-file=.env scripts/seed-season.ts",
     "backfill:market-search": "tsx --env-file=.env scripts/backfill-market-search.ts",

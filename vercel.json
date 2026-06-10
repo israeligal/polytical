@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/closing-soon",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/ingest-votes",
+      "schedule": "30 */2 * * *"
     }
   ]
 }
