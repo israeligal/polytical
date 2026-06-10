@@ -58,10 +58,11 @@ export async function generateAvailableHandle({
   for (let attempt = 0; attempt < 10; attempt++) {
     let candidate = generateHandleCandidate();
     if (attempt >= 5) {
-      const salted = `${candidate}_${Math.floor(Math.random() * 9000) + 1000}`;
-      if (salted.length <= 20) candidate = salted;
+      // Salting must always fire (it's the collision escape hatch) — regenerate
+      // until the base leaves room for `_NNNN` within the 20-char cap.
+      while (candidate.length > 15) candidate = generateHandleCandidate();
+      candidate = `${candidate}_${Math.floor(Math.random() * 9000) + 1000}`;
     }
-    if (!HANDLE_RE.test(candidate)) continue; // belt-and-braces; generator guarantees this
     const taken = await repo.isHandleTaken({ db, handle: candidate, excludeUserId: userId });
     if (!taken) return candidate;
   }

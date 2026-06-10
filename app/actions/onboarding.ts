@@ -18,6 +18,7 @@ import {
 } from "@/app/lib/errors";
 
 type ActionResult = { ok: boolean; message?: string };
+type GenerateHandleResult = ActionResult & { handle?: string };
 
 // Onboarding is session-gated AND rate-limited — Better Auth's limiter can't
 // see a Server Action. The /onboarding page also re-reads the gate from the DB,
@@ -41,7 +42,7 @@ export async function checkHandleAction({
 }
 
 /** A fresh handle suggestion for the 🎲 reroll button. */
-export async function generateHandleAction(): Promise<{ ok: boolean; handle?: string; message?: string }> {
+export async function generateHandleAction(): Promise<GenerateHandleResult> {
   const s = await getSession();
   if (!s?.user) return { ok: false, message: "התחברו" };
   const limit = checkRateLimit({ key: `handle-gen:${s.user.id}`, max: 30, windowMs: 60_000 });

@@ -36,6 +36,11 @@ export function OnboardingWizard({
   const [checking, setChecking] = useState(false);
   const [rolling, setRolling] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Monotonic guard: `avail` must describe the CURRENT input. clearTimeout
+  // can't cancel an already-dispatched check, and a reroll can race a typed
+  // check (and vice versa) — every writer takes a ticket and a stale response
+  // that lost the race is dropped instead of clobbering fresher state.
+  const availSeq = useRef(0);
 
   // Step 2 — arena
   const [arena, setArena] = useState<string | null>(null);
@@ -48,6 +53,7 @@ export function OnboardingWizard({
   const canSubmitHandle = formatOk && avail?.available === true && !checking;
 
   function onHandleChange(raw: string) {
+    const ticket = ++availSeq.current;
     setHandle(raw);
     setError(null);
     setAvail(null);
@@ -60,6 +66,7 @@ export function OnboardingWizard({
     setChecking(true);
     debounce.current = setTimeout(() => {
       void checkHandleAction({ handle: raw }).then((res) => {
+        if (availSeq.current !== ticket) return; // input changed since — stale verdict
         setAvail(res);
         setChecking(false);
       });
@@ -67,19 +74,25 @@ export function OnboardingWizard({
   }
 
   function reroll() {
+    const ticket = ++availSeq.current;
     setRolling(true);
     setError(null);
     if (debounce.current) clearTimeout(debounce.current);
-    void generateHandleAction().then((res) => {
-      if (res.ok && res.handle) {
-        setHandle(res.handle);
-        setAvail({ available: true }); // server only returns unclaimed handles
-        setChecking(false);
-      } else {
-        setError(res.message ?? "אירעה שגיאה");
-      }
-      setRolling(false);
-    });
+    setChecking(false);
+    generateHandleAction()
+      .then((res) => {
+        if (availSeq.current !== ticket) return; // user typed since — keep their input
+        if (res.ok && res.handle) {
+          setHandle(res.handle);
+          setAvail({ available: true }); // server only returns unclaimed handles
+        } else {
+          setError(res.message ?? "אירעה שגיאה");
+        }
+      })
+      .catch(() => {
+        if (availSeq.current === ticket) setError("אירעה שגיאה — נסו שוב");
+      })
+      .finally(() => setRolling(false));
   }
 
   function submitHandle() {

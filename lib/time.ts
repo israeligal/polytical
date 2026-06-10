@@ -36,18 +36,24 @@ export function formatDate(value: string | Date): string {
 }
 
 // `datetime-local` inputs speak the BROWSER'S local timezone by definition —
-// these two are the only sanctioned bridge between it and our UTC instants.
+// these are the only sanctioned bridge between it and our UTC instants.
+// CLIENT-ONLY (call after mount): on the server the process timezone (UTC in
+// prod) is not the user's, so an SSR'd value both shifts the instant and
+// causes a hydration mismatch. The reverse direction (input value → UTC
+// instant) must also happen in the browser: `new Date(value).toISOString()`.
 
-/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
-export function nowLocalInput(): string {
-  const d = new Date();
+function toLocalInput(date: Date): string {
+  const d = new Date(date);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
 
+/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
+export function nowLocalInput(): string {
+  return toLocalInput(new Date());
+}
+
 /** UTC/ISO timestamp → local `datetime-local` value (YYYY-MM-DDTHH:mm). */
 export function isoToLocalInput(iso: string): string {
-  const d = new Date(iso);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return toLocalInput(new Date(iso));
 }

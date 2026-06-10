@@ -22,7 +22,7 @@ export const users = pgTable("user", {
   totalResolved: integer("totalResolved").notNull().default(0), // markets the user predicted that resolved
   totalWins: integer("totalWins").notNull().default(0),         // of those, the user picked the winning outcome
   // --- Identity / onboarding (Phase 2) ---
-  handle: text("handle").unique(),       // @-handle (3–20 [a-z0-9_]); nullable — Postgres treats multiple NULLs as distinct, so legacy rows are fine
+  handle: text("handle").unique(),       // @-handle, 3–20 chars, single-script: [a-z0-9_] OR [א-ת0-9_] (see HANDLE_RE); nullable — Postgres treats multiple NULLs as distinct, so legacy rows are fine
   arena: text("arena"),                  // the user's chosen focus — a CATEGORIES key, stored as text
   onboardedAt: timestamp("onboardedAt"), // null = onboarding gate not yet cleared
   // Push notification opt-outs: notification_type values the user muted (default
