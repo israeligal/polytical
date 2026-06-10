@@ -227,6 +227,14 @@ export async function markVoided({ tx, marketId }: { tx: Tx; marketId: string })
     .where(and(eq(markets.id, marketId), notInArray(markets.status, ["resolved", "voided"])));
 }
 
+/** Hard-deletes a market row. FK cascades wipe its outcomes, predictions
+ *  (bets), market_politicians links and comments in the same statement;
+ *  notifications survive by design (ref* columns carry no FK). The caller
+ *  (service) owns the status guard + predictor notification. */
+export async function deleteMarket({ tx, marketId }: { tx: Tx; marketId: string }): Promise<void> {
+  await tx.delete(markets).where(eq(markets.id, marketId));
+}
+
 // --- Closing-soon sweep (the cron's queries) ---
 
 /** OPEN markets closing within `withinMs` from `now` that haven't had their

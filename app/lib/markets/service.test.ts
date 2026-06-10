@@ -13,6 +13,7 @@ import {
   markets,
   outcomes,
   bets,
+  comments,
   notifications,
   politicians,
   marketPoliticians,
@@ -22,12 +23,14 @@ import {
 import {
   AlreadyResolvedError,
   MarketClosedError,
+  MarketNotFoundError,
   InvalidOutcomeError,
 } from "@/app/lib/errors";
 import {
   makePrediction,
   resolveMarket,
   voidMarket,
+  deleteMarket,
   notifyClosingSoonMarkets,
 } from "./service";
 import { markClosingSoonNotified } from "./repo";
@@ -680,4 +683,80 @@ test("voidMarket on an already-voided market throws AlreadyResolvedError (termin
   const { marketId: mId } = await seedMarket();
   await voidMarket({ db: h.db, marketId: mId });
   await expect(voidMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(AlreadyResolvedError);
+});
+
+// ---------------------------------------------------------------------------
+// deleteMarket: hard removal — cascades, predictor notice, resolved guard
+// ---------------------------------------------------------------------------
+
+test("deleteMarket removes the market and cascades outcomes, predictions and comments", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await h.db.insert(comments).values({ marketId: mId, userId: "a", body: "תגובה" });
+
+  await deleteMarket({ db: h.db, marketId: mId });
+
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
+  expect((await h.db.select().from(outcomes).where(eq(outcomes.marketId, mId))).length).toBe(0);
+  expect((await h.db.select().from(bets).where(eq(bets.marketId, mId))).length).toBe(0);
+  expect((await h.db.select().from(comments).where(eq(comments.marketId, mId))).length).toBe(0);
+});
+
+test("deleteMarket notifies each predictor (rows survive the delete) and pushes once after commit", async () => {
+  await seedUser("a");
+  await seedUser("b");
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await makePrediction({ db: h.db, userId: "b", marketId: mId, outcomeId: noId });
+
+  await deleteMarket({ db: h.db, marketId: mId });
+
+  // In-app market_voided rows survive (notifications carry no FK to markets).
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(voided.every((n) => n.refMarketId === mId)).toBe(true);
+
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(
+    events
+      .filter((e: { type: string; userId: string }) => e.type === "market_voided")
+      .map((e: { type: string; userId: string }) => e.userId)
+      .sort(),
+  ).toEqual(["a", "b"]);
+});
+
+test("deleteMarket on a resolved market throws AlreadyResolvedError and deletes nothing", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  await expect(deleteMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(AlreadyResolvedError);
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(1);
+});
+
+test("deleteMarket on an unknown market throws MarketNotFoundError", async () => {
+  await expect(
+    deleteMarket({ db: h.db, marketId: "00000000-0000-0000-0000-000000000000" }),
+  ).rejects.toBeInstanceOf(MarketNotFoundError);
+});
+
+test("deleteMarket CAN remove a voided market (cleanup path)", async () => {
+  const { marketId: mId } = await seedMarket();
+  await voidMarket({ db: h.db, marketId: mId });
+
+  await deleteMarket({ db: h.db, marketId: mId });
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
+});
+
+test("deleteMarket survives a push rejection — the delete is not undone", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  dispatchPushMock.mockRejectedValueOnce(new Error("push down"));
+
+  await deleteMarket({ db: h.db, marketId: mId });
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
 });
