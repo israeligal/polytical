@@ -8,7 +8,7 @@ import { EmptyCommentError, CommentTooLongError, CommentNotFoundError } from "@/
 import { isForeignKeyViolation } from "@/app/lib/pg-errors";
 import { isUuid } from "@/app/lib/ids";
 
-// Comments service. NO coin movement — comments never touch the ledger. Mirrors
+// Comments service. Pure discussion data — no game state. Mirrors
 // the markets service's driver-agnostic `db` injection so the same code runs on
 // production postgres-js and the PGlite test db without an `as any`.
 type DB = PgDatabase<

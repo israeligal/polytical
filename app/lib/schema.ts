@@ -288,8 +288,8 @@ export const bets = pgTable("bets", {
 ]);
 
 // ===================================================================
-// Comments (Phase 4) — per-market discussion. NO coin movement: these
-// tables never touch the ledger. `upvotes` is a cache of COUNT(comment_votes);
+// Comments (Phase 4) — per-market discussion; pure discussion data, no game
+// state. `upvotes` is a cache of COUNT(comment_votes);
 // the composite-PK on comment_votes makes upvoting idempotent (one row per
 // (comment,user) — toggle, never double-count). Admins flip `hidden`.
 // ===================================================================
@@ -313,8 +313,8 @@ export const commentVotes = pgTable("comment_votes", {
 // Community market suggestions (Phase 7) — the "community" half of the
 // admin+community model. A user proposes a market; an admin reviews. Approval
 // creates a real market (reusing repo.createMarket in the SAME tx) and links it
-// here via `marketId`. A reviewed row is terminal — never re-reviewed. NO coin
-// movement: this table never touches the ledger.
+// here via `marketId`. A reviewed row is terminal — never re-reviewed. No
+// game-state coupling: review only flips status and links the created market.
 // ===================================================================
 
 export const suggestionStatus = pgEnum("suggestion_status", ["pending", "approved", "rejected"]);
@@ -336,9 +336,9 @@ export const marketSuggestions = pgTable("market_suggestions", {
 // ===================================================================
 // Notifications (Phase 1) — a display-only event log. Rows are emitted INSIDE
 // the transaction that produced the event (resolveMarket / approve-rejectSuggestion)
-// so they commit/roll back atomically with it. NO coin movement; ref* columns
-// carry NO FK (mirrors transactions.refMarketId) so a later market delete can't
-// cascade-wipe history and emit stays cheap inside the hot resolve tx.
+// so they commit/roll back atomically with it. ref* columns carry NO FK so a
+// later market delete can't cascade-wipe history and emit stays cheap inside
+// the hot resolve tx.
 // ===================================================================
 
 export const notificationType = pgEnum("notification_type", [

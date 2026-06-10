@@ -87,7 +87,7 @@ export async function SiteHeader() {
             )}
           </div>
 
-          {/* Mobile (<md): balance + bell stay one tap away; everything else folds into the menu. */}
+          {/* Mobile (<md): the bell stays one tap away; everything else folds into the menu. */}
           <div className="flex items-center gap-2 md:hidden">
             {user && <NotificationBell unreadCount={unread} />}
             <MobileMenu nav={NAV} theme={theme} loggedIn={!!user} />

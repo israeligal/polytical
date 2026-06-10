@@ -12,7 +12,7 @@ import { bills, billSponsors, politicians, queries } from "@/app/lib/schema";
 export type PoliticianRow = typeof politicians.$inferSelect;
 
 // Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
-// ledger service so these reads are injectable without an `as any`.
+// markets repo so these reads are injectable without an `as any`.
 type DB = PgDatabase<
   PgQueryResultHKT,
   typeof schema,

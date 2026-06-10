@@ -13,7 +13,6 @@ export interface FeedItem {
     | "market_resolved"
     | "suggestion_approved"
     | "suggestion_rejected"
-    | "season_reward"
     | "market_voided"
     | "market_closing_soon";
   titleHe: string;
@@ -23,12 +22,11 @@ export interface FeedItem {
   createdAtIso: string;
 }
 
-// Left-accent color per type: wins/approvals/rewards mint, rejections coral,
+// Left-accent color per type: correct-guesses/approvals mint, rejections coral,
 // resolved/voided neutral, closing-soon gold (call-to-action).
 const ACCENT: Record<FeedItem["type"], string> = {
   bet_won: "border-s-positive",
   suggestion_approved: "border-s-positive",
-  season_reward: "border-s-positive",
   suggestion_rejected: "border-s-negative",
   market_resolved: "border-s-border",
   market_voided: "border-s-border",
@@ -40,11 +38,7 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   const [pending, startTransition] = useTransition();
 
   function open(item: FeedItem) {
-    const href = item.refMarketId
-      ? `/market/${item.refMarketId}`
-      : item.type === "season_reward"
-        ? "/seasons"
-        : "/profile";
+    const href = item.refMarketId ? `/market/${item.refMarketId}` : "/profile";
     // Navigate first — marking-read is best-effort and must never block or abort
     // the navigation (a failed read-mark previously left the user stuck).
     if (!item.read) {

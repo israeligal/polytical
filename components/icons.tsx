@@ -1,33 +1,7 @@
 // Minimal inline icon set (no icon dependency). Line icons use currentColor; size via className.
 type IconProps = { className?: string };
 
-/**
- * Shekoin — the game currency coin. Baked gold gradient + diamond motif (NOT
- * currentColor). Size via className (set h-/w-). The gradient id is fixed but
- * identical across instances, so duplicates render correctly.
- */
-export function Shekoin({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden="true" fill="none">
-      <defs>
-        <linearGradient id="shekoin-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFD874" />
-          <stop offset="1" stopColor="#E8A623" />
-        </linearGradient>
-      </defs>
-      <circle cx="32" cy="32" r="29" fill="url(#shekoin-grad)" stroke="#B57E12" strokeWidth="2.5" />
-      <path d="M32 16 L44 32 L32 48 L20 32 Z" fill="#7A540A" />
-      <path d="M32 23 L39 32 L32 41 L25 32 Z" fill="#FFE9A8" />
-    </svg>
-  );
-}
-
-/** Currency coin alias — every existing `<Coin>` now renders the gold Shekoin. */
-export function Coin({ className }: IconProps) {
-  return <Shekoin className={className} />;
-}
-
-/** The Polytical mark: a coin badge with a mint up-chevron over a coral down-chevron (the YES/NO duel). */
+/** The Polytical mark: a rounded badge with a mint up-chevron over a coral down-chevron (the YES/NO duel). */
 export function PolyticalLogo({ className }: IconProps) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true">

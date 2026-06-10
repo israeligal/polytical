@@ -2,7 +2,7 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { desc, eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { marketSuggestions, users } from "@/app/lib/schema";
 import { SuggestionNotFoundError } from "@/app/lib/errors";
@@ -16,7 +16,6 @@ type DB = PgDatabase<
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-type Tx = LedgerTx;
 
 export type SuggestionRow = typeof marketSuggestions.$inferSelect;
 export type SuggestionStatus = (typeof schema.suggestionStatus.enumValues)[number];

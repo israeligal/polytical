@@ -2,13 +2,13 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
-import type { Tx as LedgerTx } from "@/app/lib/db";
+import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { commentVotes, comments, users } from "@/app/lib/schema";
 
 // Comments repository: per-market discussion. NO coin movement — these helpers
-// never touch the ledger. Mirrors the markets/ledger repos' two access modes:
-//  - MUTATING paths are tx-aware (`tx: LedgerTx`) so a service can compose them;
+// are pure discussion data. Mirrors the markets repo's two access modes:
+//  - MUTATING paths are tx-aware (`tx: Tx`) so a service can compose them;
 //    `toggleUpvote` opens its OWN tx (default `db`) so the vote-row check and the
 //    cached `upvotes` bump stay atomic and never double-count.
 //  - READ helpers default to the shared `db` (no tx) for server-component reads.
@@ -20,7 +20,6 @@ type DB = PgDatabase<
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-type Tx = LedgerTx;
 
 export type CommentRow = typeof comments.$inferSelect;
 
