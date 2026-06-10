@@ -2,9 +2,15 @@
 import { revalidatePath } from "next/cache";
 import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { setHandle, checkHandleAvailable, completeOnboarding } from "@/app/lib/onboarding/service";
+import {
+  setHandle,
+  checkHandleAvailable,
+  completeOnboarding,
+  generateAvailableHandle,
+} from "@/app/lib/onboarding/service";
 import {
   AlreadyOnboardedError,
+  HandleGenerationError,
   HandleRequiredError,
   HandleTakenError,
   InvalidArenaError,
@@ -12,6 +18,7 @@ import {
 } from "@/app/lib/errors";
 
 type ActionResult = { ok: boolean; message?: string };
+type GenerateHandleResult = ActionResult & { handle?: string };
 
 // Onboarding is session-gated AND rate-limited — Better Auth's limiter can't
 // see a Server Action. The /onboarding page also re-reads the gate from the DB,
@@ -34,6 +41,21 @@ export async function checkHandleAction({
   return { available: res.available, reason: res.reason };
 }
 
+/** A fresh handle suggestion for the 🎲 reroll button. */
+export async function generateHandleAction(): Promise<GenerateHandleResult> {
+  const s = await getSession();
+  if (!s?.user) return { ok: false, message: "התחברו" };
+  const limit = checkRateLimit({ key: `handle-gen:${s.user.id}`, max: 30, windowMs: 60_000 });
+  if (!limit.allowed) return { ok: false, message: "האטו לרגע" };
+  try {
+    const handle = await generateAvailableHandle({ userId: s.user.id });
+    return { ok: true, handle };
+  } catch (e) {
+    if (e instanceof HandleGenerationError) return { ok: false, message: "לא הצלחנו להגריל — נסו שוב" };
+    throw e;
+  }
+}
+
 /** Claims the chosen handle. */
 export async function setHandleAction({
   handle,
@@ -47,7 +69,7 @@ export async function setHandleAction({
   try {
     await setHandle({ userId: s.user.id, handle });
   } catch (e) {
-    if (e instanceof InvalidHandleError) return { ok: false, message: "כינוי לא תקין — 3–20 תווים: a–z, 0–9, _" };
+    if (e instanceof InvalidHandleError) return { ok: false, message: "כינוי לא תקין — 3–20 תווים בעברית או באנגלית (בלי לערבב): אותיות, ספרות ו-_" };
     if (e instanceof HandleTakenError) return { ok: false, message: "הכינוי תפוס — בחרו אחר" };
     throw e;
   }

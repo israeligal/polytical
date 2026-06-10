@@ -7,9 +7,11 @@ import type { OnboardingState } from "@/app/lib/onboarding/repo";
 import { lockUser } from "@/app/lib/users/repo";
 import { CATEGORIES } from "@/lib/categories";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
+import { generateHandleCandidate } from "@/app/lib/onboarding/handle-generator";
 import { isUniqueViolation } from "@/app/lib/pg-errors";
 import {
   AlreadyOnboardedError,
+  HandleGenerationError,
   HandleRequiredError,
   HandleTakenError,
   InvalidArenaError,
@@ -42,6 +44,29 @@ export async function checkHandleAvailable({
   if (!HANDLE_RE.test(normalized)) return { available: false, normalized, reason: "invalid" };
   const taken = await repo.isHandleTaken({ db, handle: normalized, excludeUserId: userId });
   return taken ? { available: false, normalized, reason: "taken" } : { available: true, normalized };
+}
+
+/** A fresh, available handle suggestion for the wizard. Tries 10 candidates;
+ *  from the 6th attempt appends extra random digits (collision realm: lottery). */
+export async function generateAvailableHandle({
+  db = defaultDb,
+  userId,
+}: {
+  db?: DB;
+  userId: string;
+}): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let candidate = generateHandleCandidate();
+    if (attempt >= 5) {
+      // Salting must always fire (it's the collision escape hatch) — regenerate
+      // until the base leaves room for `_NNNN` within the 20-char cap.
+      while (candidate.length > 15) candidate = generateHandleCandidate();
+      candidate = `${candidate}_${Math.floor(Math.random() * 9000) + 1000}`;
+    }
+    const taken = await repo.isHandleTaken({ db, handle: candidate, excludeUserId: userId });
+    if (!taken) return candidate;
+  }
+  throw new HandleGenerationError();
 }
 
 /** Claims a handle for the user. Lock-first so a self-concurrent set serializes;

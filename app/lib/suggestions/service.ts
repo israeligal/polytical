@@ -14,7 +14,10 @@ import { CATEGORIES } from "@/lib/categories";
 import {
   AlreadyReviewedError,
   ClosePastError,
+  CloseRequiredError,
+  CloseTooFarError,
   InvalidCategoryError,
+  SourceNoteTooLongError,
   SuggestionTooLongError,
   SuggestionTooShortError,
   UnknownPoliticianError,
@@ -28,6 +31,10 @@ type DB = PgDatabase<
 
 export const MIN_SUGGESTION_LEN = 10;
 export const MAX_SUGGESTION_LEN = 200;
+export const MAX_SOURCE_NOTE_LEN = 300;
+
+/** ~2y sanity cap on how far out a proposed decision date may be. */
+const MAX_CLOSE_HORIZON_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 const VALID_CATEGORIES = new Set<string>(CATEGORIES.map((c) => c.key));
 
@@ -48,17 +55,28 @@ export async function createSuggestion({
   questionHe,
   category,
   personId,
+  proposedCloseAt,
+  resolutionSourceNote,
 }: {
   db?: DB;
   userId: string;
   questionHe: string;
   category: string;
   personId?: number | null;
+  proposedCloseAt: Date;
+  resolutionSourceNote?: string | null;
 }): Promise<{ id: string }> {
   const question = questionHe.trim();
   if (question.length < MIN_SUGGESTION_LEN) throw new SuggestionTooShortError();
   if (question.length > MAX_SUGGESTION_LEN) throw new SuggestionTooLongError();
   if (!VALID_CATEGORIES.has(category)) throw new InvalidCategoryError();
+
+  // The proposer owns the decision date (admin can still adjust at approval).
+  if (!(proposedCloseAt instanceof Date) || Number.isNaN(proposedCloseAt.getTime())) throw new CloseRequiredError();
+  if (proposedCloseAt.getTime() <= Date.now()) throw new ClosePastError();
+  if (proposedCloseAt.getTime() > Date.now() + MAX_CLOSE_HORIZON_MS) throw new CloseTooFarError();
+  const sourceNote = resolutionSourceNote?.trim() || null;
+  if (sourceNote && sourceNote.length > MAX_SOURCE_NOTE_LEN) throw new SourceNoteTooLongError();
 
   // Resolve the optional featured MK by stable id only — never guess. An absent
   // or non-existent id is rejected, never silently dropped.
@@ -70,7 +88,15 @@ export async function createSuggestion({
     resolvedPersonId = personId;
   }
 
-  return repo.insertSuggestion({ db, userId, questionHe: question, category, personId: resolvedPersonId });
+  return repo.insertSuggestion({
+    db,
+    userId,
+    questionHe: question,
+    category,
+    personId: resolvedPersonId,
+    proposedCloseAt,
+    resolutionSourceNote: sourceNote,
+  });
 }
 
 /** Admin queue: all suggestions, optionally filtered by status, newest first. */

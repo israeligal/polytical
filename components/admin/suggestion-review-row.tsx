@@ -1,18 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
 import { approveSuggestionAction, rejectSuggestionAction } from "@/app/actions/suggestions";
-import { formatDate } from "@/lib/time";
+import { formatDate, isoToLocalInput, nowLocalInput } from "@/lib/time";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
-
-/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
-function nowLocalInput(): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
 
 /**
  * One pending community suggestion in the admin queue: approve (creating a real
@@ -27,6 +21,8 @@ export function SuggestionReviewRow({
   proposerName,
   personName,
   createdAtIso,
+  proposedCloseAtIso,
+  resolutionSourceNote,
 }: {
   suggestionId: string;
   questionHe: string;
@@ -34,8 +30,18 @@ export function SuggestionReviewRow({
   proposerName: string;
   personName: string | null;
   createdAtIso: string;
+  proposedCloseAtIso: string | null;
+  resolutionSourceNote: string | null;
 }) {
-  const [closeAt, setCloseAt] = useState("");
+  // Pre-filled from the proposer's intended decision date; still editable.
+  // Both the prefill and min are BROWSER-local conversions, so they're derived
+  // only after hydration — an SSR'd value shifts by the server tz + breaks
+  // hydration. `closeAtEdit` is null until the admin touches the field.
+  const hydrated = useHydrated();
+  const [closeAtEdit, setCloseAtEdit] = useState<string | null>(null);
+  const closeAt =
+    closeAtEdit ?? (hydrated && proposedCloseAtIso ? isoToLocalInput(proposedCloseAtIso) : "");
+  const minLocal = hydrated ? nowLocalInput() : undefined;
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -50,7 +56,9 @@ export function SuggestionReviewRow({
     }
     startTransition(async () => {
       try {
-        const res = await approveSuggestionAction({ suggestionId, closeAt });
+        // Browser-local input value → UTC instant here, NOT on the server (its
+        // `new Date(...)` would parse the offset-less string in the server tz).
+        const res = await approveSuggestionAction({ suggestionId, closeAt: new Date(closeAt).toISOString() });
         setOk(res.ok);
         setMessage(res.message ?? (res.ok ? "אושר" : "שגיאה"));
       } catch {
@@ -92,6 +100,9 @@ export function SuggestionReviewRow({
         הציע/ה: {proposerName}
         {personName ? <> · קשור ל{personName}</> : null} · {created}
       </p>
+      {resolutionSourceNote && (
+        <p className="mt-1 text-sm text-muted-foreground">מקור הכרעה מוצע: {resolutionSourceNote}</p>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr]">
         <div>
@@ -102,9 +113,9 @@ export function SuggestionReviewRow({
             id={`close-${suggestionId}`}
             type="datetime-local"
             dir="ltr"
-            min={nowLocalInput()}
+            min={minLocal}
             value={closeAt}
-            onChange={(e) => setCloseAt(e.target.value)}
+            onChange={(e) => setCloseAtEdit(e.target.value)}
             className={FIELD}
           />
         </div>

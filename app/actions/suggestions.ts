@@ -10,7 +10,10 @@ import {
 import {
   AlreadyReviewedError,
   ClosePastError,
+  CloseRequiredError,
+  CloseTooFarError,
   InvalidCategoryError,
+  SourceNoteTooLongError,
   SuggestionNotFoundError,
   SuggestionTooLongError,
   SuggestionTooShortError,
@@ -29,10 +32,14 @@ export async function suggestMarketAction({
   questionHe,
   category,
   personId,
+  proposedCloseAt,
+  resolutionSourceNote,
 }: {
   questionHe: string;
   category: string;
   personId?: number | null;
+  proposedCloseAt: string;
+  resolutionSourceNote?: string | null;
 }): Promise<ActionResult> {
   const s = await getSession();
   if (!s?.user) return { ok: false, message: "התחברו כדי להציע שוק" };
@@ -43,18 +50,32 @@ export async function suggestMarketAction({
     return { ok: false, message: `יותר מדי הצעות — נסו שוב בעוד ${mins} דקות` };
   }
 
+  // The service rejects NaN/past/too-far — no duplicate checks here.
+  const close = new Date(proposedCloseAt);
+
   try {
-    await createSuggestion({ userId: s.user.id, questionHe, category, personId: personId ?? null });
+    await createSuggestion({
+      userId: s.user.id,
+      questionHe,
+      category,
+      personId: personId ?? null,
+      proposedCloseAt: close,
+      resolutionSourceNote: resolutionSourceNote ?? null,
+    });
   } catch (e) {
     if (e instanceof SuggestionTooShortError) return { ok: false, message: "ההצעה קצרה מדי (לפחות 10 תווים)" };
     if (e instanceof SuggestionTooLongError) return { ok: false, message: "ההצעה ארוכה מדי (עד 200 תווים)" };
     if (e instanceof InvalidCategoryError) return { ok: false, message: "קטגוריה לא תקינה" };
     if (e instanceof UnknownPoliticianError) return { ok: false, message: "הפוליטיקאי שנבחר אינו קיים" };
+    if (e instanceof CloseRequiredError) return { ok: false, message: "בחרו תאריך הכרעה" };
+    if (e instanceof ClosePastError) return { ok: false, message: "תאריך ההכרעה חייב להיות בעתיד" };
+    if (e instanceof CloseTooFarError) return { ok: false, message: "תאריך ההכרעה רחוק מדי (עד שנתיים קדימה)" };
+    if (e instanceof SourceNoteTooLongError) return { ok: false, message: "מקור ההכרעה ארוך מדי (עד 300 תווים)" };
     throw e;
   }
   revalidatePath("/profile");
   revalidatePath("/admin");
-  return { ok: true, message: "ההצעה נשלחה לבדיקה — תודה!" };
+  return { ok: true, message: "ההצעה לסדר הוגשה — תודה!" };
 }
 
 /** Admin approves a pending suggestion; a real binary market is created + linked. */

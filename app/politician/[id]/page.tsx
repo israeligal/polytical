@@ -171,7 +171,7 @@ export default async function PoliticianPage({
               href={`/suggest?person=${personId}`}
               className="shrink-0 rounded-full border border-primary px-3 py-1 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
             >
-              הציעו שוק
+              הצעה לסדר
             </Link>
           </div>
           {marketCards.length > 0 ? (
@@ -186,7 +186,7 @@ export default async function PoliticianPage({
               <p className="mt-1 text-sm text-muted-foreground">
                 עוד לא נפתחו שווקים סביב {politician.name}.{" "}
                 <Link href={`/suggest?person=${personId}`} className="font-bold text-primary hover:underline">
-                  היו הראשונים להציע אחד
+                  הגישו הצעה לסדר
                 </Link>
                 .
               </p>

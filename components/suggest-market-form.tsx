@@ -2,10 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { suggestMarketAction } from "@/app/actions/suggestions";
+import { nowLocalInput } from "@/lib/time";
+import { useHydrated } from "@/lib/use-hydrated";
 
 // Inlined to keep the server (which pulls the db driver) out of the client
 // bundle — mirrors comment-form.tsx. The service is the real authority.
 const MAX_SUGGESTION_LEN = 200;
+const MAX_SOURCE_NOTE_LEN = 300;
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
@@ -28,6 +31,12 @@ export function SuggestMarketForm({
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState(categories[0]?.key ?? "");
   const [personId, setPersonId] = useState<string>(defaultPersonId ? String(defaultPersonId) : "");
+  const [closeAt, setCloseAt] = useState("");
+  const [source, setSource] = useState("");
+  // min must be the BROWSER's clock — computing it during SSR shifts it by the
+  // server timezone and trips a hydration mismatch, so it's derived post-hydration.
+  const hydrated = useHydrated();
+  const minLocal = hydrated ? nowLocalInput() : undefined;
   const [message, setMessage] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -37,16 +46,22 @@ export function SuggestMarketForm({
     setMessage(null);
     startTransition(async () => {
       try {
+        // Convert the browser-local datetime-local value to a UTC instant HERE —
+        // the server's `new Date(...)` would otherwise parse it in the server tz.
         const res = await suggestMarketAction({
           questionHe: question,
           category,
           personId: personId ? Number(personId) : null,
+          proposedCloseAt: new Date(closeAt).toISOString(),
+          resolutionSourceNote: source.trim() || null,
         });
         setOk(res.ok);
         setMessage(res.message ?? (res.ok ? "נשלח" : "שגיאה"));
         if (res.ok) {
           setQuestion("");
           setPersonId("");
+          setCloseAt("");
+          setSource("");
         }
       } catch {
         setOk(false);
@@ -96,6 +111,21 @@ export function SuggestMarketForm({
           </select>
         </div>
         <div>
+          <label className={LABEL} htmlFor="closeAt">
+            מתי השאלה תוכרע?
+          </label>
+          <input
+            id="closeAt"
+            type="datetime-local"
+            dir="ltr"
+            required
+            min={minLocal}
+            value={closeAt}
+            onChange={(e) => setCloseAt(e.target.value)}
+            className={FIELD}
+          />
+        </div>
+        <div>
           <label className={LABEL} htmlFor="personId">
             פוליטיקאי קשור (לא חובה)
           </label>
@@ -113,15 +143,27 @@ export function SuggestMarketForm({
             ))}
           </select>
         </div>
+        <div>
+          <label className={LABEL} htmlFor="source">
+            מקור הכרעה (לא חובה)
+          </label>
+          <input
+            id="source"
+            value={source}
+            onChange={(e) => setSource(e.target.value.slice(0, MAX_SOURCE_NOTE_LEN))}
+            className={FIELD}
+            placeholder="למשל: אתר הכנסת, פרסום ברשומות, הודעה רשמית…"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={pending || question.trim().length === 0}
+          disabled={pending || question.trim().length === 0 || !closeAt}
           className="rounded-lg bg-primary px-5 py-2.5 font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          {pending ? "שולח…" : "שלחו הצעה"}
+          {pending ? "מגישים…" : "הגישו הצעה לסדר"}
         </button>
         {message && (
           <span

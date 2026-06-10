@@ -15,7 +15,7 @@ const NAV = [
   { href: "/collection", label: "האוסף" },
   { href: "/seasons", label: "עונה" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
-  { href: "/suggest", label: "הציעו שוק" },
+  { href: "/suggest", label: "הצעה לסדר" },
 ];
 
 export async function SiteHeader() {

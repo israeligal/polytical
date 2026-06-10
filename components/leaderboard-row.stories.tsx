@@ -35,6 +35,14 @@ export const You: Story = {
   },
 };
 
+/** Hebrew handles are bidi-isolated (<bdi>) so @ + digits don't scramble in RTL. */
+export const HebrewHandle: Story = {
+  args: {
+    entry: createLeaderboardEntry({ rank: 7, handle: "קואליציה_זריזה_42", totalWins: 61, totalResolved: 80, accuracy: 76 }),
+    you: false,
+  },
+};
+
 export const List: Story = {
   args: { entry: createLeaderboardEntry() },
   render: () => (

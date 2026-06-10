@@ -134,6 +134,13 @@
       "when": 1781047199103,
       "tag": "0018_add_politician_image",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781114926872,
+      "tag": "0019_suggestion_close_and_source",
+      "breakpoints": true
     }
   ]
 }

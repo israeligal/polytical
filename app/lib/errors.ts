@@ -19,14 +19,18 @@ export class SuggestionNotFoundError extends Error { constructor() { super("Sugg
 export class AlreadyReviewedError extends Error { constructor() { super("Suggestion already reviewed"); this.name = "AlreadyReviewedError"; } }
 export class UnknownPoliticianError extends Error { constructor() { super("Politician not found"); this.name = "UnknownPoliticianError"; } }
 export class ClosePastError extends Error { constructor() { super("Close date must be in the future"); this.name = "ClosePastError"; } }
+export class CloseRequiredError extends Error { constructor() { super("Proposed close date is required"); this.name = "CloseRequiredError"; } }
+export class CloseTooFarError extends Error { constructor() { super("Proposed close date is too far in the future"); this.name = "CloseTooFarError"; } }
+export class SourceNoteTooLongError extends Error { constructor() { super("Resolution source note too long"); this.name = "SourceNoteTooLongError"; } }
 export class NotificationNotFoundError extends Error { constructor() { super("Notification not found"); this.name = "NotificationNotFoundError"; } }
 // --- Push notifications ---
 export class PushSubscriptionNotFoundError extends Error { constructor() { super("Push subscription not found"); this.name = "PushSubscriptionNotFoundError"; } }
 export class InvalidPushSubscriptionError extends Error { constructor() { super("Invalid push subscription"); this.name = "InvalidPushSubscriptionError"; } }
 export class InvalidPushPrefError extends Error { constructor() { super("Invalid push preference category"); this.name = "InvalidPushPrefError"; } }
 // --- Onboarding + card collection (Phase 2) ---
-export class InvalidHandleError extends Error { constructor() { super("Handle must be 3–20 chars: a–z, 0–9, _"); this.name = "InvalidHandleError"; } }
+export class InvalidHandleError extends Error { constructor() { super("Handle must be 3–20 chars, all-latin or all-hebrew: letters, digits, _"); this.name = "InvalidHandleError"; } }
 export class HandleTakenError extends Error { constructor() { super("Handle already taken"); this.name = "HandleTakenError"; } }
+export class HandleGenerationError extends Error { constructor() { super("Could not generate an available handle"); this.name = "HandleGenerationError"; } }
 export class InvalidArenaError extends Error { constructor() { super("Invalid arena"); this.name = "InvalidArenaError"; } }
 export class HandleRequiredError extends Error { constructor() { super("Handle must be set before onboarding completes"); this.name = "HandleRequiredError"; } }
 export class AlreadyOnboardedError extends Error { constructor() { super("User already onboarded"); this.name = "AlreadyOnboardedError"; } }
