@@ -85,11 +85,14 @@ export async function ingestVotes({
     checkBanner(headers, window);
     allHeaders.push(...headers);
   }
-  const headerRows = allHeaders.map((h) => normalizeVoteHeader(h, prov));
+  // Dedupe by voteId (defensive: duplicate keys in one multi-row upsert are a
+  // Postgres error — "cannot affect row a second time").
+  const uniqueHeaders = [...new Map(allHeaders.map((h) => [h.VoteId, h])).values()];
+  const headerRows = uniqueHeaders.map((h) => normalizeVoteHeader(h, prov));
   await upsertVoteHeaders({ db, rows: headerRows });
 
   // 2) details for pending (or all, when refetching)
-  const sweptIds = allHeaders.map((h) => h.VoteId);
+  const sweptIds = uniqueHeaders.map((h) => h.VoteId);
   const targetIds = refetchDetails ? sweptIds : await listPendingDetailVoteIds({ db, voteIds: sweptIds });
   const voteDateById = new Map(headerRows.map((r) => [r.voteId, r.voteDate as Date]));
 
