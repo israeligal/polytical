@@ -23,7 +23,7 @@
 - **A prediction is a stake-less pick of one outcome per market**, enforced by `unique(userId, marketId)` on the `bets` table (DB name kept). `makePrediction` UPSERTs on it, so re-predicting changes the pick in place until the market closes.
 - **Resolution tallies right/wrong in one atomic Drizzle transaction**: every predictor gets `users.totalResolved += 1`; a correct pick (outcome === winning outcome) also gets `users.totalWins += 1`. No pools, payouts, or refunds. Void leaves predictions uncounted and stats untouched.
 - **The only score is the prediction record** — `totalWins` / `totalResolved` (`wrong = totalResolved − totalWins`). A market's crowd split is the live COUNT of predictions per outcome (`getOutcomeCounts`), never a coin pool.
-- **Cards unlock by accuracy**: N correct predictions on a politician's markets (N scales with the card's rarity — `lib/rarity.ts` `RARITY_UNLOCK_THRESHOLD`: legendary 10 / epic 7 / rare 5 / common 2) auto-grant the card inside `resolveMarket`'s tx, tracked by `card_progress`.
+- **Cards unlock by accuracy**: N correct predictions on a politician's markets auto-grant the card inside `resolveMarket`'s tx, tracked by `card_progress`. N scales with the card's STATURE tier (`lib/rarity.ts` `unlockThreshold({personId, role})` → `RARITY_UNLOCK_THRESHOLD`): sitting PM 10 / former PM 7 / party leader 5 / minister 3 / rank-and-file MK 2.
 - **Seasons are an accuracy track**: each tier needs N correct predictions resolved within the season window, derived live (no claim, no reward).
 - Pattern to follow: **one authoritative writer + idempotent + terminal states**. A resolved/voided market is never re-resolved (`AlreadyResolvedError`).
 
@@ -58,7 +58,7 @@
 - **Every DB-mutating script's first line is `assertNonProductionDb()`** (throws on `NODE_ENV=production` or a prod-hostname `DATABASE_URL`).
 
 ## Testing
-- **PGlite in-memory Postgres** for integration tests — exercise real Drizzle queries and **real transaction semantics on the ledger**, no DB mocks.
+- **PGlite in-memory Postgres** for integration tests — exercise real Drizzle queries and **real transaction semantics on the resolve/prediction paths**, no DB mocks.
 - Test behavior, not implementation; **never mock internal services** (mock only external boundaries: auth, third-party APIs, image model); UTC dates in tests; co-locate `*.test.ts(x)`.
 - A schema change updates schema + test-DB DDL + seed helpers + fixtures **in lockstep**.
 
@@ -67,7 +67,7 @@
 - **Decision log**: record non-obvious decisions in `docs/decisions/<feature>.md`, newest-on-top, entries immutable.
 - **Before finishing a code session**: run `pnpm lint` (add a `typecheck` script and run it too); fix failures before stopping.
 - **Before pushing**: run `/code-review`; never `--no-verify`. Keep relevant `CLAUDE.md` files fresh when structure changes.
-- Admin routes are role-gated (`is_admin`); validate every wager server-side against balance + market status; rate-limit bets/comments/suggestions.
+- Admin routes are role-gated (`is_admin`); validate every prediction server-side against market status (open + before closeAt); rate-limit predictions/comments/suggestions.
 
 ## Recommended guardrail hooks (not yet installed)
 If/when the hookify plugin is enabled here, port these (adapt commands to Polytical): `verify-before-stop` (lint+typecheck), `review-before-push` (`/code-review`), `block-direct-date-imports` (force the central Asia/Jerusalem time module), `block-dynamic-imports`, `block-barrel-imports`. See PROVENANCE for sources.

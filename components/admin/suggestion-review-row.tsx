@@ -81,7 +81,9 @@ export function SuggestionReviewRow({
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="font-display text-lg font-bold text-foreground">{questionHe}</p>
+        {/* wrap-anywhere: questionHe is user-submitted — an unbroken long string
+            must not blow the admin layout on mobile. */}
+        <p className="min-w-0 wrap-anywhere font-display text-lg font-bold text-foreground">{questionHe}</p>
         <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-bold text-foreground">
           {categoryHe}
         </span>

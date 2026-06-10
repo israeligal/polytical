@@ -96,7 +96,11 @@ export function CommentRow({
           </time>
         </div>
 
-        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+        {/* wrap-anywhere (overflow-wrap:anywhere), NOT break-words: break-word does
+            not reduce the intrinsic min-content width, so a long unbroken string
+            (e.g. a pasted URL or "yyyy…") blows the page grid column out to the
+            word's full width on mobile. anywhere participates in min-content. */}
+        <p className="mt-1 whitespace-pre-wrap wrap-anywhere text-sm text-foreground">
           {body}
         </p>
 
