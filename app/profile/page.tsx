@@ -189,12 +189,12 @@ export default async function ProfilePage() {
       {/* MY SUGGESTIONS */}
       <section className="mt-10">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="font-display text-2xl font-bold text-foreground">ההצעות שלי</h2>
+          <h2 className="font-display text-2xl font-bold text-foreground">ההצעות לסדר שלי</h2>
           <Link
             href="/suggest"
             className="shrink-0 rounded-full border border-primary px-3 py-1 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
           >
-            הציעו שוק
+            הצעה לסדר
           </Link>
         </div>
         {mySuggestions.length > 0 ? (
@@ -226,9 +226,9 @@ export default async function ProfilePage() {
           </ul>
         ) : (
           <EmptyState>
-            עוד לא הצעת שווקים.{" "}
+            עוד לא הגשתם הצעה לסדר.{" "}
             <Link href="/suggest" className="font-semibold text-primary hover:underline">
-              הציעו את הראשון
+              הגישו את הראשונה
             </Link>
             .
           </EmptyState>

@@ -2,17 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { approveSuggestionAction, rejectSuggestionAction } from "@/app/actions/suggestions";
-import { formatDate } from "@/lib/time";
+import { formatDate, isoToLocalInput, nowLocalInput } from "@/lib/time";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
-
-/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
-function nowLocalInput(): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
 
 /**
  * One pending community suggestion in the admin queue: approve (creating a real
@@ -27,6 +20,8 @@ export function SuggestionReviewRow({
   proposerName,
   personName,
   createdAtIso,
+  proposedCloseAtIso,
+  resolutionSourceNote,
 }: {
   suggestionId: string;
   questionHe: string;
@@ -34,8 +29,11 @@ export function SuggestionReviewRow({
   proposerName: string;
   personName: string | null;
   createdAtIso: string;
+  proposedCloseAtIso: string | null;
+  resolutionSourceNote: string | null;
 }) {
-  const [closeAt, setCloseAt] = useState("");
+  // Pre-filled from the proposer's intended decision date; still editable.
+  const [closeAt, setCloseAt] = useState(proposedCloseAtIso ? isoToLocalInput(proposedCloseAtIso) : "");
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -92,6 +90,9 @@ export function SuggestionReviewRow({
         הציע/ה: {proposerName}
         {personName ? <> · קשור ל{personName}</> : null} · {created}
       </p>
+      {resolutionSourceNote && (
+        <p className="mt-1 text-sm text-muted-foreground">מקור הכרעה מוצע: {resolutionSourceNote}</p>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr]">
         <div>

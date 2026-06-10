@@ -51,7 +51,7 @@ export default async function AdminPage() {
 
       <section className="mb-12">
         <h2 className="mb-3 font-display text-xl font-bold text-foreground">
-          הצעות מהקהל ({pendingSuggestions.length})
+          הצעות לסדר ({pendingSuggestions.length})
         </h2>
         {pendingSuggestions.length > 0 ? (
           <div className="space-y-4">
@@ -64,6 +64,8 @@ export default async function AdminPage() {
                 proposerName={s.proposerName}
                 personName={s.personId != null ? nameByPersonId.get(s.personId) ?? null : null}
                 createdAtIso={s.createdAt.toISOString()}
+                proposedCloseAtIso={s.proposedCloseAt ? s.proposedCloseAt.toISOString() : null}
+                resolutionSourceNote={s.resolutionSourceNote}
               />
             ))}
           </div>

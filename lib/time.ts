@@ -34,3 +34,20 @@ export function formatDateTime(value: string | Date): string {
 export function formatDate(value: string | Date): string {
   return dateFmt.format(asDate(value));
 }
+
+// `datetime-local` inputs speak the BROWSER'S local timezone by definition —
+// these two are the only sanctioned bridge between it and our UTC instants.
+
+/** Current local time in the `datetime-local` value format (YYYY-MM-DDTHH:mm). */
+export function nowLocalInput(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+/** UTC/ISO timestamp → local `datetime-local` value (YYYY-MM-DDTHH:mm). */
+export function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
