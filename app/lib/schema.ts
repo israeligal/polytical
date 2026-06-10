@@ -87,6 +87,11 @@ export const politicians = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     personId: integer("personId").notNull().unique(), // official KNS_Person.PersonID — the canonical key
+    // Knesset-website MK id (MKs/GetMksDropDown.ID) — a DIFFERENT id space from
+    // personId (Liberman: site 214 ↔ OData 427). Set by scripts/bootstrap-mk-mapping.ts
+    // via the Open Knesset mk_individual.csv crosswalk; cross-check only — vote
+    // attribution always resolves through mk_name_mappings, never this column.
+    mkSiteId: integer("mkSiteId").unique(),
     nameHe: text("nameHe").notNull(),
     nameEn: text("nameEn"),                            // gap-filled from Open Knesset, reconciled by personId
     party: text("party"),                              // FactionName from the PositionID-54 row
@@ -457,3 +462,8 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   uniqueIndex("push_subscriptions_endpoint_uq").on(t.endpoint),
   index("push_subscriptions_user_idx").on(t.userId),
 ]);
+
+// Knesset plenum votes domain lives in its own file (this one is at the 500-line
+// ceiling). Re-exported here so `import * as schema` callers and drizzle() stay
+// whole; the `() => users.id` FK thunks make the import cycle safe.
+export * from "./schema-votes";
