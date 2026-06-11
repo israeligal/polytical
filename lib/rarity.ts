@@ -28,8 +28,8 @@ const FORMER_PM_PERSON_IDS = new Set<number>([
 /**
  * PARTY LEADERS (heads of a faction), by stable personId. NOTE: the Knesset role
  * "יו״ר סיעה" is the parliamentary whip, NOT the party leader — so leadership is
- * curated here. Several leaders (Smotrich, Goldknopf, Sa'ar) gave up their seats
- * under the Norwegian Law and aren't sitting MKs, so they're absent by design.
+ * curated here. The roster now includes Norwegian-Law ministers (active without
+ * a seat), so leaders who resigned their seats (Smotrich, Sa'ar) are listed too.
  * Source: Knesset factions list (25th Knesset) + party records.
  */
 const PARTY_LEADER_PERSON_IDS = new Set<number>([
@@ -44,6 +44,8 @@ const PARTY_LEADER_PERSON_IDS = new Set<number>([
   560, // Ahmad Tibi — Ta'al
   30713, // Mansour Abbas — Ra'am
   30814, // Avi Maoz — Noam
+  30055, // Bezalel Smotrich — Religious Zionism (Norwegian-Law minister)
+  1027, // Gideon Sa'ar — New Hope (Norwegian-Law minister)
 ]);
 
 /** The SITTING PM (not deputy / acting / alternate). */
