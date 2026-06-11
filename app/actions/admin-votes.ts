@@ -11,13 +11,12 @@ import { getSession } from "@/lib/auth";
 import { db } from "@/app/lib/db";
 import { NotAdminError } from "@/app/lib/errors";
 import {
-  loadAttributionContext, resolveUnmappedName, dismissUnmappedName,
+  loadStintsContext, resolveUnmappedName, dismissUnmappedName,
   setVoteFeatured, insertAgendaItem, setAgendaItemStatus,
 } from "@/app/lib/votes/repo";
 import { politicianExists } from "@/app/lib/politicians/repo";
 import { logger } from "@/app/lib/logger";
-
-type ActionResult = { ok: boolean; message?: string };
+import type { ActionResult } from "./types";
 
 async function requireAdmin(): Promise<string> {
   const session = await getSession();
@@ -44,7 +43,9 @@ export async function resolveUnmappedNameAction({
   if (!Number.isInteger(personId)) return { ok: false, message: "personId לא חוקי" };
   if (!(await politicianExists({ personId }))) return { ok: false, message: "אין פוליטיקאי עם personId הזה" };
 
-  const ctx = await loadAttributionContext({ db });
+  // Scoped context: the backfill only consults the resolved person's stints —
+  // loading ALL mappings/stints/bills per click was 4 full-table scans.
+  const ctx = await loadStintsContext({ db, personId });
   const { backfilled } = await resolveUnmappedName({ db, nameKey, personId, reviewedBy: adminId, ctx });
   logger.info("admin.votes.name_resolved", { nameKey, personId, backfilled });
   revalidatePath("/admin");

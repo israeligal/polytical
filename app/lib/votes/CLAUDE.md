@@ -11,9 +11,9 @@ K25 per-MK roll-call ingestion from the Knesset **website API** (the only live s
 | `test-payloads.ts` | VERBATIM captured responses (one per vote type) — test builders derive from these; refresh via the curl commands in the plan §5, never hand-edit |
 | `name-key.ts` | `nameKey()` — token-SORTED `normalizeSearchName` (website is "Last First", OData "First Last"). Both sides of every mapping lookup MUST use it |
 | `normalize.ts` | Closed maps (`WEBSITE_RESULT_BY_ID` 6/7/8/9, `HEADER_VOTE_TYPE` 4 types) — unknown values THROW; `pickDecisiveVoteId` (highest accepted reading → latest scoreable → latest of ANY type, so hand/secret-only items keep a feed representative; decisive ≠ scoreable) |
-| `repo.ts` | Write-side: upserts + transactional `applyVoteDetails` (patch + raw evidence + attribution + queue), `resolveUnmappedName` (backfills from retained `mk_votes_raw`, no re-fetch), `factionAtVoteTime`, admin writes (`setVoteFeatured`, agenda) |
-| `read-repo.ts` | Read-side: feed (composite keyset cursor `${iso}_${voteId}` — date-only drops same-timestamp rows), detail bundle, MK record, heartbeat-based freshness (6h Mon–Wed SLO), admin lists |
-| `service.ts` | `ingestVotes` (monthly windows, truncation watchdog, dedupe, heartbeat stamp), `ingestRecentVotes` (cron, last 7 days) |
+| `repo.ts` | Write-side: upserts (plumbing from `app/lib/db-utils.ts`) + transactional `applyVoteDetails` (patch + raw evidence + attribution + queue), set-based `recomputeDecisive`, `resolveUnmappedName` (backfills from retained `mk_votes_raw`, no re-fetch — admin uses person-scoped `loadStintsContext`, not the full context), `listAllPendingDetailVoteIds` (self-heal), admin writes |
+| `read-repo.ts` | Read-side: feed (composite keyset cursor `${iso}_${voteId}` — date-only drops same-timestamp rows), detail bundle + `groupByFaction` (pure, unit-tested), MK record, heartbeat-based freshness (6h Mon–Wed SLO), admin lists |
+| `service.ts` | `ingestVotes` (monthly windows, truncation watchdog, dedupe, heartbeat stamp, + self-heal: retries votes stuck `pending_details` OUTSIDE the sweep window), `ingestRecentVotes` (cron, last 7 days) |
 
 Sibling domains: `app/lib/stances/` (atomic stance toggle, k≥10 aggregate), `app/lib/match/` (agreement engine). Schema in `app/lib/schema-votes.ts` (re-exported from `schema.ts`); entry points: `scripts/ingest-votes.ts` (backfill/manual), `app/api/cron/ingest-votes/route.ts` (2h cron), `scripts/bootstrap-mk-mapping.ts` (one-time mapping seed).
 

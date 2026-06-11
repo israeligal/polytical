@@ -119,6 +119,12 @@ export default async function MyMatchPage() {
                     {result.bestParty.agreementPct}% · {result.bestParty.shared} הצבעות
                   </p>
                 </div>
+                {result.worstPartyHidden === "tie" && (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/50 p-4 text-center">
+                    <p className="text-sm font-semibold text-foreground">כל הסיעות שנמדדו מסכימות איתכם באותה מידה</p>
+                    <p className="mt-1 text-xs text-muted-foreground">קבעו עמדה על הצעות שנויות במחלוקת כדי לבדל ביניהן.</p>
+                  </div>
+                )}
                 {result.worstParty && (
                   <div className="rounded-xl border border-border bg-card p-4">
                     <p className="text-xs font-bold text-negative">הסיעה הרחוקה מכם</p>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/time";
-import { getVoteDetail, type MkVoteWithPolitician } from "@/app/lib/votes/read-repo";
+import { getVoteDetail, groupByFaction, type MkVoteWithPolitician } from "@/app/lib/votes/read-repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { StatusChip, type ChipTone } from "@/components/status-chip";
@@ -13,6 +13,7 @@ import { getStanceState, MATCH_UNLOCK_THRESHOLD } from "@/app/lib/stances/servic
 import { StanceWidget } from "@/components/stance-widget";
 import { VOTE_TYPE_HE } from "@/components/vote-row";
 import { VOTE_PAGE_CONTAINER } from "@/components/skeletons/containers";
+import { KnessetSourceFooter } from "@/components/knesset-source-footer";
 
 const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: ChipTone }> = {
   for: { label: "בעד", tone: "positive" },
@@ -20,26 +21,6 @@ const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: C
   abstain: { label: "נמנע", tone: "abstain" },
   didnt_vote: { label: "נוכח ולא הצביע", tone: "neutral" },
 };
-
-interface FactionGroup {
-  name: string;
-  members: MkVoteWithPolitician[];
-}
-
-/** Group by faction-at-vote-time, largest first; null faction last. */
-function groupByFaction(breakdown: MkVoteWithPolitician[]): FactionGroup[] {
-  const groups = new Map<string, MkVoteWithPolitician[]>();
-  for (const row of breakdown) {
-    const name = row.factionNameHe ?? "ללא שיוך סיעתי";
-    groups.set(name, [...(groups.get(name) ?? []), row]);
-  }
-  return [...groups.entries()]
-    .map(([name, members]) => ({
-      name,
-      members: members.sort((a, b) => a.result.localeCompare(b.result)),
-    }))
-    .sort((a, b) => b.members.length - a.members.length);
-}
 
 export default async function VotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -207,7 +188,7 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
         </section>
       )}
 
-      <p className="mt-8 text-xs text-muted-foreground">נתונים ממקור רשמי · אתר הכנסת</p>
+      <KnessetSourceFooter />
     </main>
   );
 }

@@ -9,6 +9,7 @@ import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
 import { getStancesForVotes } from "@/app/lib/stances/repo";
 import { VOTES_PAGE_CONTAINER } from "@/components/skeletons/containers";
+import { KnessetSourceFooter } from "@/components/knesset-source-footer";
 
 export const metadata = {
   title: "הצבעות במליאה — פוליטיקל",
@@ -115,7 +116,7 @@ export default async function VotesPage({
         </section>
       )}
 
-      <p className="mt-8 text-xs text-muted-foreground">נתונים ממקור רשמי · אתר הכנסת</p>
+      <KnessetSourceFooter />
     </main>
   );
 }

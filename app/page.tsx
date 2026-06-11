@@ -6,7 +6,9 @@ import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketBundle, getMarketOfTheDay, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
+import { pctLabel } from "@/lib/format";
 import { CategoryRail } from "@/components/category-rail";
+import { HeroSpotlight, HotRail } from "@/components/hero";
 import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -68,6 +70,25 @@ export default async function Home({
   const visibleGrid = showAll ? grid : grid.slice(0, MARKETS_CAP);
   const hiddenCount = grid.length - visibleGrid.length;
 
+  // "Hot now" rail: the most-active open markets (by predictor count),
+  // excluding the spotlighted one. Only markets with actual predictions
+  // qualify — a "hot" rail of 0-predictor rows reads as broken, and the
+  // total>0 filter also guarantees a leading outcome exists.
+  const predictorsOf = (c: (typeof cards)[number]) =>
+    c.market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
+  const hotItems = featured
+    ? cards
+        .filter((c) => c.market.id !== featured.market.id)
+        .map((c) => ({ c, total: predictorsOf(c) }))
+        .filter(({ total }) => total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5)
+        .map(({ c, total }) => {
+          const leader = [...c.market.outcomes].sort((a, b) => b.predictors - a.predictors)[0];
+          return { market: c.market, predictors: total, leaderPct: pctLabel(leader.predictors, total) };
+        })
+    : [];
+
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
   const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
 
@@ -101,49 +122,31 @@ export default async function Home({
   return (
     <>
       <main className="flex-1">
-        {/* HERO */}
+        {/* HERO — content-first (Polymarket style): a featured-market spotlight
+            next to a ranked "hot now" rail. One compact title line, no
+            marketing copy. */}
         <section className="border-b border-border bg-muted">
           <div className={HOME_SECTION_INNER}>
-            <div className="grid items-center gap-8 lg:grid-cols-2">
-              <div>
-                <p className="text-sm font-bold text-primary">
-                  מהדורת היום · זירת התחזיות
-                </p>
-                <h1 className="mt-2 font-display text-4xl font-black leading-[1.1] text-foreground sm:text-5xl">
-                  נחשו את הפוליטיקה הישראלית.
-                  <br />
-                  <span className="text-primary">בלי כסף</span> — רק על הכבוד.
-                </h1>
-                <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-                  נחשו מה יקרה באירועים ובהחלטות של פוליטיקאים, צפו
-                  בקהל זז עם כל ניחוש, ואספו קלפי קריקטורה לפי דיוק הניחושים שלכם.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    href="#markets"
-                    className="rounded-lg bg-primary px-7 py-3 text-lg font-bold text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-primary-hover"
-                  >
-                    התחילו לנחש
-                  </Link>
-                  <Link
-                    href="#politicians"
-                    className="rounded-lg border-2 border-primary px-7 py-3 text-lg font-bold text-primary transition-colors hover:bg-primary/5"
-                  >
-                    גלו את הקלפים
-                  </Link>
-                </div>
-              </div>
-              {featured && (
-                <div>
-                  <p className="mb-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">
-                      {featuredIsHot ? "התחזית החמה של היום" : "תחזית היום · הכי פעילה"}
-                    </span>
-                  </p>
-                  <MarketCard market={featured.market} featured={featured.featured} />
-                </div>
-              )}
+            <div className="mb-6">
+              <h1 className="font-display text-2xl font-black text-foreground sm:text-3xl">
+                נחשו את הפוליטיקה הישראלית
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                צפו לאן הקהל נוטה ואספו קלפי קריקטורה לפי הדיוק שלכם.
+              </p>
             </div>
+            {featured && (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className={hotItems.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}>
+                  <HeroSpotlight
+                    market={featured.market}
+                    featured={featured.featured}
+                    badge={featuredIsHot ? "התחזית החמה של היום" : "הכי פעילה היום"}
+                  />
+                </div>
+                {hotItems.length > 0 && <HotRail items={hotItems} />}
+              </div>
+            )}
           </div>
         </section>
 
@@ -152,12 +155,9 @@ export default async function Home({
           id="markets"
           className={`scroll-mt-24 ${HOME_SECTION_INNER}`}
         >
-          <div className="mb-5">
-            <p className="text-sm font-bold text-primary">התחזיות</p>
-            <h2 className="font-display text-3xl font-bold text-foreground">
-              על מה מנחשים עכשיו
-            </h2>
-          </div>
+          <h2 className="mb-5 font-display text-4xl font-black text-foreground">
+            תחזיות
+          </h2>
           <div className="mb-6">
             <CategoryRail active={active} />
           </div>
@@ -235,7 +235,7 @@ export default async function Home({
             </div>
           </div>
           {topEntries.length > 0 ? (
-            <div className="mx-auto max-w-2xl space-y-2">
+            <div className="mx-auto w-full max-w-2xl space-y-2">
               {topEntries.map(({ you, ...entry }) => (
                 <LeaderboardRow key={entry.rank} entry={entry} you={you} />
               ))}
@@ -246,7 +246,7 @@ export default async function Home({
               )}
             </div>
           ) : (
-            <EmptyState className="mx-auto max-w-2xl">
+            <EmptyState className="mx-auto w-full max-w-2xl">
               עוד אין מספיק פעילות לטבלה. נחשו על תחזית ראשונה כדי לפתוח את הדירוג.
             </EmptyState>
           )}
@@ -266,7 +266,7 @@ export default async function Home({
                 ))}
               </div>
             ) : (
-              <EmptyState className="mx-auto max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
+              <EmptyState className="mx-auto w-full max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
             )}
             <p className="mt-5 text-center">
               <Link

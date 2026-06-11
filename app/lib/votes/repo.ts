@@ -7,8 +7,9 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
+import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";
+import { chunk, sqlExcluded, type AppDb } from "@/app/lib/db-utils";
 import {
   factionStints, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, unmappedMkNames,
 } from "@/app/lib/schema";
@@ -16,29 +17,13 @@ import { logger } from "@/app/lib/logger";
 import type { KnessetVoteInsert, MkVoteRawInsert, MkVoteResultValue, VoteDetailsPatch } from "./normalize";
 import { WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
 
-export type VotesDb = PgDatabase<
-  PgQueryResultHKT,
-  typeof schema,
-  ExtractTablesWithRelations<typeof schema>
->;
+export type VotesDb = AppDb;
 type DB = VotesDb;
 export type VotesTx = PgTransaction<
   PgQueryResultHKT,
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-
-function sqlExcluded(column: string) {
-  return sql.raw(`excluded."${column}"`);
-}
-
-const BATCH = 100;
-
-function chunk<T>(rows: T[], size = BATCH): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
-  return out;
-}
 
 /** Header sweep upsert. Detail-derived, admin, and pipeline columns untouched. */
 export async function upsertVoteHeaders({ db, rows }: { db: DB; rows: KnessetVoteInsert[] }): Promise<number> {
@@ -74,6 +59,19 @@ export async function listPendingDetailVoteIds({ db, voteIds }: { db: DB; voteId
   return out;
 }
 
+/** ALL stuck pending votes, regardless of sweep window — the self-heal path:
+ *  a vote whose details failed (e.g. an unknown counter title) outside the
+ *  incremental window would otherwise never be retried. Capped: a persistent
+ *  thrower retries once per run, not unboundedly within one. */
+export async function listAllPendingDetailVoteIds({ db, limit = 50 }: { db: DB; limit?: number }): Promise<number[]> {
+  const rows = await db
+    .select({ voteId: knessetVotes.voteId })
+    .from(knessetVotes)
+    .where(eq(knessetVotes.detailsStatus, "pending_details"))
+    .limit(limit);
+  return rows.map((r) => r.voteId);
+}
+
 export interface AttributionContext {
   /** verified nameKey -> personId (attribution refuses unverified maps at the service layer) */
   mappings: Map<string, number>;
@@ -104,6 +102,21 @@ export async function loadAttributionContext({ db }: { db: DB }): Promise<Attrib
   const dismissedKeys = new Set(queueRows.filter((q) => q.status === "dismissed").map((q) => q.nameKey));
   const validBillIds = new Set(billRows.map((b) => b.billId));
   return { mappings, stintsByPerson, dismissedKeys, validBillIds, unverifiedCount };
+}
+
+/** Minimal attribution context for a single-person backfill (admin resolve):
+ *  only that person's stints — never the full-table mapping/bill loads. */
+export async function loadStintsContext({ db, personId }: { db: DB; personId: number }): Promise<AttributionContext> {
+  const stintRows = await db.select().from(factionStints).where(eq(factionStints.personId, personId));
+  const stints = stintRows
+    .map((s) => ({ factionId: s.factionId, startDate: s.startDate, finishDate: s.finishDate }))
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  return {
+    mappings: new Map(),
+    stintsByPerson: new Map([[personId, stints]]),
+    dismissedKeys: new Set(),
+    validBillIds: new Set(),
+  };
 }
 
 /** The stint whose [startDate, finishDate) interval covers the vote instant. */

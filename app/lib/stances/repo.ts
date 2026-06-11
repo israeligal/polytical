@@ -9,7 +9,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { knessetVotes, userStances } from "@/app/lib/schema";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 import { SCOREABLE_VOTE_TYPES } from "@/app/lib/votes/normalize";
 
 type DB = PgDatabase<
@@ -20,11 +20,6 @@ type DB = PgDatabase<
 
 export type StanceValue = (typeof schema.userStance.enumValues)[number];
 
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
-
 export async function getStance({
   db = defaultDb,
   userId,
@@ -33,7 +28,7 @@ export async function getStance({
   const [row] = await db
     .select({ stance: userStances.stance })
     .from(userStances)
-    .where(and(eq(userStances.userId, reqUser(userId)), eq(userStances.voteId, voteId)))
+    .where(and(eq(userStances.userId, requireUserId(userId)), eq(userStances.voteId, voteId)))
     .limit(1);
   return row?.stance ?? null;
 }
@@ -48,7 +43,7 @@ export async function getStancesForVotes({
   const rows = await db
     .select({ voteId: userStances.voteId, stance: userStances.stance })
     .from(userStances)
-    .where(and(eq(userStances.userId, reqUser(userId)), inArray(userStances.voteId, voteIds)));
+    .where(and(eq(userStances.userId, requireUserId(userId)), inArray(userStances.voteId, voteIds)));
   return new Map(rows.map((r) => [r.voteId, r.stance]));
 }
 
@@ -69,7 +64,7 @@ export async function toggleStance({
     .delete(userStances)
     .where(
       and(
-        eq(userStances.userId, reqUser(userId)),
+        eq(userStances.userId, requireUserId(userId)),
         eq(userStances.voteId, voteId),
         eq(userStances.stance, stance),
       ),
@@ -78,7 +73,7 @@ export async function toggleStance({
   if (deleted.length > 0) return { stance: null }; // retraction
   await db
     .insert(userStances)
-    .values({ userId: reqUser(userId), voteId, stance })
+    .values({ userId: requireUserId(userId), voteId, stance })
     .onConflictDoUpdate({
       target: [userStances.userId, userStances.voteId],
       set: { stance, updatedAt: new Date() },
@@ -120,7 +115,7 @@ export async function getScoreableStanceCount({
     .innerJoin(knessetVotes, eq(knessetVotes.voteId, userStances.voteId))
     .where(
       and(
-        eq(userStances.userId, reqUser(userId)),
+        eq(userStances.userId, requireUserId(userId)),
         eq(knessetVotes.isDecisive, true),
         inArray(knessetVotes.voteType, [...SCOREABLE_VOTE_TYPES]),
       ),
