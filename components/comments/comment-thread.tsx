@@ -39,7 +39,9 @@ export async function CommentThread({
       )}
 
       {comments.length > 0 ? (
-        <div className="space-y-3">
+        // User-generated and unbounded → scroll past ~6 comments (ordered by
+        // upvotes, so the best stay above the fold).
+        <div className="max-h-[30rem] space-y-3 overflow-y-auto pe-1">
           {comments.map((c) => (
             <CommentRow
               key={c.id}

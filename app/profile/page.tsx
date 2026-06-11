@@ -81,7 +81,7 @@ export default async function ProfilePage() {
         <div className="flex items-center gap-4">
           <span
             aria-hidden="true"
-            className="grid h-14 w-14 place-items-center rounded-full bg-muted font-display text-2xl font-black text-foreground ring-1 ring-border"
+            className="grid h-14 w-14 place-items-center rounded-full bg-muted font-display text-2xl font-black leading-none text-foreground ring-1 ring-border"
           >
             {initial}
           </span>
@@ -155,7 +155,8 @@ export default async function ProfilePage() {
           ניחושים פתוחים
         </h2>
         {openPred.length > 0 ? (
-          <ul className="space-y-3">
+          // Unbounded source (grows with the market count) → scroll past ~4 rows.
+          <ul className="max-h-[32rem] space-y-3 overflow-y-auto pe-1">
             {openPred.map((p) => (
               <li
                 key={p.predictionId}
@@ -197,7 +198,8 @@ export default async function ProfilePage() {
           היסטוריית ניחושים
         </h2>
         {history.length > 0 ? (
-          <ul className="space-y-2">
+          // Grows forever (every resolved prediction) → scroll past ~7 rows.
+          <ul className="max-h-[28rem] space-y-2 overflow-y-auto pe-1">
             {history.map((p) => (
               <li
                 key={p.predictionId}
@@ -235,7 +237,8 @@ export default async function ProfilePage() {
           </Link>
         </div>
         {mySuggestions.length > 0 ? (
-          <ul className="space-y-2">
+          // Up to 10/day forever → scroll past ~7 rows.
+          <ul className="max-h-[28rem] space-y-2 overflow-y-auto pe-1">
             {mySuggestions.map((s) => (
               <li
                 key={s.id}
