@@ -1,5 +1,5 @@
 import type { Category, Market, Politician } from "@/lib/types";
-import { getAllPoliticians } from "@/app/lib/politicians/repo";
+import { getPoliticiansByPersonIds } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketBundle, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
@@ -23,8 +23,13 @@ export async function getMarketCards({
     await Promise.all(marketRows.map((m) => getMarketBundle({ marketId: m.id })))
   ).filter((b): b is NonNullable<typeof b> => b !== null);
 
+  // Resolve by stable id, NOT by the active-only gallery list: linked outcome
+  // politicians can be former MKs (Norwegian-law ministers' rivals, ex-PMs —
+  // e.g. Bennett/Eizenkot on "מי ירכיב את הממשלה"), whose roster rows are
+  // active=false yet must still render a portrait on feed cards.
+  const linkedIds = [...new Set(bundles.flatMap((b) => b.personIds))];
   const polById = new Map<string, Politician>();
-  for (const row of await getAllPoliticians()) {
+  for (const row of await getPoliticiansByPersonIds({ personIds: linkedIds })) {
     polById.set(String(row.personId), dbToCard(row));
   }
   const featuredFor = (personIds: number[]): Politician[] =>

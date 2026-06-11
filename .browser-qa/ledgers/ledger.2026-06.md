@@ -83,3 +83,6 @@
 | 2026-06-11 | 2d497e4 | /code-review 7-angle batch (14 fixes) | ✅ | set-based decisive recompute, scoreable single-source, signup callbackUrl, parallelized pages |
 | 2026-06-11 | 6dc8786 | loading-states overhaul: 12 route skeletons + stories + shared containers | ✅ | audit found home 3/5 sections, my-match wrong state, vote/[id] missing StanceWidget; all rebuilt; collection+notifications gained skeletons |
 | 2026-06-11 | 4ebe29c | prod smoke: /votes 200 on vercel.app; cron route deployed (401 unauth) | ✅ | full egress proof = heartbeat after next :30 cron fire |
+| 2026-06-11 | a0a3d55 | suggest form: searchable combobox (multi+binary), related hidden in multi | ✅ | Bennett(inactive)+Regev found; label auto-fill; portrait chip; 0 console errors |
+| 2026-06-11 | a0a3d55 | hero/feed outcome avatars via stable-id lookup | 🔴 | active-only map dropped Bennett/Eizenkot; fixed feed.ts → all 3 portraits |
+| 2026-06-11 | a0a3d55 | market-card equal heights @1400px | 🔴 | 1-line title compacted card; h-full+line-clamp+mt-auto; footer min-h aligns border-t ±1px |

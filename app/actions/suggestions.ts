@@ -7,6 +7,9 @@ import {
   approveSuggestion,
   rejectSuggestion,
 } from "@/app/lib/suggestions/service";
+import { searchPoliticians } from "@/app/lib/politicians/repo";
+import { normalizeSearchName } from "@/app/lib/knesset/search-name";
+import { MIN_QUERY_LEN } from "@/app/lib/search/service";
 import {
   AlreadyReviewedError,
   ClosePastError,
@@ -23,11 +26,30 @@ import {
   UnknownPoliticianError,
 } from "@/app/lib/errors";
 import type { ActionResult } from "./types";
+import type { PoliticianOption } from "@/lib/types";
 
 // Community suggestion actions. The proposer endpoint is session-gated AND
 // rate-limited (Better Auth's limiter can't see a Server Action). The review
 // endpoints re-check isAdmin server-side — the /admin route gate is not the
 // authoritative boundary since actions can be POSTed directly.
+
+/** Politician name autocomplete for the public suggestion form — session-gated
+ *  (not admin), rate-limited at 60/min. Includes inactive politicians so the
+ *  form can reference a former PM/MK as a candidate outcome. */
+export async function searchPoliticiansSuggestAction({
+  q,
+}: {
+  q: string;
+}): Promise<PoliticianOption[]> {
+  const s = await getSession();
+  if (!s?.user) return [];
+  const limit = checkRateLimit({ key: `suggest-mk-search:${s.user.id}`, max: 60, windowMs: 60_000 });
+  if (!limit.allowed) return [];
+  const normalized = normalizeSearchName(q);
+  if (normalized.length < MIN_QUERY_LEN) return [];
+  const rows = await searchPoliticians({ q: normalized, limit: 8, includeInactive: true });
+  return rows.map((p) => ({ personId: p.personId, nameHe: p.nameHe, roleHe: p.roleHe, imageUrl: p.imageUrl }));
+}
 
 /** A logged-in user proposes a market. Rate-limited per user. */
 export async function suggestMarketAction({
