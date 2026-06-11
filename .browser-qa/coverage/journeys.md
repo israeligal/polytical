@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 1 | 8/9 |
+| [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 2 | 9/9 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
@@ -36,7 +36,7 @@
 - ✅ politician page הצבעות אחרונות columns
 - ✅ home #votes module + mobile 380px
 - ✅ admin: featured toggle→rail, agenda add→drop, queue empty-state
-- ❌ hand/secret/pending_details detail states in-browser (integration-tested only)
+- ✅ hand/secret/roll-call detail states in-browser (46063/46051/46052 — 83 chips, faction groups, explicit no-breakdown notes)
 
 **Notable history:**
 - `worktree-knesset-votes` (2026-06-11): first walk — 2 bugs found+fixed in-pass (raw-sql Date crash in getFeaturedVotes; worst-party tie contradiction on /my-match).
