@@ -213,6 +213,15 @@ export function Ballot({ className }: IconProps) {
   );
 }
 
+/** Reading-forward arrow with a shaft (points left, the RTL "continue" direction). */
+export function ArrowForward({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
 /** Reading-forward chevron (points left, the RTL "next" direction). */
 export function ChevronForward({ className }: IconProps) {
   return (

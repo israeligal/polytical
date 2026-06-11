@@ -13,7 +13,7 @@ import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
 import { LeaderboardRow } from "@/components/leaderboard-row";
-import { ChevronForward, Trophy } from "@/components/icons";
+import { ArrowForward, Trophy } from "@/components/icons";
 import { VoteRow } from "@/components/vote-row";
 import { getVotesFeed } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
@@ -130,20 +130,22 @@ export default async function Home({
           id="markets"
           className={`scroll-mt-24 ${HOME_SECTION_INNER}`}
         >
-          <h2 className="mb-5 font-display text-4xl font-black text-foreground">
-            תחזיות
-          </h2>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <CategoryRail active={active} />
-            </div>
+          {/* Heading row: title + the "all forecasts" link share one line (also on
+              mobile, where the link used to float awkwardly beside the rail). */}
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="font-display text-4xl font-black text-foreground">
+              תחזיות
+            </h2>
             <Link
               href={`/markets${active ? `?cat=${active}` : ""}`}
               scroll={false}
-              className="ms-auto inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary transition-colors hover:underline"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:underline"
             >
-              לכל התחזיות <ChevronForward className="h-4 w-4 rotate-180" />
+              לכל התחזיות <ArrowForward className="h-4 w-4" />
             </Link>
+          </div>
+          <div className="mb-6">
+            <CategoryRail active={active} />
           </div>
           <div className="min-h-[28rem]">
             {visibleGrid.length > 0 ? (
