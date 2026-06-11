@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Market, Outcome, Politician } from "@/lib/types";
-import { pct } from "@/lib/format";
+import { pct, pctLabel } from "@/lib/format";
 import { catTint } from "@/lib/cat";
 import { makePredictionAction } from "@/app/actions/bet";
 import { PoliticianPortrait } from "@/components/politician-portrait";
@@ -89,7 +89,7 @@ export function OutcomeRows({
                 </span>
                 <span className="shrink-0 text-end">
                   <span className="nums block font-display text-xl font-black text-foreground sm:text-2xl">
-                    {o.predictors > 0 && share === 0 ? "<1%" : `${share}%`}
+                    {pctLabel(o.predictors, total)}
                   </span>
                   <span className="nums block text-xs text-muted-foreground">
                     {o.predictors} ניחושים

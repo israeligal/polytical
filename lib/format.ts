@@ -9,6 +9,16 @@ export function pct(part: number, total: number): number {
   return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
+/** Display label for a crowd share: a non-zero part that ROUNDS to 0 shows
+ *  "<1%" — never "0%" next to an outcome that demonstrably has predictors.
+ *  Single source of truth for the odds bar legend, compact card line and the
+ *  multi-market outcome rows, so the same outcome never reads differently
+ *  across surfaces. */
+export function pctLabel(part: number, total: number): string {
+  const share = pct(part, total);
+  return part > 0 && share === 0 ? "<1%" : `${share}%`;
+}
+
 /** Hebrew relative time until close, e.g. "בעוד 3 ימים". */
 export function timeUntil(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();

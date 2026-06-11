@@ -5,9 +5,10 @@ import type { MarketKind, OutcomeInput, PoliticianOption } from "@/lib/types";
 import * as repo from "@/app/lib/markets/repo";
 import { deleteMarket, resolveMarket, voidMarket } from "@/app/lib/markets/service";
 import { MULTI_MAX_OUTCOMES, MULTI_MIN_OUTCOMES } from "@/app/lib/markets/constants";
-import { searchPoliticians } from "@/app/lib/politicians/repo";
+import { getPoliticiansByPersonIds, searchPoliticians } from "@/app/lib/politicians/repo";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
 import { MIN_QUERY_LEN } from "@/app/lib/search/service";
+import { checkRateLimit } from "@/app/lib/rate-limit";
 import {
   AlreadyResolvedError,
   InvalidOutcomeError,
@@ -78,10 +79,15 @@ export async function createMarketAction({
   if (!category.trim()) return { ok: false, message: "חסרה קטגוריה" };
 
   // Trim labels but DON'T silently drop empty rows — a blank label next to a
-  // linked politician would shift personIds onto the wrong outcome.
+  // linked politician would shift personIds onto the wrong outcome. Outcome
+  // links are a MULTI concept; binary outcomes never carry one (resolveMarket's
+  // scoping branch must stay unreachable for binary markets).
   const cleaned = outcomes.map((o) => ({
     labelHe: o.labelHe.trim(),
-    personId: Number.isInteger(o.personId) && (o.personId as number) > 0 ? o.personId : undefined,
+    personId:
+      type === "multi" && Number.isInteger(o.personId) && (o.personId as number) > 0
+        ? o.personId
+        : undefined,
   }));
   if (cleaned.some((o) => !o.labelHe)) return { ok: false, message: "יש תוצאה בלי תווית" };
   if (type === "binary" && cleaned.length !== 2)
@@ -91,6 +97,19 @@ export async function createMarketAction({
       ok: false,
       message: `שוק רב-ברירה צריך בין ${MULTI_MIN_OUTCOMES} ל-${MULTI_MAX_OUTCOMES} תוצאות`,
     };
+
+  // One politician = at most one candidate outcome, and every link must resolve
+  // to a real politicians row by stable id (no FK in the schema — this action is
+  // the existence boundary; a junk id would mint card progress for nobody).
+  const linkedIds = cleaned.flatMap((o) => (o.personId != null ? [o.personId] : []));
+  if (new Set(linkedIds).size !== linkedIds.length)
+    return { ok: false, message: "אותו פוליטיקאי מקושר ליותר מתשובה אחת" };
+  const allPersonIds = [...new Set([...linkedIds, ...personIds])];
+  if (allPersonIds.length > 0) {
+    const found = await getPoliticiansByPersonIds({ personIds: allPersonIds });
+    if (found.length !== allPersonIds.length)
+      return { ok: false, message: "פוליטיקאי מקושר לא נמצא במאגר" };
+  }
 
   const close = new Date(closeAt);
   if (Number.isNaN(close.getTime())) return { ok: false, message: "מועד סגירה לא תקין" };
@@ -124,16 +143,19 @@ export async function createMarketAction({
 
 /** Politician name autocomplete for the admin market form — discovery-only
  *  ILIKE over the normalized searchName (same normalization as the global
- *  search), resolving to the stable personId the form actually submits. */
+ *  search), resolving to the stable personId the form actually submits.
+ *  Includes INACTIVE politicians: a candidate outcome can be a former MK/PM. */
 export async function searchPoliticiansAction({
   q,
 }: {
   q: string;
 }): Promise<PoliticianOption[]> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const limit = checkRateLimit({ key: `admin-mk-search:${session.user.id}`, max: 60, windowMs: 60_000 });
+  if (!limit.allowed) return [];
   const normalized = normalizeSearchName(q);
   if (normalized.length < MIN_QUERY_LEN) return [];
-  const rows = await searchPoliticians({ q: normalized, limit: 8 });
+  const rows = await searchPoliticians({ q: normalized, limit: 8, includeInactive: true });
   return rows.map((p) => ({ personId: p.personId, nameHe: p.nameHe, roleHe: p.roleHe }));
 }
 

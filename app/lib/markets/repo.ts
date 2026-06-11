@@ -126,6 +126,24 @@ export async function getMarketPoliticianRoles({
     .where(eq(marketPoliticians.marketId, marketId));
 }
 
+/** One politician's role by stable personId (tx-aware) — the resolution-time
+ *  lookup for a winning outcome's linked MK. Independent of market_politicians,
+ *  so progress scoping survives links added outside createMarket (backfills). */
+export async function getPoliticianRoleByPersonId({
+  tx,
+  personId,
+}: {
+  tx: Tx;
+  personId: number;
+}): Promise<{ personId: number; roleHe: string | null } | null> {
+  const [row] = await tx
+    .select({ personId: politicians.personId, roleHe: politicians.roleHe })
+    .from(politicians)
+    .where(eq(politicians.personId, personId))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Live predictor count per outcome of a market (replaces the cached pool) —
  *  the crowd-split the odds bars render. Returns outcomeId → count. */
 export async function getOutcomeCounts({

@@ -35,23 +35,25 @@ export default async function MarketPage({
       ? bundle.outcomes.find((o) => o.id === bundle.market.resolvedOutcomeId)
       : undefined;
 
-  // Real featured MKs by personId (the system of record), mapped to card shape.
-  const pols = (
-    await Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId })))
-  )
-    .filter((row): row is NonNullable<typeof row> => row !== null)
-    .map(dbToCard);
-
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
-  // Multi markets pick inside the outcome rows, so they need the viewer's
-  // current pick for the highlighted row (binary's BetPanel doesn't show it).
-  const multiOpen = market.type === "multi" && !settled;
-  const initialPickId =
+  // The interactive rows render only on OPEN markets — an admin-closed (or
+  // draft/voided) multi must not invite picks that always fail. Past-closeAt
+  // open markets keep parity with binary's BetPanel: the server action is the
+  // authoritative closeAt guard (render-time Date.now is impure in RSCs).
+  const multiOpen = market.type === "multi" && bundle.market.status === "open";
+
+  // Featured MK cards + the viewer's current pick (the highlighted row) are
+  // independent reads — overlap them instead of paying serial roundtrips.
+  const [polRows, positions] = await Promise.all([
+    Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId }))),
     multiOpen && session?.user
-      ? ((await getUserPositions({ userId: session.user.id, marketId: id }))[0]?.outcomeId ?? null)
-      : null;
+      ? getUserPositions({ userId: session.user.id, marketId: id })
+      : Promise.resolve([]),
+  ]);
+  const pols = polRows.filter((row): row is NonNullable<typeof row> => row !== null).map(dbToCard);
+  const initialPickId = positions[0]?.outcomeId ?? null;
   // The politician a winning outcome IS (multi) — for the resolution panel portrait.
   const winnerPol =
     winningOutcome?.personId != null
@@ -156,9 +158,11 @@ export default async function MarketPage({
                 </>
               )}
             </div>
-          ) : multiOpen ? (
-            /* The rows in the main column do the picking — the sidebar carries
-               the resolution criterion (or a short how-it-works hint). */
+          ) : market.type === "multi" ? (
+            /* The rows in the main column do the picking (when open) — the
+               sidebar carries the resolution criterion / how-it-works hint.
+               A closed-but-unresolved multi must NOT fall through to BetPanel,
+               which would invite picks that always fail. */
             <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
               <h3 className="mb-2 font-display text-lg font-bold text-foreground">
                 איך מכריעים?

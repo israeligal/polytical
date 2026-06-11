@@ -1,5 +1,5 @@
 import type { Market } from "@/lib/types";
-import { pct } from "@/lib/format";
+import { pct, pctLabel } from "@/lib/format";
 import { catBg } from "@/lib/cat";
 
 /**
@@ -53,7 +53,7 @@ export function OddsBar({ market, compact = false }: { market: Market; compact?:
             <span key={o.id}>
               {i > 0 && <span className="mx-1.5 text-border">·</span>}
               <span className="font-semibold text-foreground">{o.label}</span>{" "}
-              <span className="nums font-bold">{pct(o.predictors, total)}%</span>
+              <span className="nums font-bold">{pctLabel(o.predictors, total)}</span>
             </span>
           ))}
           {sorted.length > 2 && (
@@ -66,7 +66,7 @@ export function OddsBar({ market, compact = false }: { market: Market; compact?:
             <li key={o.id} className="inline-flex items-center gap-1.5 text-sm">
               <span className={`h-2.5 w-2.5 rounded-full ${catBg[o.color ?? 1]}`} />
               <span className="font-semibold text-foreground">{o.label}</span>
-              <span className="nums font-bold text-muted-foreground">{pct(o.predictors, total)}%</span>
+              <span className="nums font-bold text-muted-foreground">{pctLabel(o.predictors, total)}</span>
             </li>
           ))}
         </ul>

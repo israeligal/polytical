@@ -91,13 +91,24 @@ export async function resolveMarket({
     // The market's featured politicians (+ their role) drive card-unlock thresholds.
     // A winning outcome that is ITSELF a politician (outcomes.personId — multi
     // markets like "מי ירכיב את הממשלה?") scopes progress to that MK alone:
-    // predicting Netanyahu must not advance Bennett's card. An unlinked winner
-    // ("אחר", or any binary outcome) keeps the market-level behavior — every
-    // featured MK advances. createMarket guarantees a linked outcome's MK is in
-    // market_politicians, so the filter never empties for markets it created.
+    // predicting Netanyahu must not advance Bennett's card. The role is looked
+    // up by personId directly (not via market_politicians) so the scoping also
+    // survives links backfilled outside createMarket's auto-feature sync. An
+    // unlinked winner ("אחר", or any binary outcome) keeps the market-level
+    // behavior — every featured MK advances.
     const persons = await repo.getMarketPoliticianRoles({ tx, marketId });
-    const progressPersons =
-      winner.personId != null ? persons.filter((p) => p.personId === winner.personId) : persons;
+    let progressPersons = persons;
+    if (winner.personId != null) {
+      const linked = await repo.getPoliticianRoleByPersonId({ tx, personId: winner.personId });
+      progressPersons = linked ? [linked] : persons.filter((p) => p.personId === winner.personId);
+      if (progressPersons.length === 0)
+        // A linked winner pointing at a politician we can't resolve means card
+        // progress would be silently skipped — surface it, don't bury it.
+        logger.error("markets.resolve.linked_winner_unresolvable", {
+          marketId,
+          personId: winner.personId,
+        });
+    }
     // Notification events accumulate here and emit (in this same tx) after the
     // market is marked resolved — so the "you were right" notice is atomic with it.
     const events: NotificationEvent[] = [];
