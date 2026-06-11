@@ -11,6 +11,8 @@ import {
   AlreadyReviewedError,
   ClosePastError,
   CloseRequiredError,
+  OutcomeCountError,
+  OutcomeLabelError,
   CloseTooFarError,
   DailySuggestionLimitError,
   InvalidCategoryError,
@@ -32,12 +34,15 @@ export async function suggestMarketAction({
   questionHe,
   category,
   personId,
+  outcomes,
   proposedCloseAt,
   resolutionSourceNote,
 }: {
   questionHe: string;
   category: string;
   personId?: number | null;
+  /** Optional multi-outcome set; null/absent = binary כן/לא. */
+  outcomes?: { labelHe: string; personId?: number | null }[] | null;
   proposedCloseAt: string;
   resolutionSourceNote?: string | null;
 }): Promise<ActionResult> {
@@ -59,12 +64,15 @@ export async function suggestMarketAction({
       questionHe,
       category,
       personId: personId ?? null,
+      outcomes: outcomes ?? null,
       proposedCloseAt: close,
       resolutionSourceNote: resolutionSourceNote ?? null,
     });
   } catch (e) {
     if (e instanceof SuggestionTooShortError) return { ok: false, message: "ההצעה קצרה מדי (לפחות 10 תווים)" };
-    if (e instanceof SuggestionTooLongError) return { ok: false, message: "ההצעה ארוכה מדי (עד 200 תווים)" };
+    if (e instanceof OutcomeCountError) return { ok: false, message: "תחזית עם כמה תשובות צריכה 2–8 תשובות" };
+    if (e instanceof OutcomeLabelError) return { ok: false, message: "כל תשובה צריכה תווית ייחודית של עד 40 תווים" };
+    if (e instanceof SuggestionTooLongError) return { ok: false, message: "ההצעה ארוכה מדי (עד 100 תווים)" };
     if (e instanceof InvalidCategoryError) return { ok: false, message: "קטגוריה לא תקינה" };
     if (e instanceof UnknownPoliticianError) return { ok: false, message: "הפוליטיקאי שנבחר אינו קיים" };
     if (e instanceof CloseRequiredError) return { ok: false, message: "בחרו תאריך הכרעה" };

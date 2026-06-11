@@ -1,3 +1,7 @@
+import {
+  OutcomeCountError,
+  OutcomeLabelError,
+} from "@/app/lib/errors";
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
@@ -63,7 +67,7 @@ test("createSuggestion inserts a pending row with a resolved politician", async 
 test("createSuggestion rejects short / long / bad-category / unknown politician", async () => {
   const base = { db: h.db, userId: "proposer", category: "elections" as const, proposedCloseAt: CLOSE };
   await expect(createSuggestion({ ...base, questionHe: "קצר" })).rejects.toBeInstanceOf(SuggestionTooShortError);
-  await expect(createSuggestion({ ...base, questionHe: "א".repeat(201) })).rejects.toBeInstanceOf(SuggestionTooLongError);
+  await expect(createSuggestion({ ...base, questionHe: "א".repeat(101) })).rejects.toBeInstanceOf(SuggestionTooLongError);
   await expect(
     createSuggestion({ db: h.db, userId: "proposer", questionHe: "שאלה תקינה לגמרי", category: "not-a-category", proposedCloseAt: CLOSE }),
   ).rejects.toBeInstanceOf(InvalidCategoryError);
@@ -261,4 +265,56 @@ test("suggestion lists expose proposedCloseAt + resolutionSourceNote", async () 
   const [v] = await listSuggestions({ db: h.db, status: "pending" });
   expect(v.proposedCloseAt).toEqual(CLOSE);
   expect(v.resolutionSourceNote).toBe("רשומות");
+});
+
+test("multi-outcome suggestion: validates, stores, and approve mints a MULTI market with linked politicians", async () => {
+  await h.db.insert(politicians).values({ personId: 200, nameHe: "ח״כ אלמונית", searchName: "almonit", ...PROV });
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "מי ירכיב את הממשלה?", category: "elections",
+    outcomes: [
+      { labelHe: "ח״כ פלוני", personId: 100 },
+      { labelHe: "ח״כ אלמונית", personId: 200 },
+      { labelHe: "אחר" },
+    ],
+    proposedCloseAt: CLOSE,
+  });
+  const [row] = await h.db.select().from(marketSuggestions).where(eq(marketSuggestions.id, id));
+  expect(row.outcomes).toHaveLength(3);
+
+  const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
+  const [market] = await h.db.select().from(markets).where(eq(markets.id, marketId));
+  expect(market.type).toBe("multi");
+  const outcomeRows = await h.db.select().from(outcomes).where(eq(outcomes.marketId, marketId)).orderBy(outcomes.ordinal);
+  expect(outcomeRows.map((o) => [o.labelHe, o.personId])).toEqual([
+    ["ח״כ פלוני", 100],
+    ["ח״כ אלמונית", 200],
+    ["אחר", null],
+  ]);
+  const linked = await h.db.select().from(marketPoliticians).where(eq(marketPoliticians.marketId, marketId));
+  expect(new Set(linked.map((l) => l.personId))).toEqual(new Set([100, 200]));
+});
+
+test("multi-outcome validation: count bounds, duplicate labels, unknown politician", async () => {
+  const base = { db: h.db, userId: "proposer", questionHe: "שאלה עם תשובות", category: "elections" as const, proposedCloseAt: CLOSE };
+  await expect(createSuggestion({ ...base, outcomes: [{ labelHe: "אחת" }] })).rejects.toBeInstanceOf(OutcomeCountError);
+  await expect(
+    createSuggestion({ ...base, outcomes: Array.from({ length: 9 }, (_, i) => ({ labelHe: `ת${i}` })) }),
+  ).rejects.toBeInstanceOf(OutcomeCountError);
+  await expect(
+    createSuggestion({ ...base, outcomes: [{ labelHe: "כפול" }, { labelHe: "כפול" }] }),
+  ).rejects.toBeInstanceOf(OutcomeLabelError);
+  await expect(
+    createSuggestion({ ...base, outcomes: [{ labelHe: "א" }, { labelHe: "ב", personId: 999 }] }),
+  ).rejects.toBeInstanceOf(UnknownPoliticianError);
+});
+
+test("binary suggestion (no outcomes) still mints כן/לא on approve", async () => {
+  const { id } = await createSuggestion({
+    db: h.db, userId: "proposer", questionHe: "האם יקרה משהו השנה?", category: "elections", proposedCloseAt: CLOSE,
+  });
+  const { marketId } = await approveSuggestion({ db: h.db, suggestionId: id, reviewerId: "admin", closeAt: CLOSE });
+  const [market] = await h.db.select().from(markets).where(eq(markets.id, marketId));
+  expect(market.type).toBe("binary");
+  const outcomeRows = await h.db.select().from(outcomes).where(eq(outcomes.marketId, marketId));
+  expect(outcomeRows.map((o) => o.labelHe).sort()).toEqual(["כן", "לא"]);
 });

@@ -15,7 +15,9 @@ export const MARKET_CONTAINER = "mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px
 export const MARKET_GRID = "grid gap-6 lg:grid-cols-[1fr_320px]";
 export const PROFILE_CONTAINER = "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const POLITICIANS_CONTAINER = "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12";
-export const POLITICIANS_GRID = "grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
+// Fixed-size cards, adaptive column count — auto-FILL (never auto-fit: a
+// 1-card row must stay 280px, not stretch); justify-center is RTL-neutral.
+export const POLITICIANS_GRID = "grid justify-center gap-5 grid-cols-[repeat(auto-fill,280px)]";
 export const COLLECTION_CONTAINER = "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12";
 export const NOTIFICATIONS_CONTAINER = "mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const SEARCH_CONTAINER = "mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8";

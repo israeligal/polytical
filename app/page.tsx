@@ -18,6 +18,7 @@ import { VoteRow } from "@/components/vote-row";
 import { getVotesFeed } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
 import { HOME_SECTION_INNER } from "@/components/skeletons/containers";
+import { POLITICIANS_GRID } from "@/components/skeletons/containers";
 
 export default async function Home({
   searchParams,
@@ -209,7 +210,7 @@ export default async function Home({
               </Link>
             </div>
             {featuredPoliticians.length > 0 ? (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={POLITICIANS_GRID}>
                 {featuredPoliticians.map((p) => (
                   <CaricatureCard key={p.id} politician={p} realData />
                 ))}

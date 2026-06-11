@@ -14,7 +14,7 @@ const SIZE: Record<Size, string> = {
 const IMG_SIZES: Record<Size, string> = {
   sm: "36px",
   md: "64px",
-  card: "(max-width: 640px) 50vw, 320px",
+  card: "280px",
 };
 
 function initials(name: string): string {

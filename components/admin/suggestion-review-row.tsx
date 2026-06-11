@@ -17,6 +17,7 @@ const FIELD =
 export function SuggestionReviewRow({
   suggestionId,
   questionHe,
+  outcomeLabels,
   categoryHe,
   proposerName,
   personName,
@@ -29,6 +30,8 @@ export function SuggestionReviewRow({
   categoryHe: string;
   proposerName: string;
   personName: string | null;
+  /** Proposed multi-outcome labels (politician-linked ones pre-suffixed by the page); null = binary. */
+  outcomeLabels: string[] | null;
   createdAtIso: string;
   proposedCloseAtIso: string | null;
   resolutionSourceNote: string | null;
@@ -92,6 +95,15 @@ export function SuggestionReviewRow({
         {/* wrap-anywhere: questionHe is user-submitted — an unbroken long string
             must not blow the admin layout on mobile. */}
         <p className="min-w-0 wrap-anywhere font-display text-lg font-bold text-foreground">{questionHe}</p>
+        {outcomeLabels && outcomeLabels.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {outcomeLabels.map((label) => (
+              <span key={label} className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
         <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-bold text-foreground">
           {categoryHe}
         </span>

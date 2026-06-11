@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Politician } from "@/lib/types";
 import { CaricatureCard } from "@/components/caricature-card";
+import { POLITICIANS_GRID } from "@/components/skeletons/containers";
 
 /**
  * Client-side gallery for all current MKs. Cards are adapted server-side and
@@ -41,7 +42,7 @@ export function PoliticiansGallery({ politicians }: { politicians: Politician[] 
           <p className="mb-4 text-sm text-muted-foreground">
             <span className="nums font-bold text-foreground">{filtered.length}</span> פוליטיקאים
           </p>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={POLITICIANS_GRID}>
             {filtered.map((p) => (
               <CaricatureCard key={p.id} politician={p} realData />
             ))}

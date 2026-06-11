@@ -52,3 +52,6 @@ export function requireUserId(userId: string): string {
   if (!userId) throw new MissingUserError();
   return userId;
 }
+// --- Multi-outcome suggestions ---
+export class OutcomeCountError extends Error { constructor() { super("A multi suggestion needs 2-8 outcomes"); this.name = "OutcomeCountError"; } }
+export class OutcomeLabelError extends Error { constructor() { super("Outcome labels must be 1-40 chars and unique"); this.name = "OutcomeLabelError"; } }

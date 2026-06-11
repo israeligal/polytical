@@ -5,6 +5,7 @@ import { CaricatureCard } from "@/components/caricature-card";
 import { EmptyState } from "@/components/empty-state";
 import { SearchInput } from "@/components/search/search-input";
 import { Search } from "@/components/icons";
+import { POLITICIANS_GRID } from "@/components/skeletons/containers";
 
 export const metadata = {
   title: "חיפוש · פוליטיקל",
@@ -70,7 +71,7 @@ export default async function SearchPage({
                   {politicians.length}
                 </span>
               </h2>
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={POLITICIANS_GRID}>
                 {politicians.map((p) => (
                   <CaricatureCard key={p.id} politician={p} realData />
                 ))}
