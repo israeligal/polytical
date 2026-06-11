@@ -193,7 +193,7 @@ export async function resolveMarketAction({
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "התחזית הוכרעה והניחושים סוכמו" };
+  return { ok: true, message: "התחזית הוכרעה והמנדטים סוכמו" };
 }
 
 /** Voids a market — marks it voided; predictions are left uncounted (no stakes). */

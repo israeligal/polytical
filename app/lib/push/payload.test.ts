@@ -17,7 +17,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "ניחשת נכון! 🎯",
-      body: "צדקת בניחוש · מי ינצח בבחירות?",
+      body: "המנדט נפדה — צדקת · מי ינצח בבחירות?",
       url: "/market/m1",
     });
   });
@@ -74,7 +74,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "התחזית בוטלה",
-      body: "הניחוש שלך בוטל · האם יעבור התקציב?",
+      body: "המנדט שלך בוטל · האם יעבור התקציב?",
       url: "/market/m4",
     });
   });
@@ -88,7 +88,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "תחזית נסגרת בקרוב ⏰",
-      body: "הספיקו לנחש לפני הסגירה · האם יעבור התקציב?",
+      body: "הספיקו לתת מנדט לפני הסגירה · האם יעבור התקציב?",
       url: "/market/m5",
     });
   });

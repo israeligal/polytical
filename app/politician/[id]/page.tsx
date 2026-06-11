@@ -89,7 +89,7 @@ export default async function PoliticianPage({
                   פתחו את הקלף בדיוק
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  נחשו נכון <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות שהוא מופיע בהן כדי לאסוף את הקלף.
+                  צדקו <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות שהוא מופיע בהן כדי לאסוף את הקלף.
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
                   <div
@@ -98,7 +98,7 @@ export default async function PoliticianPage({
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  <span className="nums font-bold text-foreground">{correctCount}</span>/{threshold} ניחושים נכונים
+                  <span className="nums font-bold text-foreground">{correctCount}</span>/{threshold} מנדטים מדויקים
                 </p>
               </div>
             )

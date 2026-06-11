@@ -37,7 +37,7 @@ export function BetPanel({
       try {
         const res = await makePredictionAction({ marketId: market.id, outcomeId: selected.id });
         setOk(res.ok);
-        setMessage(res.ok ? "הניחוש נרשם!" : res.message ?? "שגיאה");
+        setMessage(res.ok ? "המנדט נרשם!" : res.message ?? "שגיאה");
       } catch {
         setOk(false);
         setMessage("אירעה שגיאה — נסו שוב");
@@ -47,7 +47,7 @@ export function BetPanel({
 
   return (
     <div className="rounded-card border border-border bg-card p-5 shadow-2">
-      <h3 className="mb-1 font-display text-xl text-foreground">הניחוש שלך</h3>
+      <h3 className="mb-1 font-display text-xl text-foreground">המנדט שלך</h3>
       <p className="mb-3 text-sm text-muted-foreground">בחרו תוצאה אחת — אפשר לשנות עד הסגירה</p>
 
       <div className="flex flex-wrap gap-2">
@@ -86,14 +86,14 @@ export function BetPanel({
           disabled={pending || !selected}
           className="mt-4 w-full rounded-[12px] bg-primary py-3 font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {pending ? "רושם…" : "קבעו ניחוש"}
+          {pending ? "רושם…" : "תנו מנדט"}
         </button>
       ) : (
         <Link
           href="/login"
           className="mt-4 block w-full rounded-[12px] bg-primary py-3 text-center font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint"
         >
-          התחברו כדי לנחש
+          התחברו כדי לתת מנדט
         </Link>
       )}
 

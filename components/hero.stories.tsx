@@ -76,7 +76,7 @@ function TitleBlock() {
   return (
     <div className="mb-6">
       <h1 className="font-display text-2xl font-black text-foreground sm:text-3xl">
-        נחשו את הפוליטיקה הישראלית
+        תנו מנדט על הפוליטיקה הישראלית
       </h1>
       <p className="mt-1 text-sm text-muted-foreground sm:text-base">
         צפו לאן הקהל נוטה ואספו קלפי קריקטורה לפי הדיוק שלכם.
