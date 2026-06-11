@@ -12,7 +12,7 @@ import { getUnreadCount } from "@/app/lib/notifications/service";
 // Deliberately minimal: the three product surfaces only. האוסף + עונה live on
 // /profile; פוליטיקאים is reachable from every card and the homepage section.
 const NAV = [
-  { href: "/#markets", label: "תחזיות" },
+  { href: "/markets", label: "תחזיות" },
   { href: "/votes", label: "הצבעות" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];

@@ -70,7 +70,7 @@ export default async function MarketPage({
     <main className={MARKET_CONTAINER}>
       <CelebrationHost predictions={celebrations} />
       <Link
-        href="/#markets"
+        href="/markets"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronForward className="h-4 w-4 rotate-180" />

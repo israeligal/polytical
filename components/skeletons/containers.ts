@@ -21,3 +21,4 @@ export const POLITICIANS_GRID = "grid justify-center gap-5 grid-cols-[repeat(aut
 export const COLLECTION_CONTAINER = "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12";
 export const NOTIFICATIONS_CONTAINER = "mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const SEARCH_CONTAINER = "mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
+export const MARKETS_PAGE_CONTAINER = "mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12";

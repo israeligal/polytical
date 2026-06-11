@@ -3,7 +3,7 @@ import { expect, within } from "storybook/test";
 import { HomeSkeleton } from "./home-skeleton";
 import { MyMatchSkeleton, VoteDetailSkeleton, VotesFeedSkeleton } from "./votes-skeletons";
 import { CollectionSkeleton, PoliticianSkeleton, PoliticiansSkeleton } from "./politician-skeletons";
-import { MarketSkeleton, NotificationsSkeleton, ProfileSkeleton, SearchSkeleton } from "./misc-skeletons";
+import { MarketSkeleton, MarketsPageSkeleton, NotificationsSkeleton, ProfileSkeleton, SearchSkeleton } from "./misc-skeletons";
 
 // Every route skeleton, browsable side-by-side with the app. THE REVIEW RULE:
 // when a page's sections change, open its story next to the real page — the
@@ -79,4 +79,9 @@ export const SearchEmptyState: Story = {
 
 export const Notifications: Story = {
   render: () => <NotificationsSkeleton />,
+};
+
+export const MarketsFeed: Story = {
+  render: () => <MarketsPageSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען תחזיות"),
 };

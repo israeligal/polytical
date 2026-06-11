@@ -1,9 +1,14 @@
-// Skeletons for profile / search / notifications / market detail. Each mirrors
-// the real page's section order; the audit's findings per route are noted.
+// Skeletons for profile / search / notifications / market detail / markets feed.
+// Each mirrors the real page's section order; the audit's findings per route are noted.
 
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import {
-  MARKET_CONTAINER, MARKET_GRID, NOTIFICATIONS_CONTAINER, PROFILE_CONTAINER, SEARCH_CONTAINER,
+  MARKET_CONTAINER,
+  MARKET_GRID,
+  MARKETS_PAGE_CONTAINER,
+  NOTIFICATIONS_CONTAINER,
+  PROFILE_CONTAINER,
+  SEARCH_CONTAINER,
 } from "./containers";
 
 /** app/profile — avatar header, FOUR stat cards + match promo row, push
@@ -79,6 +84,34 @@ export function NotificationsSkeleton() {
       <div className="space-y-2">
         {Array.from({ length: 5 }, (_, i) => (
           <SkeletonCard key={i} className="h-16 rounded-lg" />
+        ))}
+      </div>
+    </main>
+  );
+}
+
+/** app/markets — h1 bar + category-rail pill row + 3-col market card grid. */
+export function MarketsPageSkeleton() {
+  return (
+    <main
+      role="status"
+      aria-busy="true"
+      aria-label="טוען תחזיות"
+      className={MARKETS_PAGE_CONTAINER}
+    >
+      <span className="sr-only">טוען…</span>
+      {/* h1 */}
+      <Skeleton className="mb-6 h-10 w-36" />
+      {/* CategoryRail pill strip */}
+      <div className="mb-6 flex gap-2 overflow-x-hidden pb-1">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Skeleton key={i} className="h-10 w-20 shrink-0 rounded-full" />
+        ))}
+      </div>
+      {/* 3-col card grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <SkeletonCard key={i} className="h-44 rounded-card" />
         ))}
       </div>
     </main>
