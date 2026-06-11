@@ -27,6 +27,12 @@ each `odata.count` was proven equal to the true paginated row count, for two dif
 `scripts/knesset_activity.py` *is* that proof — run it (and its `--cross-check`) any time
 you doubt a number. Do not add claims here you have not run yourself.
 
+> **Full entity catalog:** this skill covers the per-MK *activity-count* recipe. For the
+> complete catalog of all 38 ParliamentInfo.svc entities (plus Votes.svc) — every entity's
+> key fields, navigation properties, example query, and verified OData gotchas (counts,
+> `substringof` vs `contains`, paging, encoding) — see
+> [`references/api-catalog.md`](references/api-catalog.md).
+
 ## The one base URL
 
 ```
