@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Politician } from "@/lib/types";
 import { CaricatureCard } from "@/components/caricature-card";
+import { POLITICIANS_GRID } from "@/components/skeletons/containers";
 
 export type CollectionItem = { politician: Politician; owned: boolean };
 
@@ -91,7 +92,7 @@ export function CollectionGallery({ items }: { items: CollectionItem[] }) {
       </div>
 
       {filtered.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={POLITICIANS_GRID}>
           {filtered.map((i) => (
             <CaricatureCard key={i.politician.id} politician={i.politician} realData owned={i.owned} />
           ))}

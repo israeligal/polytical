@@ -9,10 +9,12 @@ import { emitNotifications } from "@/app/lib/notifications/service";
 import { dispatchPush } from "@/app/lib/push/service";
 import { type NotificationEvent } from "@/app/lib/notifications/service";
 import { logger } from "@/app/lib/logger";
-import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
+import { getPoliticianByPersonId, getPoliticiansByPersonIds } from "@/app/lib/politicians/repo";
 import { CATEGORIES } from "@/lib/categories";
 import {
   AlreadyReviewedError,
+  OutcomeCountError,
+  OutcomeLabelError,
   ClosePastError,
   CloseRequiredError,
   CloseTooFarError,
@@ -31,7 +33,7 @@ type DB = PgDatabase<
 >;
 
 export const MIN_SUGGESTION_LEN = 10;
-export const MAX_SUGGESTION_LEN = 200;
+export const MAX_SUGGESTION_LEN = 100;
 export const MAX_SOURCE_NOTE_LEN = 300;
 
 /** Daily cap per user, enforced on a rolling 24h window against the DB (the
@@ -45,11 +47,47 @@ const MAX_CLOSE_HORIZON_MS = 2 * 365 * 24 * 60 * 60 * 1000;
 
 const VALID_CATEGORIES = new Set<string>(CATEGORIES.map((c) => c.key));
 
-/** Binary outcomes every approved market gets, unless we extend to multi later. */
+/** Binary outcomes — the default when a suggestion proposes no outcome set. */
 const BINARY_OUTCOMES = [
   { labelHe: "כן", ordinal: 0 },
   { labelHe: "לא", ordinal: 1 },
 ] as const;
+
+export const MIN_OUTCOMES = 2;
+export const MAX_OUTCOMES = 8;
+export const MAX_OUTCOME_LABEL_LEN = 40;
+
+/**
+ * Validates a proposed multi-outcome set: 2–8 rows, trimmed unique labels
+ * ≤40 chars, every linked politician resolved by stable id (never guessed).
+ * Returns the normalized rows or throws.
+ */
+async function validateOutcomes({
+  db,
+  outcomes,
+}: {
+  db: DB;
+  outcomes: { labelHe: string; personId?: number | null }[];
+}): Promise<{ labelHe: string; personId?: number }[]> {
+  if (outcomes.length < MIN_OUTCOMES || outcomes.length > MAX_OUTCOMES) throw new OutcomeCountError();
+  const normalized = outcomes.map((o) => ({
+    labelHe: o.labelHe.trim(),
+    personId: o.personId ?? undefined,
+  }));
+  const labels = new Set<string>();
+  for (const o of normalized) {
+    if (!o.labelHe || o.labelHe.length > MAX_OUTCOME_LABEL_LEN) throw new OutcomeLabelError();
+    if (labels.has(o.labelHe)) throw new OutcomeLabelError();
+    labels.add(o.labelHe);
+    if (o.personId != null && (!Number.isInteger(o.personId) || o.personId <= 0)) throw new UnknownPoliticianError();
+  }
+  const personIds = [...new Set(normalized.map((o) => o.personId).filter((p): p is number => p != null))];
+  if (personIds.length) {
+    const found = await getPoliticiansByPersonIds({ db, personIds });
+    if (found.length !== personIds.length) throw new UnknownPoliticianError();
+  }
+  return normalized;
+}
 
 /**
  * A user proposes a market. Validates (trim → length bounds → category in the
@@ -62,6 +100,7 @@ export async function createSuggestion({
   questionHe,
   category,
   personId,
+  outcomes,
   proposedCloseAt,
   resolutionSourceNote,
 }: {
@@ -70,6 +109,7 @@ export async function createSuggestion({
   questionHe: string;
   category: string;
   personId?: number | null;
+  outcomes?: { labelHe: string; personId?: number | null }[] | null;
   proposedCloseAt: Date;
   resolutionSourceNote?: string | null;
 }): Promise<{ id: string }> {
@@ -95,6 +135,9 @@ export async function createSuggestion({
     resolvedPersonId = personId;
   }
 
+  // Optional multi-outcome set (Polymarket-style: each row may BE a politician).
+  const validatedOutcomes = outcomes && outcomes.length ? await validateOutcomes({ db, outcomes }) : null;
+
   // Daily cap last (cheapest checks first): the DB count is authoritative.
   const filedToday = await repo.countSuggestionsSince({
     db,
@@ -109,6 +152,7 @@ export async function createSuggestion({
     questionHe: question,
     category,
     personId: resolvedPersonId,
+    outcomes: validatedOutcomes,
     proposedCloseAt,
     resolutionSourceNote: sourceNote,
   });
@@ -165,15 +209,27 @@ export async function approveSuggestion({
     const s = await repo.lockSuggestion({ tx, id: suggestionId });
     if (s.status !== "pending") throw new AlreadyReviewedError();
 
+    // A proposed outcome set mints a MULTI market (each row may carry its
+    // politician — the candidate IS the outcome); otherwise binary as before.
+    const proposed = s.outcomes;
+    const outcomeRows = proposed?.length
+      ? proposed.map((o, i) => ({ labelHe: o.labelHe, ordinal: i, personId: o.personId }))
+      : BINARY_OUTCOMES.map((o) => ({ ...o }));
+    const linkedPersonIds = [
+      ...new Set([
+        ...(s.personId ? [s.personId] : []),
+        ...(proposed?.map((o) => o.personId).filter((p): p is number => p != null) ?? []),
+      ]),
+    ];
     const { marketId } = await createMarket({
       tx,
       questionHe: s.questionHe,
       category: s.category,
-      type: "binary",
+      type: proposed?.length ? "multi" : "binary",
       closeAt,
       createdBy: reviewerId,
-      outcomes: BINARY_OUTCOMES.map((o) => ({ ...o })),
-      personIds: s.personId ? [s.personId] : [],
+      outcomes: outcomeRows,
+      personIds: linkedPersonIds,
     });
 
     await repo.markReviewed({ tx, id: suggestionId, status: "approved", reviewerId, marketId });

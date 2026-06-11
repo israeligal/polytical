@@ -79,6 +79,11 @@ export default async function AdminPage() {
                 categoryHe={categoryLabel(s.category)}
                 proposerName={s.proposerName}
                 personName={s.personId != null ? nameByPersonId.get(s.personId) ?? null : null}
+                outcomeLabels={
+                  s.outcomes?.map((o) =>
+                    o.personId != null ? `${o.labelHe} 👤` : o.labelHe,
+                  ) ?? null
+                }
                 createdAtIso={s.createdAt.toISOString()}
                 proposedCloseAtIso={s.proposedCloseAt ? s.proposedCloseAt.toISOString() : null}
                 resolutionSourceNote={s.resolutionSourceNote}

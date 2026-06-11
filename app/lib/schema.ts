@@ -344,6 +344,10 @@ export const marketSuggestions = pgTable("market_suggestions", {
   questionHe: text("questionHe").notNull(),
   category: text("category").notNull(),                 // Category union, stored as text
   personId: integer("personId"),                        // optional featured MK → politicians.personId (no FK; resolve by id)
+  // Proposed outcome set for a MULTI market: [{labelHe, personId?}] (validated
+  // in the service; personId resolves by stable id). NULL = binary כן/לא —
+  // legacy rows and the default path stay untouched.
+  outcomes: jsonb("outcomes").$type<{ labelHe: string; personId?: number }[] | null>(),
   proposedCloseAt: timestamp("proposedCloseAt"),        // proposer's intended decision date — required by the service for NEW rows; legacy rows null
   resolutionSourceNote: text("resolutionSourceNote"),   // optional "how would this resolve" hint for the reviewer
   status: suggestionStatus("status").notNull().default("pending"),

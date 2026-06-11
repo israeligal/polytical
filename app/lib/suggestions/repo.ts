@@ -21,6 +21,11 @@ export type SuggestionRow = typeof marketSuggestions.$inferSelect;
 export type SuggestionStatus = (typeof schema.suggestionStatus.enumValues)[number];
 
 /** A suggestion joined to its proposer's display name, for queue + profile lists. */
+export interface SuggestionOutcomeInput {
+  labelHe: string;
+  personId?: number;
+}
+
 export interface SuggestionView {
   id: string;
   userId: string;
@@ -28,6 +33,7 @@ export interface SuggestionView {
   questionHe: string;
   category: string;
   personId: number | null;
+  outcomes: SuggestionOutcomeInput[] | null;
   proposedCloseAt: Date | null;
   resolutionSourceNote: string | null;
   status: SuggestionStatus;
@@ -43,6 +49,7 @@ const VIEW_COLUMNS = {
   questionHe: marketSuggestions.questionHe,
   category: marketSuggestions.category,
   personId: marketSuggestions.personId,
+  outcomes: marketSuggestions.outcomes,
   proposedCloseAt: marketSuggestions.proposedCloseAt,
   resolutionSourceNote: marketSuggestions.resolutionSourceNote,
   status: marketSuggestions.status,
@@ -76,6 +83,7 @@ export async function insertSuggestion({
   questionHe,
   category,
   personId,
+  outcomes,
   proposedCloseAt,
   resolutionSourceNote,
 }: {
@@ -85,6 +93,7 @@ export async function insertSuggestion({
   questionHe: string;
   category: string;
   personId?: number | null;
+  outcomes?: SuggestionOutcomeInput[] | null;
   proposedCloseAt: Date;
   resolutionSourceNote?: string | null;
 }): Promise<{ id: string }> {
@@ -95,6 +104,7 @@ export async function insertSuggestion({
       userId,
       questionHe,
       category,
+      outcomes: outcomes ?? null,
       personId: personId ?? null,
       proposedCloseAt,
       resolutionSourceNote: resolutionSourceNote ?? null,

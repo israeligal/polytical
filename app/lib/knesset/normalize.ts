@@ -6,8 +6,15 @@ import { logger } from "@/app/lib/logger";
 
 export interface Prov { sourceUrl: string; fetchedAt: Date }
 
-// PositionID codes (verified): 43/61 = MK; 54 = faction membership (carries party).
+// PositionID codes (verified against KNS_Position 2026-06-11): 43/61 = MK;
+// 54 = faction membership (carries party); 39 שר / 57 שרה / 40 סגן שר /
+// 59 סגנית שר / 45 ראש הממשלה / 50 סגן ראש הממשלה = government office.
+// Norwegian-law ministers RESIGN their MK seat — "currently serving" must
+// mean MK seat OR government office, or sitting ministers (Regev, Smotrich,
+// Sa'ar…) vanish from every gallery. Administrative Knesset staff hold other
+// ids (33/46/724/779/817/23119 — legal advisor, secretary…) and stay out.
 export const MK_POSITIONS = new Set([43, 61]);
+export const GOV_POSITIONS = new Set([39, 40, 45, 50, 57, 59]);
 export const FACTION_MEMBER_POSITION = 54;
 export const SENTINEL_FACTION_ID = 911;
 
@@ -118,8 +125,10 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
   const out: MemberRow[] = [];
   for (const [personId, allRows] of byPersonAll) {
     const mkRows = allRows.filter((r) => MK_POSITIONS.has(r.PositionID));
-    if (!mkRows.length) continue; // roster = had a 43/61 seat this term
-    const active = mkRows.some((r) => r.IsCurrent === true);
+    const govRows = allRows.filter((r) => GOV_POSITIONS.has(r.PositionID));
+    if (!mkRows.length && !govRows.length) continue; // roster = MK seat OR gov office this term
+    // Serving = current MK seat OR current government office (Norwegian law).
+    const active = mkRows.some((r) => r.IsCurrent === true) || govRows.some((r) => r.IsCurrent === true);
     // Actives keep the proven current-rows recipe; departed use their K25 history.
     const rows = active ? allRows.filter((r) => r.IsCurrent === true) : allRows;
 
