@@ -2,6 +2,8 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-11 | 0061203 | hot-rail hover glitch (user report, screenshots) | ⚠️ | NOT repro either theme; shot pixel-matches light-hover; deploy-skew suspect (6 deploys/day); SW ruled out |
+| 2026-06-11 | 0061203 | hover/focus token audit, all state variants × both themes | ✅ | every state token has dark override; raised/sunken/ring are aliases — verified in-browser |
 | 2026-06-11 | 7e4a516 | prod: Bennett missing from מי-ירכיב market (user report) | 🔴 | NO politicians row; inserted 23511 (OData provenance, inactive) + market link; renders live |
 | 2026-06-11 | 7e4a516 | prod: Eizenkot caricature missing (user report) | 🔴 | imageUrl NULL, no file; generated sapphire card via Gemini → /caricatures/30836.png; Bennett silver card too |
 | 2026-06-11 | 7e4a516 | prod: ALL 119 active MKs image sweep | ✅ | every politicians.imageUrl set AND serves 200 on prod; no wider issue |

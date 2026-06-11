@@ -86,7 +86,7 @@ export function MobileMenu({
           <div className="absolute inset-x-0 top-0 max-h-[90dvh] overflow-y-auto rounded-b-card border-b border-border bg-card shadow-3 pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
               <Link href="/" className="flex items-center gap-2.5" onClick={close}>
-                <PolyticalLogo className="h-8 w-8" />
+                <PolyticalLogo className="h-9 w-9" />
                 <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
               </Link>
               <button
