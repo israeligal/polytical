@@ -7,9 +7,9 @@ type IconProps = { className?: string };
 export function PolyticalLogo({ className }: IconProps) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <path d="M60 10 L16.7 85 L103.3 85 Z" stroke="var(--positive)" strokeWidth="11" strokeLinejoin="round" fill="none" />
-      <path d="M60 110 L103.3 35 L16.7 35 Z" stroke="var(--negative)" strokeWidth="11" strokeLinejoin="round" fill="none" />
-      <path d="M50.6 26.3 L40.6 43.7 M83.9 51.3 L93.9 68.7 M35.6 85 L55.6 85" stroke="var(--positive)" strokeWidth="11" />
+      <path d="M60 10 L16.7 85 L103.3 85 Z" stroke="var(--positive)" strokeWidth="12.5" strokeLinejoin="round" fill="none" />
+      <path d="M60 110 L103.3 35 L16.7 35 Z" stroke="var(--negative)" strokeWidth="12.5" strokeLinejoin="round" fill="none" />
+      <path d="M50.6 26.3 L40.6 43.7 M83.9 51.3 L93.9 68.7 M35.6 85 L55.6 85" stroke="var(--positive)" strokeWidth="12.5" />
     </svg>
   );
 }

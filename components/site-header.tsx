@@ -31,7 +31,7 @@ export async function SiteHeader() {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2.5">
-          <PolyticalLogo className="h-8 w-8" />
+          <PolyticalLogo className="h-9 w-9" />
           <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
         </Link>
 
