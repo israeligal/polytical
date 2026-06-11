@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Theme-aware tab favicon. Default (light browser chrome): darkened star so it
+       doesn't wash out on light tab bars. Dark chrome: the brand's bright mint/coral.
+       Browsers without SVG-favicon support fall back to favicon.ico (darkened set). -->
+  <style>
+    .yes { stroke: #00B886; }
+    .no  { stroke: #E83A5C; }
+    @media (prefers-color-scheme: dark) {
+      .yes { stroke: #00E0A4; }
+      .no  { stroke: #FF4D6D; }
+    }
+  </style>
+  <path class="yes" d="M256 46 L74.1 361 L437.9 361 Z" fill="none" stroke-width="62" stroke-linejoin="round"/>
+  <path class="no" d="M256 466 L437.9 151 L74.1 151 Z" fill="none" stroke-width="62" stroke-linejoin="round"/>
+  <line class="yes" x1="222.0" y1="104.8" x2="168.8" y2="197.2" stroke-width="62"/>
+  <line class="yes" x1="350.6" y1="209.8" x2="403.8" y2="302.2" stroke-width="62"/>
+  <line class="yes" x1="145.0" y1="361" x2="245.8" y2="361" stroke-width="62"/>
+</svg>
