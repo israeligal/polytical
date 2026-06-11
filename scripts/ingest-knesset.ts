@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
 import { bills, politicians } from "@/app/lib/schema";
@@ -132,18 +131,18 @@ async function ingestQueries(prov: { fetchedAt: Date }) {
   logger.info("knesset.ingest.entity_done", { entity: "queries", fetched: raw.length, upserted: n });
 }
 
-// Per-MK parliamentary-activity counts (card-critical, cheap). For every active MK we
-// ask the official OData for FOUR totals via `$inlinecount` (no row downloads): bills &
+// Per-MK parliamentary-activity counts (card-critical, cheap). For EVERY politician on
+// the roster — including departed K25 MKs (active=false), whose profile pages stay live —
+// we ask the official OData for FOUR totals via `$inlinecount` (no row downloads): bills &
 // queries, current-Knesset and lifetime. KNS_BillInitiator has no KnessetNum, so the
 // current-term bill count scopes through the KNS_Bill nav property; KNS_Query carries its
-// own KnessetNum. ~120 MKs × 4 tiny calls — bounded, so it runs in the default ingest.
+// own KnessetNum. ~140 MKs × 4 tiny calls — bounded, so it runs in the default ingest.
 async function ingestActivityCounts(prov: { fetchedAt: Date }) {
   const mks = await db
     .select({ personId: politicians.personId })
-    .from(politicians)
-    .where(eq(politicians.active, true));
+    .from(politicians);
   if (mks.length === 0) {
-    logger.warn("knesset.ingest.skip", { entity: "activity_counts", reason: "no active politicians — run members first" });
+    logger.warn("knesset.ingest.skip", { entity: "activity_counts", reason: "no politicians — run members first" });
     return;
   }
   const rows: ActivityCountsRow[] = [];
@@ -164,6 +163,11 @@ async function ingestActivityCounts(prov: { fetchedAt: Date }) {
       logger.warn("knesset.ingest.activity_count_failed", { personId, err: String(err) });
     }
     await sleep(250); // be polite to the service across ~120 MKs
+  }
+  if (rows.length === 0) {
+    // Per-MK tolerance must not extend to total failure: every other step fails the run
+    // loudly, and a green run that wrote nothing would let counts go stale unnoticed.
+    throw new Error(`activity counts: all ${failed} MK count fetches failed — API shape change?`);
   }
   const n = await upsertActivityCounts({ db, rows });
   logger.info("knesset.ingest.entity_done", { entity: "activity_counts", mks: mks.length, written: n, failed });

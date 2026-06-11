@@ -80,13 +80,17 @@ export interface ActivityCountsRow {
 export async function upsertActivityCounts({ db, rows }: { db: DB; rows: ActivityCountsRow[] }): Promise<number> {
   let n = 0;
   for (const r of rows) {
-    await db.update(politicians)
+    const updated = await db.update(politicians)
       .set({
         billsCurrent: r.billsCurrent, billsLifetime: r.billsLifetime,
         queriesCurrent: r.queriesCurrent, queriesLifetime: r.queriesLifetime,
         activityCountsFetchedAt: r.activityCountsFetchedAt,
       })
-      .where(eq(politicians.personId, r.personId));
+      .where(eq(politicians.personId, r.personId))
+      .returning({ personId: politicians.personId });
+    if (updated.length === 0) {
+      throw new Error(`activity counts: no politician row for personId ${r.personId} — roster out of sync`);
+    }
     n += 1;
   }
   logger.info("knesset.repo.upsert", { entity: "activity_counts", rows: n });

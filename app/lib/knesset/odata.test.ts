@@ -12,6 +12,8 @@ describe("odataCountFromPage", () => {
   test("throws (never silently 0) when odata.count is missing or garbage", () => {
     expect(() => odataCountFromPage({ value: [] })).toThrow();
     expect(() => odataCountFromPage({ "odata.count": "abc", value: [] })).toThrow();
+    expect(() => odataCountFromPage({ "odata.count": "", value: [] })).toThrow();
+    expect(() => odataCountFromPage({ "odata.count": "  ", value: [] })).toThrow();
   });
 });
 

@@ -140,7 +140,8 @@ export async function fetchAll<T>({
  */
 export function odataCountFromPage(page: ODataPage<unknown>): number {
   const raw = page["odata.count"];
-  const n = raw == null ? NaN : Number(raw);
+  // NB: Number("") === 0, so an empty/whitespace string must be treated as garbage too.
+  const n = raw == null || (typeof raw === "string" && raw.trim() === "") ? NaN : Number(raw);
   if (!Number.isFinite(n)) {
     throw new Error(`odata.count missing/invalid (got ${JSON.stringify(raw)}) — API shape changed?`);
   }
