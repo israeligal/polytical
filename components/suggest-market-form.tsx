@@ -6,6 +6,7 @@ import { PoliticianCombobox } from "@/components/politician-combobox";
 import type { PoliticianOption } from "@/lib/types";
 import { nowLocalInput } from "@/lib/time";
 import { useHydrated } from "@/lib/use-hydrated";
+import { SelectField } from "@/components/select-field";
 
 // Inlined to keep the server (which pulls the db driver) out of the client
 // bundle — mirrors comment-form.tsx. The service is the real authority.
@@ -186,7 +187,9 @@ export function SuggestMarketForm({
           </button>
         </div>
 
-        {/* 3. Multi outcome rows */}
+        {/* 3. Multi outcome rows — one line per answer: label first, searchable
+            politician picker beside it. Picking a politician auto-fills the
+            label, so most rows never need typing. Wraps on narrow screens. */}
         {isMulti && (
           <div className="mt-3 space-y-2">
             {outcomes.map((o, i) => (
@@ -194,21 +197,23 @@ export function SuggestMarketForm({
                 <span className="nums mt-2.5 w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">
                   {i + 1}
                 </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <PoliticianCombobox
-                    value={o.politician}
-                    onChange={(p) => setOutcomePolitician(i, p)}
-                    search={searchPoliticiansSuggestAction}
-                    placeholder="פוליטיקאי (אופציונלי)"
-                    label={`פוליטיקאי לתשובה ${i + 1}`}
-                  />
+                <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                   <input
                     value={o.labelHe}
                     onChange={(e) => setOutcomeLabel(i, e.target.value.slice(0, MAX_OUTCOME_LABEL_LEN))}
-                    className={FIELD}
-                    placeholder="תווית התשובה"
+                    className={`${FIELD} min-w-40 flex-1`}
+                    placeholder="תשובה (או בחרו פוליטיקאי ←)"
                     aria-label={`תשובה ${i + 1}`}
                   />
+                  <div className="min-w-44 flex-1 sm:max-w-56">
+                    <PoliticianCombobox
+                      value={o.politician}
+                      onChange={(p) => setOutcomePolitician(i, p)}
+                      search={searchPoliticiansSuggestAction}
+                      placeholder="פוליטיקאי (אופציונלי)"
+                      label={`פוליטיקאי לתשובה ${i + 1}`}
+                    />
+                  </div>
                 </div>
                 {outcomes.length > MIN_OUTCOMES && (
                   <button
@@ -247,7 +252,7 @@ export function SuggestMarketForm({
           <label className={LABEL} htmlFor="category">
             קטגוריה
           </label>
-          <select
+          <SelectField
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -258,7 +263,7 @@ export function SuggestMarketForm({
                 {c.he}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
         <div>
           <label className={LABEL} htmlFor="closeAt">

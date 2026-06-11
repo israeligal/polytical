@@ -5,6 +5,7 @@ import type { MarketKind, OutcomeInput, PoliticianOption } from "@/lib/types";
 import { createMarketAction } from "@/app/actions/admin-markets";
 import { MULTI_MAX_OUTCOMES, MULTI_MIN_OUTCOMES } from "@/app/lib/markets/constants";
 import { PoliticianPicker } from "@/components/admin/politician-picker";
+import { SelectField } from "@/components/select-field";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
@@ -127,13 +128,13 @@ export function CreateMarketForm({
           <label className={LABEL} htmlFor="category">
             קטגוריה
           </label>
-          <select id="category" name="category" className={FIELD} defaultValue={categories[0]?.key}>
+          <SelectField id="category" name="category" className={FIELD} defaultValue={categories[0]?.key}>
             {categories.map((c) => (
               <option key={c.key} value={c.key}>
                 {c.he}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
         <div>
           <label className={LABEL} htmlFor="closeAt">

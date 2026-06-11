@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteMarketAction, resolveMarketAction, voidMarketAction } from "@/app/actions/admin-markets";
 import { formatDateTime } from "@/lib/time";
+import { SelectField } from "@/components/select-field";
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
@@ -95,7 +96,7 @@ export function MarketAdminRow({
 
       <div className="space-y-2 border-t border-border pt-3">
         <div className="grid gap-2 sm:grid-cols-2">
-          <select
+          <SelectField
             value={winningOutcomeId}
             onChange={(e) => setWinningOutcomeId(e.target.value)}
             className={FIELD}
@@ -107,7 +108,7 @@ export function MarketAdminRow({
                 {o.labelHe}
               </option>
             ))}
-          </select>
+          </SelectField>
           <input
             type="url"
             inputMode="url"
