@@ -57,8 +57,10 @@ export async function makePrediction({
 /** Resolves a market to its winning outcome and tallies right/wrong for every
  *  predictor in one tx. A predictor is RIGHT iff their pick is the winning
  *  outcome → bump totalWins; everyone who predicted gets +1 totalResolved. Each
- *  correct call also advances the user's card-unlock progress for every politician
- *  featured in the market, granting the card when the rarity threshold is reached.
+ *  correct call also advances the user's card-unlock progress — for the winning
+ *  outcome's linked politician alone when the outcome carries a personId (multi
+ *  markets), otherwise for every politician featured in the market — granting
+ *  the card when the rarity threshold is reached.
  *  No pools, no payouts, no refunds. Market-first lock ordering: concurrent
  *  predictions block on the market lock and cannot race the settlement. */
 export async function resolveMarket({
@@ -87,7 +89,26 @@ export async function resolveMarket({
     if (!winner) throw new InvalidOutcomeError();
     const predictions = await repo.listPredictions({ tx, marketId });
     // The market's featured politicians (+ their role) drive card-unlock thresholds.
+    // A winning outcome that is ITSELF a politician (outcomes.personId — multi
+    // markets like "מי ירכיב את הממשלה?") scopes progress to that MK alone:
+    // predicting Netanyahu must not advance Bennett's card. The role is looked
+    // up by personId directly (not via market_politicians) so the scoping also
+    // survives links backfilled outside createMarket's auto-feature sync. An
+    // unlinked winner ("אחר", or any binary outcome) keeps the market-level
+    // behavior — every featured MK advances.
     const persons = await repo.getMarketPoliticianRoles({ tx, marketId });
+    let progressPersons = persons;
+    if (winner.personId != null) {
+      const linked = await repo.getPoliticianRoleByPersonId({ tx, personId: winner.personId });
+      progressPersons = linked ? [linked] : persons.filter((p) => p.personId === winner.personId);
+      if (progressPersons.length === 0)
+        // A linked winner pointing at a politician we can't resolve means card
+        // progress would be silently skipped — surface it, don't bury it.
+        logger.error("markets.resolve.linked_winner_unresolvable", {
+          marketId,
+          personId: winner.personId,
+        });
+    }
     // Notification events accumulate here and emit (in this same tx) after the
     // market is marked resolved — so the "you were right" notice is atomic with it.
     const events: NotificationEvent[] = [];
@@ -95,9 +116,9 @@ export async function resolveMarket({
       const won = p.outcomeId === winningOutcomeId;
       await repo.bumpUserStats({ tx, userId: p.userId, won });
       if (won) {
-        // Each correct call advances accuracy progress on every featured MK; cross
+        // Each correct call advances accuracy progress on the scoped MKs; cross
         // the rarity threshold → grant the card (idempotent on the unique index).
-        for (const person of persons) {
+        for (const person of progressPersons) {
           const count = await cardsRepo.bumpCardProgress({ tx, userId: p.userId, personId: person.personId });
           if (count >= unlockThreshold({ personId: person.personId, role: person.roleHe }))
             await cardsRepo.insertOwnership({ tx, userId: p.userId, personId: person.personId });

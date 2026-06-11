@@ -126,6 +126,24 @@ export async function getMarketPoliticianRoles({
     .where(eq(marketPoliticians.marketId, marketId));
 }
 
+/** One politician's role by stable personId (tx-aware) — the resolution-time
+ *  lookup for a winning outcome's linked MK. Independent of market_politicians,
+ *  so progress scoping survives links added outside createMarket (backfills). */
+export async function getPoliticianRoleByPersonId({
+  tx,
+  personId,
+}: {
+  tx: Tx;
+  personId: number;
+}): Promise<{ personId: number; roleHe: string | null } | null> {
+  const [row] = await tx
+    .select({ personId: politicians.personId, roleHe: politicians.roleHe })
+    .from(politicians)
+    .where(eq(politicians.personId, personId))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Live predictor count per outcome of a market (replaces the cached pool) —
  *  the crowd-split the odds bars render. Returns outcomeId → count. */
 export async function getOutcomeCounts({
@@ -515,7 +533,7 @@ export async function createMarket({
   hot?: boolean;
   closeAt: Date;
   createdBy?: string;
-  outcomes: { labelHe: string; cat?: number; ordinal: number }[];
+  outcomes: { labelHe: string; cat?: number; ordinal: number; personId?: number }[];
   personIds?: number[];
 }): Promise<{ marketId: string }> {
   // The whole composite must be atomic. Standalone callers (admin/seed) open a
@@ -545,14 +563,24 @@ export async function createMarket({
           labelHe: o.labelHe,
           cat: o.cat,
           ordinal: o.ordinal,
+          personId: o.personId,
         })),
       );
     }
 
-    if (personIds.length > 0) {
+    // Featured links = explicit personIds ∪ per-outcome personIds, deduped — an
+    // outcome-linked MK is always featured (politician pages + the resolve-time
+    // progress scoping both read market_politicians), with no double entry.
+    const featuredIds = [
+      ...new Set([
+        ...personIds,
+        ...outcomeInputs.flatMap((o) => (o.personId != null ? [o.personId] : [])),
+      ]),
+    ];
+    if (featuredIds.length > 0) {
       await exec
         .insert(marketPoliticians)
-        .values(personIds.map((personId) => ({ marketId: market.id, personId })));
+        .values(featuredIds.map((personId) => ({ marketId: market.id, personId })));
     }
 
     return { marketId: market.id };

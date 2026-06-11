@@ -37,7 +37,7 @@ export function MarketCard({
         {market.question}
       </h3>
 
-      <OddsBar market={market} />
+      <OddsBar market={market} compact />
 
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">

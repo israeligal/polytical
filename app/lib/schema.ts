@@ -262,6 +262,11 @@ export const outcomes = pgTable("outcomes", {
   labelHe: text("labelHe").notNull(),
   cat: integer("cat"),                                  // categorical color slot (multi)
   ordinal: integer("ordinal").notNull().default(0),
+  // → politicians.personId (no FK; resolve by stable id, like market_politicians).
+  // Set on multi-market outcomes that ARE a politician ("מי ירכיב את הממשלה?" →
+  // each candidate row); null for unlinked outcomes ("אחר") and binary כן/לא.
+  // On resolve, a linked winning outcome scopes card progress to that MK only.
+  personId: integer("personId"),
 });
 
 export const marketPoliticians = pgTable("market_politicians", {
