@@ -1,21 +1,30 @@
-# Card overlay assets (future work)
+# Card overlay assets (decouple-the-frame system)
 
-When we want **dynamic per-card content rendered as an app overlay** (instead of
-baked into the PNG), these are the starting assets:
+Assets for rendering the **frame as an overlay** instead of baking it into each
+caricature PNG. Proven working: a transparent-window frame composited over bare
+content (photo or frameless caricature) = a finished card; swapping the frame
+changes the tier with **zero caricature regen**.
 
-- `bibi-clean-empty-plates.png` — a clean gold-frame card with TWO empty bottom
-  plates (a thin accent strip + a large name plate). The live Netanyahu card
-  (`public/caricatures/965.png`) uses this with the plates left empty.
-- `nameplate-template.png` — the large empty plate cropped out, the canvas for
-  rendered text.
+## Frames (`frames/`)
+Six rarity frames, cropped from the design sheet (~565×770, 4:5):
+`gold` · `silver` · `bronze` · `blue-sapphire` · `ruby` · `green-sapphire`.
+- `frame-<tier>.png` — opaque crop (dark portrait window).
+- `frame-<tier>-overlay.png` — **window knocked out to transparent** → ready to
+  composite over content. Each frame includes the top banner, the LEADER + gem +
+  PWR/DEF stat row, and the empty bottom name plate.
 
-## The idea (deferred)
-Render the politician's **name** and game-dynamic bits — e.g. **rank / place on
-the leaderboard / recent order** — as a CSS/SVG/text overlay positioned over the
-plate region, colored by rarity tier. This pairs with the decouple-the-frame
-direction: caricature + frame baked, but the name/stats plate is live data, so
-nothing needs regenerating when a rank or name changes.
+Composite: cover-fit the content image into the frame's transparent window bbox,
+then `alpha_composite` the frame on top. (Window bbox is detectable as the
+alpha==0 region; for gold it's ~x[47..519] y[110..716] within the 565×774 frame.)
 
-Pattern: position the overlay over the plate's normalized rect (the plate sits in
-roughly the bottom ~18% of the 4:5 card), render the name in the app's display
-font, tier-tinted. Today the plates are decorative/empty.
+## Name plate (`nameplate-template.png`, `bibi-clean-empty-plates.png`)
+The large empty plate to render **name / rank / place-on-list** as live text,
+tier-tinted, over the plate region.
+
+## ⚠ Tier mapping is a NEW design decision (deferred)
+These six frames (gold/silver/bronze/blue-sapphire/ruby/green-sapphire) are a
+RICHER set than the live 5-tier ladder in `lib/rarity.ts`
+(legendary=gold, epic=silver, rare=bronze, uncommon=sapphire, common=slate).
+There is no "slate" frame here, and Ruby + Green-Sapphire are new. Before wiring
+the overlay system, decide how the 120 politicians map onto these 6 frames
+(e.g. faction-colored gems for the backbench instead of one flat slate).
