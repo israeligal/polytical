@@ -48,7 +48,7 @@ export default async function AdminPage() {
   const fullRoster = unmappedNames.length ? await listAllPoliticianNames() : [];
 
   return (
-    <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-8">
         <p className="text-sm font-bold text-primary">קונסולת ניהול</p>
         <h1 className="font-display text-3xl font-black text-foreground">ניהול תחזיות</h1>

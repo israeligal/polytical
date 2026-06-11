@@ -23,7 +23,7 @@ export default async function SuggestPage({
   const politicians = (await getAllPoliticians()).map((p) => ({ personId: p.personId, name: p.nameHe }));
 
   return (
-    <main className="mx-auto max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
         <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">הצעה לסדר</h1>
         <p className="mt-2 text-muted-foreground">

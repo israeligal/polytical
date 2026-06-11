@@ -5,7 +5,7 @@ export default function Loading() {
       role="status"
       aria-busy="true"
       aria-label="טוען"
-      className="mx-auto max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
+      className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
     >
       <span className="sr-only">טוען…</span>
       <div className="mb-2 h-4 w-20 animate-pulse rounded bg-muted" />
