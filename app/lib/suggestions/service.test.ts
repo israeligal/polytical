@@ -14,6 +14,7 @@ import {
   ClosePastError,
   CloseRequiredError,
   CloseTooFarError,
+  DailySuggestionLimitError,
   InvalidCategoryError,
   SourceNoteTooLongError,
   SuggestionTooLongError,
@@ -26,6 +27,7 @@ import {
   rejectSuggestion,
   getMySuggestions,
   listSuggestions,
+  MAX_SUGGESTIONS_PER_DAY,
 } from "./service";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
@@ -68,6 +70,32 @@ test("createSuggestion rejects short / long / bad-category / unknown politician"
   await expect(
     createSuggestion({ ...base, questionHe: "שאלה תקינה עם חבר כנסת לא קיים", personId: 999 }),
   ).rejects.toBeInstanceOf(UnknownPoliticianError);
+});
+
+test("the 11th suggestion in 24h is rejected (daily cap, per user, rolling window)", async () => {
+  const base = { db: h.db, userId: "proposer", category: "elections" as const, proposedCloseAt: CLOSE };
+  for (let i = 0; i < MAX_SUGGESTIONS_PER_DAY; i++) {
+    await createSuggestion({ ...base, questionHe: `שאלה תקינה מספר ${i + 1} מתוך עשר` });
+  }
+  await expect(
+    createSuggestion({ ...base, questionHe: "השאלה האחת-עשרה שחוצה את המכסה" }),
+  ).rejects.toBeInstanceOf(DailySuggestionLimitError);
+
+  // Per-user: another user is unaffected by the proposer's cap.
+  await expect(
+    createSuggestion({ ...base, userId: "other", questionHe: "הצעה של משתמש אחר עוברת" }),
+  ).resolves.toMatchObject({ id: expect.any(String) });
+
+  // Rolling window: a suggestion older than 24h no longer counts. Age one row
+  // out of the window directly in the DB, and the next create passes.
+  const [oldest] = await h.db.select({ id: marketSuggestions.id }).from(marketSuggestions).limit(1);
+  await h.db
+    .update(marketSuggestions)
+    .set({ createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+    .where(eq(marketSuggestions.id, oldest.id));
+  await expect(
+    createSuggestion({ ...base, questionHe: "אחרי שהוותיקה התיישנה — שוב מותר" }),
+  ).resolves.toMatchObject({ id: expect.any(String) });
 });
 
 test("approveSuggestion creates an open binary market, links the MK, and flips status (idempotent)", async () => {

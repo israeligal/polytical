@@ -12,6 +12,7 @@ import {
   ClosePastError,
   CloseRequiredError,
   CloseTooFarError,
+  DailySuggestionLimitError,
   InvalidCategoryError,
   SourceNoteTooLongError,
   SuggestionNotFoundError,
@@ -71,6 +72,8 @@ export async function suggestMarketAction({
     if (e instanceof ClosePastError) return { ok: false, message: "תאריך ההכרעה חייב להיות בעתיד" };
     if (e instanceof CloseTooFarError) return { ok: false, message: "תאריך ההכרעה רחוק מדי (עד שנתיים קדימה)" };
     if (e instanceof SourceNoteTooLongError) return { ok: false, message: "מקור ההכרעה ארוך מדי (עד 300 תווים)" };
+    if (e instanceof DailySuggestionLimitError)
+      return { ok: false, message: "הגעתם למכסת ההצעות היומית (10) — נסו שוב מחר" };
     throw e;
   }
   revalidatePath("/profile");

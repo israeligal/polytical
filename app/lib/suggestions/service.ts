@@ -16,6 +16,7 @@ import {
   ClosePastError,
   CloseRequiredError,
   CloseTooFarError,
+  DailySuggestionLimitError,
   InvalidCategoryError,
   SourceNoteTooLongError,
   SuggestionTooLongError,
@@ -32,6 +33,12 @@ type DB = PgDatabase<
 export const MIN_SUGGESTION_LEN = 10;
 export const MAX_SUGGESTION_LEN = 200;
 export const MAX_SOURCE_NOTE_LEN = 300;
+
+/** Daily cap per user, enforced on a rolling 24h window against the DB (the
+ *  in-memory limiter only guards bursts — it resets on every serverless cold
+ *  start, so it cannot hold a day-long window). Counts all statuses. */
+export const MAX_SUGGESTIONS_PER_DAY = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** ~2y sanity cap on how far out a proposed decision date may be. */
 const MAX_CLOSE_HORIZON_MS = 2 * 365 * 24 * 60 * 60 * 1000;
@@ -87,6 +94,14 @@ export async function createSuggestion({
     if (!mk) throw new UnknownPoliticianError();
     resolvedPersonId = personId;
   }
+
+  // Daily cap last (cheapest checks first): the DB count is authoritative.
+  const filedToday = await repo.countSuggestionsSince({
+    db,
+    userId,
+    since: new Date(Date.now() - DAY_MS),
+  });
+  if (filedToday >= MAX_SUGGESTIONS_PER_DAY) throw new DailySuggestionLimitError();
 
   return repo.insertSuggestion({
     db,

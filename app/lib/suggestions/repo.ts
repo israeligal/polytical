@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
@@ -50,6 +50,24 @@ const VIEW_COLUMNS = {
   marketId: marketSuggestions.marketId,
   createdAt: marketSuggestions.createdAt,
 } as const;
+
+/** How many suggestions `userId` filed since `since` — the daily-cap counter.
+ *  Counts ALL statuses: a rejected suggestion still consumed review attention. */
+export async function countSuggestionsSince({
+  db = defaultDb,
+  userId,
+  since,
+}: {
+  db?: DB;
+  userId: string;
+  since: Date;
+}): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(marketSuggestions)
+    .where(and(eq(marketSuggestions.userId, userId), gte(marketSuggestions.createdAt, since)));
+  return row?.n ?? 0;
+}
 
 export async function insertSuggestion({
   tx,
