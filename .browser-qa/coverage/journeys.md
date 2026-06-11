@@ -4,6 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 1 | 8/9 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
@@ -18,6 +19,29 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-09 `d738eab+wip` | 2 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+
+## knesset-votes-loop
+
+**What it is:** A user browses real Knesset roll-calls (/votes), opens a motion to see who voted what, sets their own עמדה, and unlocks "מי מצביע כמוכם" after 5 stances. Admin curates featured motions + agenda + the identity queue.
+
+**Last walked:** 2026-06-11 `worktree-knesset-votes`. **Walks:** 1. **Coverage:** 8/9
+
+**Steps:**
+- ✅ /votes feed: real data, totals bars, ?before= pagination, freshness line
+- ✅ /vote/[id]: faction-grouped breakdown, chips → politician pages, source link, siblings
+- ✅ stance set → flip → retract (optimistic, disabled-while-pending)
+- ✅ k-gate: aggregate hidden under 10 stancers
+- ✅ match unlock at 5th scoreable stance → /my-match (partial mode, basis lines, low-confidence)
+- ✅ politician page הצבעות אחרונות columns
+- ✅ home #votes module + mobile 380px
+- ✅ admin: featured toggle→rail, agenda add→drop, queue empty-state
+- ❌ hand/secret/pending_details detail states in-browser (integration-tested only)
+
+**Notable history:**
+- `worktree-knesset-votes` (2026-06-11): first walk — 2 bugs found+fixed in-pass (raw-sql Date crash in getFeaturedVotes; worst-party tie contradiction on /my-match).
+
+**Known gaps:** panels-mode /my-match (needs 6+ qualified MKs — requires stances on contested votes); withheld-attribution line (queue is empty — data too clean!).
 
 ## notifications-push
 

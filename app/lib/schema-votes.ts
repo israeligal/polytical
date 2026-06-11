@@ -178,6 +178,16 @@ export const userStances = pgTable(
   ],
 );
 
+// One row per ingest job — the staleness signal for user-visible freshness.
+// max(fetchedAt) can't serve this: the incremental sweep only re-stamps rows
+// inside its 7-day window, so during a Knesset recess it freezes and a HEALTHY
+// pipeline would show a false "broken" banner (and a broken one could hide
+// behind old data). The heartbeat tracks the RUN, not the rows.
+export const ingestHeartbeats = pgTable("ingest_heartbeats", {
+  job: text("job").primaryKey(),                       // e.g. 'votes'
+  lastSuccessAt: timestamp("lastSuccessAt").notNull(),
+});
+
 // Upcoming/announced plenum items (v1: read-only list; admin-curated + future
 // ingest). Admin-authored rows have no Knesset itemId and carry
 // sourceDataset='admin' + the admin route as sourceUrl.

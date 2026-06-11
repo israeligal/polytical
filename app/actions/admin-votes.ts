@@ -6,13 +6,15 @@
 // actions can be invoked directly, so this is the authoritative enforcement
 // boundary (the admin-markets precedent). No rate limits on admin actions.
 
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { db } from "@/app/lib/db";
-import { agendaItems, knessetVotes, politicians } from "@/app/lib/schema";
 import { NotAdminError } from "@/app/lib/errors";
-import { loadAttributionContext, resolveUnmappedName, dismissUnmappedName } from "@/app/lib/votes/repo";
+import {
+  loadAttributionContext, resolveUnmappedName, dismissUnmappedName,
+  setVoteFeatured, insertAgendaItem, setAgendaItemStatus,
+} from "@/app/lib/votes/repo";
+import { politicianExists } from "@/app/lib/politicians/repo";
 import { logger } from "@/app/lib/logger";
 
 type ActionResult = { ok: boolean; message?: string };
@@ -28,7 +30,7 @@ export async function toggleVoteFeaturedAction({
   featured,
 }: { voteId: number; featured: boolean }): Promise<ActionResult> {
   await requireAdmin();
-  await db.update(knessetVotes).set({ featured }).where(eq(knessetVotes.voteId, voteId));
+  await setVoteFeatured({ db, voteId, featured });
   revalidatePath("/admin");
   revalidatePath("/votes");
   return { ok: true, message: featured ? "ההצבעה סומנה כמובילה" : "הסימון הוסר" };
@@ -40,12 +42,7 @@ export async function resolveUnmappedNameAction({
 }: { nameKey: string; personId: number }): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!Number.isInteger(personId)) return { ok: false, message: "personId לא חוקי" };
-  const [pol] = await db
-    .select({ personId: politicians.personId })
-    .from(politicians)
-    .where(eq(politicians.personId, personId))
-    .limit(1);
-  if (!pol) return { ok: false, message: "אין פוליטיקאי עם personId הזה" };
+  if (!(await politicianExists({ personId }))) return { ok: false, message: "אין פוליטיקאי עם personId הזה" };
 
   const ctx = await loadAttributionContext({ db });
   const { backfilled } = await resolveUnmappedName({ db, nameKey, personId, reviewedBy: adminId, ctx });
@@ -71,16 +68,7 @@ export async function createAgendaItemAction({
   if (expectedDate && !/^\d{4}-\d{2}-\d{2}$/.test(expectedDate)) {
     return { ok: false, message: "תאריך לא חוקי (YYYY-MM-DD)" };
   }
-  // Admin-authored agenda rows carry the documented provenance convention:
-  // sourceDataset 'admin' + the admin surface as sourceUrl (schema-votes note).
-  await db.insert(agendaItems).values({
-    titleHe: title,
-    expectedDate: expectedDate || null,
-    addedBy: "admin",
-    sourceDataset: "admin",
-    sourceUrl: "/admin",
-    fetchedAt: new Date(),
-  });
+  await insertAgendaItem({ db, titleHe: title, expectedDate: expectedDate || null });
   revalidatePath("/admin");
   revalidatePath("/votes");
   return { ok: true, message: "נוסף לסדר היום" };
@@ -91,7 +79,7 @@ export async function setAgendaItemStatusAction({
   status,
 }: { id: string; status: "announced" | "voted" | "dropped" }): Promise<ActionResult> {
   await requireAdmin();
-  await db.update(agendaItems).set({ status }).where(eq(agendaItems.id, id));
+  await setAgendaItemStatus({ db, id, status });
   revalidatePath("/admin");
   revalidatePath("/votes");
   return { ok: true };

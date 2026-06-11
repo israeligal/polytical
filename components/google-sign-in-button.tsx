@@ -6,6 +6,8 @@ import { signIn } from "@/lib/auth-client";
 type GoogleSignInButtonProps = {
   /** Hebrew label — defaults differ for login vs signup. */
   label?: string;
+  /** Same-origin path to land on after OAuth (validated by the caller). */
+  callbackUrl?: string;
 };
 
 /**
@@ -15,14 +17,14 @@ type GoogleSignInButtonProps = {
  * OAuth users land on "/" and the proxy gate funnels them into onboarding,
  * matching the email/password flow.
  */
-export function GoogleSignInButton({ label = "המשך עם Google" }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ label = "המשך עם Google", callbackUrl = "/" }: GoogleSignInButtonProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onClick() {
     setError(null);
     setPending(true);
-    const { error: err } = await signIn.social({ provider: "google", callbackURL: "/" });
+    const { error: err } = await signIn.social({ provider: "google", callbackURL: callbackUrl });
     if (err) {
       setPending(false);
       setError(err.message ?? "ההתחברות עם Google נכשלה, נסו שוב");

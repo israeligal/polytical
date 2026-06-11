@@ -9,7 +9,7 @@ import { VoteTotalsBar } from "@/components/vote-totals-bar";
 import { ChevronForward } from "@/components/icons";
 import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
-import { getStance } from "@/app/lib/stances/repo";
+import { getStanceState, MATCH_UNLOCK_THRESHOLD } from "@/app/lib/stances/service";
 import { StanceWidget } from "@/components/stance-widget";
 
 const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: ChipTone }> = {
@@ -56,7 +56,11 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
   track("motion_viewed", { voteId: vote.voteId });
 
   const session = await getSession();
-  const initialStance = session?.user ? await getStance({ userId: session.user.id, voteId: vote.voteId }) : null;
+  // Full stance state (incl. k-gated aggregate + match progress) so a
+  // returning user sees their aggregate immediately, not only post-cast.
+  const stanceState = session?.user
+    ? await getStanceState({ userId: session.user.id, voteId: vote.voteId })
+    : null;
 
   const isPending = vote.detailsStatus === "pending_details";
   const nonVoters = vote.totalDidntVote ?? 0;
@@ -89,7 +93,17 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
       {/* עמדה widget ABOVE the breakdown — capture the user's opinion before
           (or at least alongside) the Knesset outcome anchoring them. */}
       {vote.isDecisive && (
-        <StanceWidget voteId={vote.voteId} initialStance={initialStance} loggedIn={Boolean(session?.user)} />
+        <StanceWidget
+          voteId={vote.voteId}
+          loggedIn={Boolean(session?.user)}
+          initialStance={stanceState?.stance ?? null}
+          initialAggregate={stanceState?.aggregate ?? null}
+          initialProgress={
+            stanceState
+              ? { scoreableCount: stanceState.scoreableCount, unlockThreshold: MATCH_UNLOCK_THRESHOLD }
+              : null
+          }
+        />
       )}
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">

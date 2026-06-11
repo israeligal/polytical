@@ -74,6 +74,35 @@ export async function searchPoliticians({
     .limit(limit);
 }
 
+/** True iff a politician row exists for this stable id (admin validation). */
+export async function politicianExists({
+  db = defaultDb,
+  personId,
+}: { db?: DB; personId: number }): Promise<boolean> {
+  if (!Number.isInteger(personId)) return false;
+  const [row] = await db
+    .select({ personId: politicians.personId })
+    .from(politicians)
+    .where(eq(politicians.personId, personId))
+    .limit(1);
+  return Boolean(row);
+}
+
+/**
+ * Every politician's (personId, nameHe) INCLUDING departed MKs — the identity
+ * queue may resolve a name to a former member, which the active-filtered
+ * gallery reads would hide.
+ */
+export async function listAllPoliticianNames({
+  db = defaultDb,
+}: { db?: DB } = {}): Promise<{ personId: number; name: string }[]> {
+  const rows = await db
+    .select({ personId: politicians.personId, name: politicians.nameHe })
+    .from(politicians)
+    .orderBy(asc(politicians.searchName));
+  return rows;
+}
+
 /** A single MK by their canonical KNS_Person.PersonID (the route id). */
 export async function getPoliticianByPersonId({
   db = defaultDb,

@@ -119,8 +119,10 @@ export async function computeMatch({
     }))
     .sort(rank);
 
-  // Party match: per scoreable vote, each faction's majority position (>50% of
-  // its for/against voters; ties skip), scored against the user's stance.
+  // Party match: per scoreable vote, each faction's majority position — >50%
+  // of its VOTERS at vote time (spec P0-7 wording: abstainers count in the
+  // denominator, so a whipped-abstention faction yields NO majority; only
+  // didnt_vote rows are excluded). Ties/splits skip the vote.
   const perFaction = await db
     .select({
       factionId: sql<number>`fm."factionId"`,
@@ -136,7 +138,7 @@ export async function computeMatch({
             else null
           end as majority
         from ${mkVotes} m
-        where m."factionId" is not null and m.result in ('for', 'against')
+        where m."factionId" is not null and m.result in ('for', 'against', 'abstain')
         group by m."voteId", m."factionId"
       ) as fm`,
     )
@@ -161,6 +163,12 @@ export async function computeMatch({
     .filter((f) => f.nameHe)
     .sort((a, b) => b.agreementPct - a.agreementPct || b.shared - a.shared || a.nameHe.localeCompare(b.nameHe, "he"));
 
+  const bestParty = parties[0] ?? null;
+  // A "farthest" party tied with the best (common on thin unanimous data)
+  // reads as a contradiction — show it only when it genuinely disagrees more.
+  const last = parties.length > 1 ? parties[parties.length - 1] : null;
+  const worstParty = last && bestParty && last.agreementPct < bestParty.agreementPct ? last : null;
+
   if (qualified.length >= PANELS_MIN_QUALIFIED) {
     return {
       state: "unlocked",
@@ -168,8 +176,8 @@ export async function computeMatch({
       mode: "panels",
       top: qualified.slice(0, 3),
       bottom: qualified.slice(-3).reverse(),
-      bestParty: parties[0] ?? null,
-      worstParty: parties.length > 1 ? parties[parties.length - 1] : null,
+      bestParty,
+      worstParty,
     };
   }
   return {
@@ -178,7 +186,7 @@ export async function computeMatch({
     mode: "partial",
     top: qualified,
     bottom: [],
-    bestParty: parties[0] ?? null,
-    worstParty: parties.length > 1 ? parties[parties.length - 1] : null,
+    bestParty,
+    worstParty,
   };
 }

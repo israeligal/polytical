@@ -4,6 +4,7 @@
 // whose detail fetch fails stays `pending_details` and is retried next run.
 
 import { db as defaultDb } from "@/app/lib/db";
+import * as schema from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import { UnverifiedMappingsError } from "@/app/lib/errors";
 import {
@@ -124,6 +125,13 @@ export async function ingestVotes({
 
   // 3) decisive recompute for every touched item
   await recomputeDecisive({ db, itemIds: touchedItemIds });
+
+  // 4) heartbeat — the user-visible staleness signal (a recess sweep finds no
+  // rows to re-stamp, but the RUN succeeded; see ingestHeartbeats in schema).
+  await db
+    .insert(schema.ingestHeartbeats)
+    .values({ job: "votes", lastSuccessAt: new Date() })
+    .onConflictDoUpdate({ target: schema.ingestHeartbeats.job, set: { lastSuccessAt: new Date() } });
 
   const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued };
   logger.info("votes.ingest.done", { fromDate, toDate, refetchDetails, ...result });

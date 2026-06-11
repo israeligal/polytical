@@ -229,6 +229,30 @@ test("decisive: accepted 2nd reading beats later reservation votes; reservations
   expect(votes.map((v) => v.isDecisive)).toEqual([false, true, false]);
 });
 
+test("feed pagination never drops same-timestamp votes across a page boundary (composite cursor)", async () => {
+  // 5 standalone primaries sharing ONE voteDate — the live corpus has 137 such
+  // tie groups; a date-only cursor loses everything after the boundary.
+  const { getVotesFeed } = await import("./read-repo");
+  const t = new Date("2026-06-09T16:00:00Z");
+  await h.db.insert(knessetVotes).values(
+    [1, 2, 3, 4, 5].map((i) => ({
+      voteId: 9000 + i, knessetNum: 25, titleHe: `הצעה ${i}`, voteDate: t,
+      voteType: "electronic" as const, isDecisive: true, detailsStatus: "complete" as const,
+      sourceDataset: "test", sourceUrl: "https://example.test", fetchedAt: t,
+    })),
+  );
+  const page1 = await getVotesFeed({ db: h.db, limit: 2 });
+  expect(page1.votes).toHaveLength(2);
+  expect(page1.nextBefore).toMatch(/_\d+$/); // composite cursor
+  const page2 = await getVotesFeed({ db: h.db, limit: 2, before: page1.nextBefore! });
+  const page3 = await getVotesFeed({ db: h.db, limit: 2, before: page2.nextBefore! });
+  const all = [...page1.votes, ...page2.votes, ...page3.votes].map((v) => v.voteId);
+  expect(new Set(all).size).toBe(5); // every tied vote reachable, no dupes
+  // garbage cursor → first page, never a crash
+  const garbage = await getVotesFeed({ db: h.db, limit: 2, before: "not-a-cursor" });
+  expect(garbage.votes).toHaveLength(2);
+});
+
 test("pickDecisiveVoteId: hand/secret-only items fall back to the latest vote (feed spine, never scored)", () => {
   expect(
     pickDecisiveVoteId([

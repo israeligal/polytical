@@ -39,8 +39,12 @@ export function VoteFeatureToggle({
           const next = !featured;
           setFeatured(next); // optimistic
           startTransition(async () => {
-            const res = await toggleVoteFeaturedAction({ voteId, featured: next });
-            if (!res.ok) setFeatured(!next); // rollback
+            try {
+              const res = await toggleVoteFeaturedAction({ voteId, featured: next });
+              if (!res.ok) setFeatured(!next); // rollback
+            } catch {
+              setFeatured(!next); // thrown action (e.g. expired admin session) — rollback, don't crash
+            }
           });
         }}
         className={`shrink-0 rounded-full border-2 px-4 py-1.5 text-xs font-bold transition-all ${
@@ -101,9 +105,13 @@ export function UnmappedNameRow({
             disabled={pending || !personId}
             onClick={() =>
               startTransition(async () => {
-                const res = await resolveUnmappedNameAction({ nameKey, personId: Number(personId) });
-                setMessage(res.message ?? null);
-                if (res.ok) setDone(true);
+                try {
+                  const res = await resolveUnmappedNameAction({ nameKey, personId: Number(personId) });
+                  setMessage(res.message ?? null);
+                  if (res.ok) setDone(true);
+                } catch {
+                  setMessage("אירעה שגיאה — נסו שוב");
+                }
               })
             }
             className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
@@ -116,8 +124,12 @@ export function UnmappedNameRow({
             onClick={() => {
               if (!window.confirm(`לדחות את "${nameRaw}" לצמיתות? השם לא ייכנס שוב לתור.`)) return;
               startTransition(async () => {
-                const res = await dismissUnmappedNameAction({ nameKey });
-                if (res.ok) setDone(true);
+                try {
+                  const res = await dismissUnmappedNameAction({ nameKey });
+                  if (res.ok) setDone(true);
+                } catch {
+                  setMessage("אירעה שגיאה — נסו שוב");
+                }
               });
             }}
             className="rounded-full border border-border px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-negative"
@@ -148,11 +160,15 @@ export function AgendaAdmin({
         onSubmit={(e) => {
           e.preventDefault();
           startTransition(async () => {
-            const res = await createAgendaItemAction({ titleHe: title, expectedDate: date || undefined });
-            setMessage(res.message ?? null);
-            if (res.ok) {
-              setTitle("");
-              setDate("");
+            try {
+              const res = await createAgendaItemAction({ titleHe: title, expectedDate: date || undefined });
+              setMessage(res.message ?? null);
+              if (res.ok) {
+                setTitle("");
+                setDate("");
+              }
+            } catch {
+              setMessage("אירעה שגיאה — נסו שוב");
             }
           });
         }}
@@ -220,8 +236,12 @@ function AgendaRow({ item }: { item: { id: string; titleHe: string; expectedDate
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const res = await setAgendaItemStatusAction({ id: item.id, status: "dropped" });
-              if (res.ok) setStatus("dropped");
+              try {
+                const res = await setAgendaItemStatusAction({ id: item.id, status: "dropped" });
+                if (res.ok) setStatus("dropped");
+              } catch {
+                /* thrown action — keep current status visible */
+              }
             })
           }
           className="shrink-0 rounded-full border border-border px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-negative"

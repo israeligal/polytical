@@ -51,13 +51,30 @@ export async function getStancesForVotes({
   return new Map(rows.map((r) => [r.voteId, r.stance]));
 }
 
-/** UPSERT — re-stancing flips the pick in place (predictions precedent). */
-export async function upsertStance({
+/**
+ * Atomic toggle — ONE round-trip decides retraction vs set, so two concurrent
+ * casts (two tabs/devices) always collapse to a serial order (a read-then-
+ * write version could interleave into silently dropping the stance):
+ * first try `DELETE ... AND stance = $same` — a hit means the tap was a
+ * retraction, done; a miss falls through to the idempotent upsert.
+ */
+export async function toggleStance({
   db = defaultDb,
   userId,
   voteId,
   stance,
-}: { db?: DB; userId: string; voteId: number; stance: StanceValue }): Promise<void> {
+}: { db?: DB; userId: string; voteId: number; stance: StanceValue }): Promise<{ stance: StanceValue | null }> {
+  const deleted = await db
+    .delete(userStances)
+    .where(
+      and(
+        eq(userStances.userId, reqUser(userId)),
+        eq(userStances.voteId, voteId),
+        eq(userStances.stance, stance),
+      ),
+    )
+    .returning({ voteId: userStances.voteId });
+  if (deleted.length > 0) return { stance: null }; // retraction
   await db
     .insert(userStances)
     .values({ userId: reqUser(userId), voteId, stance })
@@ -65,17 +82,7 @@ export async function upsertStance({
       target: [userStances.userId, userStances.voteId],
       set: { stance, updatedAt: new Date() },
     });
-}
-
-/** Retraction — tapping the selected stance again removes the row entirely. */
-export async function deleteStance({
-  db = defaultDb,
-  userId,
-  voteId,
-}: { db?: DB; userId: string; voteId: number }): Promise<void> {
-  await db
-    .delete(userStances)
-    .where(and(eq(userStances.userId, reqUser(userId)), eq(userStances.voteId, voteId)));
+  return { stance };
 }
 
 /** Community split for one vote — RAW counts; the k-gate lives in the service. */

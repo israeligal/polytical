@@ -11,8 +11,7 @@ import { AgendaAdmin, UnmappedNameRow, VoteFeatureToggle } from "@/components/ad
 import {
   listAgendaItemsForAdmin, listPendingUnmappedNames, listRecentVotesForAdmin,
 } from "@/app/lib/votes/read-repo";
-import { politicians } from "@/app/lib/schema";
-import { db } from "@/app/lib/db";
+import { listAllPoliticianNames } from "@/app/lib/politicians/repo";
 import { formatDate } from "@/lib/time";
 
 // Minimal admin console (Server Component). The `/admin` route is gated by
@@ -45,11 +44,7 @@ export default async function AdminPage() {
     listRecentVotesForAdmin(),
     listAgendaItemsForAdmin(),
   ]);
-  const fullRoster = unmappedNames.length
-    ? (await db.select({ personId: politicians.personId, nameHe: politicians.nameHe }).from(politicians)).map(
-        (p) => ({ personId: p.personId, name: p.nameHe }),
-      )
-    : [];
+  const fullRoster = unmappedNames.length ? await listAllPoliticianNames() : [];
 
   return (
     <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">

@@ -7,6 +7,7 @@ import { setStance, MATCH_UNLOCK_THRESHOLD, type StanceState } from "@/app/lib/s
 import type { StanceValue } from "@/app/lib/stances/repo";
 import { VoteNotFoundError, VoteNotStanceableError } from "@/app/lib/errors";
 import { track } from "@/app/lib/track";
+import { logger } from "@/app/lib/logger";
 
 export type StanceActionResult =
   | ({ ok: true } & StanceState & { unlockThreshold: number })
@@ -31,7 +32,9 @@ export async function setStanceAction({
     const state = await setStance({ userId: s.user.id, voteId, stance });
     // PRIVACY: voteId only — the stance direction never leaves the DB (P0-9).
     track("stance_cast", { voteId });
-    if (state.scoreableCount === MATCH_UNLOCK_THRESHOLD && state.stance != null) {
+    // Edge-triggered: only the cast that CROSSES the threshold counts —
+    // a level check would re-fire on every flip while sitting at exactly 5.
+    if (state.prevScoreableCount < MATCH_UNLOCK_THRESHOLD && state.scoreableCount >= MATCH_UNLOCK_THRESHOLD) {
       track("match_unlocked", {});
     }
     revalidatePath(`/vote/${voteId}`);
@@ -41,6 +44,11 @@ export async function setStanceAction({
   } catch (e) {
     if (e instanceof VoteNotFoundError) return { ok: false, message: "ההצבעה לא נמצאה" };
     if (e instanceof VoteNotStanceableError) return { ok: false, message: "אפשר לקבוע עמדה רק על ההצבעה המכריעה של ההצעה" };
-    throw e;
+    // NEVER rethrow raw errors here: drizzle's DrizzleQueryError message embeds
+    // the bound params — i.e. the user's stance direction — and a rethrown
+    // error lands in server logs, violating P0-9 ("direction never leaves the
+    // DB"). Log a sanitized marker and fail the action gracefully instead.
+    logger.error("stance_action_failed", { voteId, errName: e instanceof Error ? e.name : "unknown" });
+    return { ok: false, message: "אירעה שגיאה — נסו שוב" };
   }
 }

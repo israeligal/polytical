@@ -66,3 +66,8 @@
 | 2026-06-11 | e174e70 | /politician/427 activity (bills backfill) | ✅ | 301 bills + 2 queries real; provenance line ok |
 | 2026-06-11 | e174e70 | /politician/30083 departed direct-URL | ✅ | renders w/ fallback card; role שר correct (Norwegian law) |
 | 2026-06-11 | e174e70 | / home featured + mobile 380px | ✅ | 12 active MKs; 0 errors; no h-scroll |
+| 2026-06-11 | 6ef8bec | /votes feed + pagination + tokens | 🔴 | getFeaturedVotes Date-in-raw-sql crash + stale CSS cache; both fixed in-pass |
+| 2026-06-11 | 6ef8bec | stance set/flip/retract + k-gate (vote/46077) | ✅ | optimistic pills; progress nudge; aggregate hidden <10 |
+| 2026-06-11 | 6ef8bec | /my-match unlock at 5 stances | 🔴 | worst-party tie contradiction → hidden when tied; basis lines honest |
+| 2026-06-11 | 6ef8bec | politician record + home module + mobile | ✅ | 16 vote links on /politician/427; no h-scroll 380px |
+| 2026-06-11 | 6ef8bec | admin votes: queue/featured/agenda round-trips | ✅ | featured→rail→untoggle; agenda add→drop; left prod clean |

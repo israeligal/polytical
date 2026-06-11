@@ -50,6 +50,17 @@ const jerusalemParts = new Intl.DateTimeFormat("en-CA", {
 
 const NAIVE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+const jerusalemWeekdayFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: APP_TIMEZONE,
+  weekday: "short",
+});
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/** Day-of-week (0=Sunday) of an instant in Asia/Jerusalem — NOT the host tz. */
+export function jerusalemWeekday(date: Date): number {
+  return WEEKDAY_INDEX[jerusalemWeekdayFmt.format(date)] ?? 0;
+}
+
 /**
  * Naive Jerusalem wall-clock string ("2026-06-09T19:00:00", no tz designator —
  * the Knesset website API's date format) → the UTC instant it denotes.

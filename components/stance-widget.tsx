@@ -13,18 +13,28 @@ import { setStanceAction } from "@/app/actions/stances";
 
 type Stance = "for" | "against";
 
+interface Progress {
+  scoreableCount: number;
+  unlockThreshold: number;
+}
+
 export function StanceWidget({
   voteId,
   initialStance,
+  initialAggregate = null,
+  initialProgress = null,
   loggedIn,
 }: {
   voteId: number;
   initialStance: Stance | null;
+  /** Server-seeded so a RETURNING user sees the aggregate/progress immediately. */
+  initialAggregate?: { forPct: number; total: number } | null;
+  initialProgress?: Progress | null;
   loggedIn: boolean;
 }) {
   const [stance, setStance] = useState<Stance | null>(initialStance);
-  const [aggregate, setAggregate] = useState<{ forPct: number; total: number } | null>(null);
-  const [progress, setProgress] = useState<{ scoreableCount: number; unlockThreshold: number } | null>(null);
+  const [aggregate, setAggregate] = useState<{ forPct: number; total: number } | null>(initialAggregate);
+  const [progress, setProgress] = useState<Progress | null>(initialProgress);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 

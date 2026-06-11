@@ -289,3 +289,31 @@ export async function dismissUnmappedName({
     .set({ status: "dismissed", reviewedBy, reviewedAt: new Date() })
     .where(and(eq(unmappedMkNames.nameKey, key), isNull(unmappedMkNames.reviewedAt)));
 }
+
+// --- admin writes (actions authorize/validate; the repo owns the DB) ---
+
+export async function setVoteFeatured({
+  db, voteId, featured,
+}: { db: DB; voteId: number; featured: boolean }): Promise<void> {
+  await db.update(knessetVotes).set({ featured }).where(eq(knessetVotes.voteId, voteId));
+}
+
+/** Admin-authored agenda row — carries the documented 'admin' provenance. */
+export async function insertAgendaItem({
+  db, titleHe, expectedDate,
+}: { db: DB; titleHe: string; expectedDate: string | null }): Promise<void> {
+  await db.insert(schema.agendaItems).values({
+    titleHe,
+    expectedDate,
+    addedBy: "admin",
+    sourceDataset: "admin",
+    sourceUrl: "/admin",
+    fetchedAt: new Date(),
+  });
+}
+
+export async function setAgendaItemStatus({
+  db, id, status,
+}: { db: DB; id: string; status: "announced" | "voted" | "dropped" }): Promise<void> {
+  await db.update(schema.agendaItems).set({ status }).where(eq(schema.agendaItems.id, id));
+}

@@ -29,14 +29,18 @@ export interface StanceState {
   stance: StanceValue | null;
   /** Stances on scoreable votes — drives the match-unlock progress. */
   scoreableCount: number;
+  /** Scoreable count BEFORE this write — lets callers edge-detect the unlock. */
+  prevScoreableCount: number;
   /** k-gated community split; null until the viewer has a stance AND n ≥ k. */
   aggregate: { forPct: number; total: number } | null;
 }
 
 /**
  * Sets / flips / retracts the user's stance. Tapping the already-selected
- * stance deletes the row (a misclick must be retractable — privacy). Only the
- * item's decisive vote accepts stances, so reservations never collect them.
+ * stance deletes the row (a misclick must be retractable — privacy); the
+ * decision is a single atomic statement in the repo, so concurrent casts
+ * can't interleave into a dropped stance. Only the item's decisive vote
+ * accepts stances, so reservations never collect them.
  */
 export async function setStance({
   db = defaultDb,
@@ -57,13 +61,10 @@ export async function setStance({
   if (!vote) throw new VoteNotFoundError();
   if (!vote.isDecisive) throw new VoteNotStanceableError();
 
-  const current = await repo.getStance({ db, userId, voteId });
-  if (current === stance) {
-    await repo.deleteStance({ db, userId, voteId });
-  } else {
-    await repo.upsertStance({ db, userId, voteId, stance });
-  }
-  return getStanceState({ db, userId, voteId });
+  const prevScoreableCount = await repo.getScoreableStanceCount({ db, userId });
+  await repo.toggleStance({ db, userId, voteId, stance });
+  const state = await getStanceState({ db, userId, voteId });
+  return { ...state, prevScoreableCount };
 }
 
 export async function getStanceState({
@@ -83,5 +84,5 @@ export async function getStanceState({
       aggregate = { forPct: Math.round((forCount / total) * 100), total };
     }
   }
-  return { stance, scoreableCount, aggregate };
+  return { stance, scoreableCount, prevScoreableCount: scoreableCount, aggregate };
 }

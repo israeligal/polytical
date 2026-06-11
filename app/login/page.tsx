@@ -1,14 +1,30 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Ballot } from "@/components/icons";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { OrDivider } from "@/components/or-divider";
 import { signIn } from "@/lib/auth-client";
 
+/** Same-origin relative path only — anything else falls back to home. */
+function safeCallbackUrl(raw: string | null): string {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/";
+}
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,15 +36,16 @@ export default function LoginPage() {
     setPending(true);
     // `callbackURL` only drives OAuth / email-verification redirects — the
     // email/password fetch sets the session cookie but does NOT navigate. So we
-    // navigate ourselves on success, then refresh so the server-rendered header
-    // (a layout Server Component) re-reads the new session.
+    // navigate ourselves on success (back to where the user came from — e.g.
+    // the vote they were about to stance), then refresh so the server-rendered
+    // header (a layout Server Component) re-reads the new session.
     const { error: err } = await signIn.email({ email, password });
     if (err) {
       setPending(false);
       setError(err.message ?? "ההתחברות נכשלה, בדקו את הפרטים");
       return;
     }
-    router.push("/");
+    router.push(callbackUrl);
     router.refresh();
   }
 
@@ -95,7 +112,7 @@ export default function LoginPage() {
 
         <OrDivider />
 
-        <GoogleSignInButton label="התחברות עם Google" />
+        <GoogleSignInButton label="התחברות עם Google" callbackUrl={callbackUrl} />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}
