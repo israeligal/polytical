@@ -62,3 +62,7 @@
 | 2026-06-01 | 8649d61 | auth + ledger (signup→grant→faucet) | ✅ | signup→1,000 grant; faucet→1,200; 2nd claim cooldown; balance revalidates in shared header |
 | 2026-06-01 | 8649d61 | `/market/[id]` detail (mock) | ✅ | 70/30 odds bar, bet panel "תצוגה מקדימה", 0 console errors |
 | 2026-06-01 | 8649d61 | `/` mobile render | ✅ | 0px horizontal overflow; logged-in header usable |
+| 2026-06-11 | e174e70 | /politicians active-filter (120 not 148) | ✅ | departed absent; ⚠️ 2 caricature 400s = cross-branch asset skew |
+| 2026-06-11 | e174e70 | /politician/427 activity (bills backfill) | ✅ | 301 bills + 2 queries real; provenance line ok |
+| 2026-06-11 | e174e70 | /politician/30083 departed direct-URL | ✅ | renders w/ fallback card; role שר correct (Norwegian law) |
+| 2026-06-11 | e174e70 | / home featured + mobile 380px | ✅ | 12 active MKs; 0 errors; no h-scroll |

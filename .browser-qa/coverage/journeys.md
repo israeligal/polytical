@@ -12,9 +12,9 @@
 | [community-suggestion](#community-suggestion) | 2026-06-10 `feat/hatzaa-laseder` | 2 | 7/8 |
 | [auth-signup-grant-faucet](#auth-signup-grant-faucet) | 2026-06-02 `c5b7ad8` | 2 | 7/7 |
 | [daily-streak](#daily-streak) | 2026-06-02 `8547d36` | 1 | 4/4 |
-| [politician-activity](#politician-activity) | 2026-06-02 `bcdb818` | 1 | 4/4 |
+| [politician-activity](#politician-activity) | 2026-06-11 `worktree-knesset-votes` | 2 | 4/4 |
 | [market-of-the-day](#market-of-the-day) | 2026-06-02 `8547d36` | 1 | 2/3 |
-| [browse-politicians](#browse-politicians) | 2026-06-01 `8649d61` | 1 | 4/4 |
+| [browse-politicians](#browse-politicians) | 2026-06-11 `worktree-knesset-votes` | 2 | 4/4 |
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-09 `d738eab+wip` | 2 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
@@ -183,6 +183,7 @@
 - ✅ source note "נתונים ממקור רשמי · הכנסת (OData)"; 0 console errors across 3 MKs
 
 **Notable history:**
+- `worktree-knesset-votes` (2026-06-11): bills/queries backfill landed (7.4k bills, 17.1k sponsors) — activity counts now real (Liberman: 301 bills / 2 queries).
 - `bcdb818` (2026-06-02): scoped bill-sponsor ingest to K25 + join `bills` for the count — the recent-bills list was empty for every MK before (sponsor rows were truncated to a disjoint old-Knesset ID range).
 
 **Known gaps:** an MK with zero bills AND zero queries (the "all zeros, no recent list" branch) not browser-walked (unit-tested in activity.test.ts).
@@ -242,6 +243,7 @@
 - ✅ mobile layout (390px, logged-in, light+dark): page no longer clips (header overflow root-cause fixed); bet panel now sits above politicians+comments, not buried below
 
 **Notable history:**
+- `worktree-knesset-votes` (2026-06-11): roster extended to 148 (incl. 28 departed at active=false); gallery now filters active=true → still 120 cards. Departed MKs reachable only by direct /politician/[id] URL.
 - `d738eab+wip` (2026-06-09): mobile fix — logged-in header overflow that expanded the layout viewport to 601px and clipped every logged-in page (this journey's literal "not rendering" report) fixed via MobileMenu; market grid reordered so the bet panel is reachable on phones.
 
 **Known gaps:** admin **resolve via the /admin UI** not browser-walked (5-min session cookieCache delays a fresh `isAdmin` promotion) — resolution verified via the service against live Neon + 11 unit tests. Multi-bettor split + void not browser-walked (unit-tested).
