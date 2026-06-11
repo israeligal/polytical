@@ -91,7 +91,7 @@ export function CreateMarketForm({
           personIds: featured.map((p) => p.personId),
         });
         setOk(res.ok);
-        setMessage(res.message ?? (res.ok ? "השוק נוצר" : "שגיאה"));
+        setMessage(res.message ?? (res.ok ? "התחזית נוצרה" : "שגיאה"));
         if (res.ok) {
           form.reset();
           setBinaryOutcomes(["כן", "לא"]);
@@ -110,7 +110,7 @@ export function CreateMarketForm({
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-5">
       <div>
         <label className={LABEL} htmlFor="questionHe">
-          שאלת השוק
+          שאלת התחזית
         </label>
         <input id="questionHe" name="questionHe" required className={FIELD} placeholder="האם…? / מי…?" />
       </div>
@@ -153,7 +153,7 @@ export function CreateMarketForm({
 
       <label className="flex items-center gap-1 text-sm font-bold text-foreground">
         <input type="checkbox" checked={hot} onChange={(e) => setHot(e.target.checked)} />
-        שוק חם
+        תחזית חמה
       </label>
 
       <fieldset>
@@ -277,7 +277,7 @@ export function CreateMarketForm({
           disabled={pending}
           className="rounded-lg bg-primary px-5 py-2.5 font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          {pending ? "יוצר…" : "צור שוק"}
+          {pending ? "יוצר…" : "צור תחזית"}
         </button>
         {message && (
           <span

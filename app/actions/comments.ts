@@ -20,7 +20,7 @@ export async function postCommentAction({ marketId, body }: { marketId: string; 
     if (e instanceof CommentTooLongError) return { ok: false, message: "התגובה ארוכה מדי (עד 500 תווים)" };
     // The market can be hard-deleted while the page is open — the insert then
     // hits the comments.marketId FK instead of a domain error.
-    if (isForeignKeyViolation(e)) return { ok: false, message: "השוק הוסר" };
+    if (isForeignKeyViolation(e)) return { ok: false, message: "התחזית הוסרה" };
     throw e;
   }
 }

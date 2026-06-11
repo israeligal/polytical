@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Close, Menu, PolyticalLogo, Search } from "@/components/icons";
+import { Ballot, Close, Menu, PolyticalLogo, Search } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
 import type { Theme } from "@/lib/theme";
@@ -117,6 +117,15 @@ export function MobileMenu({
               >
                 <Search className="h-5 w-5 text-muted-foreground" />
                 חיפוש
+              </Link>
+              {/* The community CTA — gold pill, same treatment as the desktop nav. */}
+              <Link
+                href="/suggest"
+                onClick={close}
+                className="mx-4 my-2 flex items-center justify-center gap-2 rounded-full border border-accent/50 bg-accent/10 px-4 py-2.5 text-base font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20"
+              >
+                <Ballot className="h-5 w-5" />
+                הצעה לסדר
               </Link>
             </nav>
 

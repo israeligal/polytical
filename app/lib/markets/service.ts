@@ -176,7 +176,7 @@ export async function voidMarket({
   }
 }
 
-/** Hard-deletes an invalid market: notifies every predictor ("השוק בוטל" —
+/** Hard-deletes an invalid market: notifies every predictor ("התחזית בוטלה" —
  *  reuses the market_voided copy; notifications carry no market FK so the rows
  *  survive), then deletes the row — FK cascades wipe outcomes, predictions and
  *  comments atomically. The notice carries marketId: null so its link falls

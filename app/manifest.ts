@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
 // chrome don't render OKLCH. dir/lang make the installed app Hebrew-RTL.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "פוליטיקל — שוק הניחושים של הפוליטיקה הישראלית",
+    name: "פוליטיקל — זירת התחזיות של הפוליטיקה הישראלית",
     short_name: "פוליטיקל",
     description: "נחשו את הפוליטיקה הישראלית. בלי כסף אמיתי — רק על הכבוד.",
     start_url: "/",

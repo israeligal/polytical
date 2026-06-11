@@ -26,9 +26,9 @@ export async function makePredictionAction({
     revalidatePath(`/market/${marketId}`);
     return { ok: true };
   } catch (e) {
-    if (e instanceof MarketClosedError) return { ok: false, message: "השוק סגור" };
+    if (e instanceof MarketClosedError) return { ok: false, message: "התחזית סגורה" };
     // The market can be hard-deleted by an admin while the page is open.
-    if (e instanceof MarketNotFoundError) return { ok: false, message: "השוק הוסר" };
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית הוסרה" };
     throw e;
   }
 }

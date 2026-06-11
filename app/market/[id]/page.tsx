@@ -73,7 +73,7 @@ export default async function MarketPage({
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronForward className="h-4 w-4 rotate-180" />
-        חזרה לשווקים
+        חזרה לתחזיות
       </Link>
 
       {/*
@@ -130,11 +130,11 @@ export default async function MarketPage({
           {settled ? (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
               <h3 className="mb-2 font-display text-lg font-bold text-foreground">
-                {status === "voided" ? "השוק בוטל" : "השוק הוכרע"}
+                {status === "voided" ? "התחזית בוטלה" : "התחזית הוכרעה"}
               </h3>
               {status === "voided" ? (
                 <p className="text-sm text-muted-foreground">
-                  השוק בוטל — הניחושים לא נספרים.
+                  התחזית בוטלה — הניחושים לא נספרים.
                 </p>
               ) : (
                 <>
@@ -179,7 +179,7 @@ export default async function MarketPage({
 
         <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <h2 className="mb-3 font-display text-xl font-bold text-foreground">
-            הפוליטיקאים בשוק
+            הפוליטיקאים בתחזית
           </h2>
           {pols.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2">
@@ -189,7 +189,7 @@ export default async function MarketPage({
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-6 text-center text-muted-foreground">
-              לא שויכו פוליטיקאים לשוק הזה.
+              לא שויכו פוליטיקאים לתחזית הזו.
             </p>
           )}
 

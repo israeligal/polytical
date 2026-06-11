@@ -61,12 +61,12 @@ export function MarketAdminRow({
   }
 
   function onVoid() {
-    if (!window.confirm("לבטל את השוק?")) return;
+    if (!window.confirm("לבטל את התחזית?")) return;
     run(() => voidMarketAction({ marketId }));
   }
 
   function onDelete() {
-    if (!window.confirm("למחוק את השוק לצמיתות? כל התחזיות והתגובות יימחקו ולא ניתן לשחזר."))
+    if (!window.confirm("למחוק את התחזית לצמיתות? כל הניחושים והתגובות יימחקו ולא ניתן לשחזר."))
       return;
     run(() => deleteMarketAction({ marketId }));
   }
@@ -133,7 +133,7 @@ export function MarketAdminRow({
             disabled={pending}
             className="rounded-lg bg-positive px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
-            {pending ? "מסלק…" : "הכרע שוק"}
+            {pending ? "מסלק…" : "הכרע תחזית"}
           </button>
           <button
             type="button"
@@ -141,7 +141,7 @@ export function MarketAdminRow({
             disabled={pending}
             className="rounded-lg border-2 border-negative px-4 py-2 text-sm font-bold text-negative transition-colors hover:bg-negative/5 disabled:opacity-60"
           >
-            בטל שוק
+            בטל תחזית
           </button>
           <button
             type="button"

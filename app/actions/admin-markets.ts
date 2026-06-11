@@ -75,7 +75,7 @@ export async function createMarketAction({
   const session = await requireAdmin();
 
   const question = questionHe.trim();
-  if (!question) return { ok: false, message: "חסרה שאלת שוק" };
+  if (!question) return { ok: false, message: "חסרה שאלת תחזית" };
   if (!category.trim()) return { ok: false, message: "חסרה קטגוריה" };
 
   // Trim labels but DON'T silently drop empty rows — a blank label next to a
@@ -91,11 +91,11 @@ export async function createMarketAction({
   }));
   if (cleaned.some((o) => !o.labelHe)) return { ok: false, message: "יש תוצאה בלי תווית" };
   if (type === "binary" && cleaned.length !== 2)
-    return { ok: false, message: "שוק כן/לא צריך בדיוק שתי תוצאות" };
+    return { ok: false, message: "תחזית כן/לא צריכה בדיוק שתי תוצאות" };
   if (type === "multi" && (cleaned.length < MULTI_MIN_OUTCOMES || cleaned.length > MULTI_MAX_OUTCOMES))
     return {
       ok: false,
-      message: `שוק רב-ברירה צריך בין ${MULTI_MIN_OUTCOMES} ל-${MULTI_MAX_OUTCOMES} תוצאות`,
+      message: `תחזית רב-ברירה צריכה בין ${MULTI_MIN_OUTCOMES} ל-${MULTI_MAX_OUTCOMES} תוצאות`,
     };
 
   // One politician = at most one candidate outcome, and every link must resolve
@@ -138,7 +138,7 @@ export async function createMarketAction({
 
   revalidatePath("/admin");
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק נוצר" };
+  return { ok: true, message: "התחזית נוצרה" };
 }
 
 /** Politician name autocomplete for the admin market form — discovery-only
@@ -186,15 +186,15 @@ export async function resolveMarketAction({
       note: note?.trim() || undefined,
     });
   } catch (e) {
-    if (e instanceof AlreadyResolvedError) return { ok: false, message: "השוק כבר הוכרע או בוטל" };
-    if (e instanceof InvalidOutcomeError) return { ok: false, message: "התוצאה אינה שייכת לשוק" };
-    if (e instanceof MarketNotFoundError) return { ok: false, message: "השוק לא נמצא" };
+    if (e instanceof AlreadyResolvedError) return { ok: false, message: "התחזית כבר הוכרעה או בוטלה" };
+    if (e instanceof InvalidOutcomeError) return { ok: false, message: "התוצאה אינה שייכת לתחזית" };
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית לא נמצאה" };
     throw e;
   }
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק הוכרע והניחושים סוכמו" };
+  return { ok: true, message: "התחזית הוכרעה והניחושים סוכמו" };
 }
 
 /** Voids a market — marks it voided; predictions are left uncounted (no stakes). */
@@ -207,14 +207,14 @@ export async function voidMarketAction({
   try {
     await voidMarket({ marketId });
   } catch (e) {
-    if (e instanceof AlreadyResolvedError) return { ok: false, message: "השוק כבר הוכרע או בוטל" };
-    if (e instanceof MarketNotFoundError) return { ok: false, message: "השוק לא נמצא" };
+    if (e instanceof AlreadyResolvedError) return { ok: false, message: "התחזית כבר הוכרעה או בוטלה" };
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית לא נמצאה" };
     throw e;
   }
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק בוטל" };
+  return { ok: true, message: "התחזית בוטלה" };
 }
 
 /** Hard-deletes an invalid market — predictions and comments cascade away,
@@ -230,12 +230,12 @@ export async function deleteMarketAction({
     await deleteMarket({ marketId });
   } catch (e) {
     if (e instanceof AlreadyResolvedError)
-      return { ok: false, message: "אי אפשר למחוק שוק שהוכרע — התוצאות כבר נספרו" };
-    if (e instanceof MarketNotFoundError) return { ok: false, message: "השוק לא נמצא" };
+      return { ok: false, message: "אי אפשר למחוק תחזית שהוכרעה — התוצאות כבר נספרו" };
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית לא נמצאה" };
     throw e;
   }
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);
   revalidatePath("/", "layout");
-  return { ok: true, message: "השוק נמחק לצמיתות" };
+  return { ok: true, message: "התחזית נמחקה לצמיתות" };
 }

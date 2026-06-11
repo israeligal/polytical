@@ -1,14 +1,28 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Ballot } from "@/components/icons";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { OrDivider } from "@/components/or-divider";
 import { signIn } from "@/lib/auth-client";
 
-export default function LoginPage() {
+// Contextual "why am I here" notes per gated destination (matched by prefix).
+const CALLBACK_NOTES: { prefix: string; note: string }[] = [
+  { prefix: "/suggest", note: "התחברו כדי להגיש הצעה לסדר משלכם — ההצעה תישלח לאישור ותיפתח לכל הקהילה" },
+];
+
+/** Internal-only redirect target: a same-origin path like "/suggest" (rejects
+ *  absolute URLs and protocol-relative "//evil.com"). */
+function safeCallbackUrl(raw: string | null): string {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
+  const note = CALLBACK_NOTES.find((n) => callbackUrl.startsWith(n.prefix))?.note;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +42,7 @@ export default function LoginPage() {
       setError(err.message ?? "ההתחברות נכשלה, בדקו את הפרטים");
       return;
     }
-    router.push("/");
+    router.push(callbackUrl);
     router.refresh();
   }
 
@@ -42,6 +56,13 @@ export default function LoginPage() {
           <h1 className="font-display text-2xl font-black text-foreground">התחברות לפוליטיקל</h1>
           <p className="text-sm text-muted-foreground">שמחים שחזרתם — הזירה מחכה</p>
         </div>
+
+        {note ? (
+          <p className="mb-5 flex items-start gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2.5 text-sm font-semibold text-gold">
+            <Ballot className="mt-0.5 h-4 w-4 shrink-0" />
+            {note}
+          </p>
+        ) : null}
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
@@ -95,7 +116,7 @@ export default function LoginPage() {
 
         <OrDivider />
 
-        <GoogleSignInButton label="התחברות עם Google" />
+        <GoogleSignInButton label="התחברות עם Google" callbackURL={callbackUrl} />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}
@@ -105,5 +126,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

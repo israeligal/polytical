@@ -8,7 +8,7 @@ import { Search } from "@/components/icons";
 
 export const metadata = {
   title: "חיפוש · פוליטיקל",
-  description: "חיפוש שווקים ופוליטיקאים.",
+  description: "חיפוש תחזיות ופוליטיקאים.",
 };
 
 // Discovery search. Reads `q` from searchParams (awaited) and passes it to the
@@ -39,7 +39,7 @@ export default async function SearchPage({
       {!hasQuery ? (
         <div className="rounded-card border border-dashed border-border bg-card px-4 py-14 text-center">
           <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="font-display text-lg text-foreground">חפשו שוק או פוליטיקאי</p>
+          <p className="font-display text-lg text-foreground">חפשו תחזית או פוליטיקאי</p>
           <p className="mt-1 text-sm text-muted-foreground">הקלידו לפחות {MIN_QUERY_LEN} תווים כדי להתחיל.</p>
         </div>
       ) : total === 0 ? (
@@ -49,7 +49,7 @@ export default async function SearchPage({
           {markets.length > 0 && (
             <section>
               <h2 className="mb-3 flex items-baseline gap-2 font-display text-xl text-foreground">
-                שווקים
+                תחזיות
                 <span className="nums rounded-full bg-card px-2 py-0.5 text-sm font-bold text-muted-foreground">
                   {markets.length}
                 </span>

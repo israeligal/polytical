@@ -17,7 +17,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "ניחשת נכון! 🎯",
-      body: "צדקת בתחזית · מי ינצח בבחירות?",
+      body: "צדקת בניחוש · מי ינצח בבחירות?",
       url: "/market/m1",
     });
   });
@@ -30,7 +30,7 @@ describe("eventToPush", () => {
       questionHe: "מי ינצח בבחירות?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "שוק שניחשת בו הוכרע",
+      title: "תחזית שניחשת בה הוכרעה",
       body: "מי ינצח בבחירות?",
       url: "/market/m2",
     });
@@ -46,7 +46,7 @@ describe("eventToPush", () => {
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
       title: "ההצעה שלך אושרה",
-      body: "נפתח שוק חדש: האם יעבור התקציב?",
+      body: "נפתחה תחזית חדשה: האם יעבור התקציב?",
       url: "/market/m3",
     });
   });
@@ -73,8 +73,8 @@ describe("eventToPush", () => {
       questionHe: "האם יעבור התקציב?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "השוק בוטל",
-      body: "התחזית שלך בוטלה · האם יעבור התקציב?",
+      title: "התחזית בוטלה",
+      body: "הניחוש שלך בוטל · האם יעבור התקציב?",
       url: "/market/m4",
     });
   });
@@ -87,7 +87,7 @@ describe("eventToPush", () => {
       questionHe: "האם יעבור התקציב?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "שוק נסגר בקרוב ⏰",
+      title: "תחזית נסגרת בקרוב ⏰",
       body: "הספיקו לנחש לפני הסגירה · האם יעבור התקציב?",
       url: "/market/m5",
     });
