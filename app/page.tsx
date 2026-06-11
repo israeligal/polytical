@@ -259,7 +259,7 @@ export default async function Home({
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <span className="font-display text-xl font-black">פוליטיקל</span>
           <p className="text-sm opacity-80">
-            משחק. בלי כסף אמיתי. עובדות ותוצאות ממקורות רשמיים בלבד.
+            עובדות ותוצאות ממקורות רשמיים בלבד.
           </p>
           <nav className="flex gap-4 text-sm opacity-80">
             <Link href="/terms" className="hover:underline">
