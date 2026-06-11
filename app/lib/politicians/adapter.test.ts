@@ -14,6 +14,7 @@ function row(overrides: Partial<PoliticianRow>): PoliticianRow {
   return {
     id: "00000000-0000-0000-0000-000000000000",
     personId: 1,
+    mkSiteId: null,
     nameHe: "ישראל ישראלי",
     nameEn: null,
     party: "מפלגה",

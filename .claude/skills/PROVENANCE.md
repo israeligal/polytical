@@ -39,3 +39,5 @@ Mastra/chat: `chat-conversation`, `hitl-tool-ui`, `traces`, `assistant-ui-agents
 
 ## Guardrail hooks (documented, not installed)
 The source repos use a `hookify` plugin (`.claude/hookify.*.md`). The most portable: `verify-before-stop`, `review-before-push`, `sync-claude-md`, `block-direct-date-imports`, `block-dynamic-imports`, `block-barrel-imports`, `block-find-unique` (reframe for Drizzle). They reference scripts/paths Polytical doesn't have yet (`pnpm typecheck`, `.husky/pre-push`, `@shift-manager/lib/time`) — adapt before enabling. Summarized in the root `CLAUDE.md`.
+
+- `knesset-votes` — **native to Polytical** (authored 2026-06-11 on the feature branch); documents the live website-API vote source, attribution, stances and matching. No reskinning needed.

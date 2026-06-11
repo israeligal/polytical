@@ -73,3 +73,14 @@ export function createLeaderboardEntry(
     ...overrides,
   };
 }
+
+export function createVoteTotals(
+  overrides: Partial<import("@/components/vote-totals-bar").VoteTotals> = {},
+): import("@/components/vote-totals-bar").VoteTotals {
+  return {
+    totalFor: 54,
+    totalAgainst: 38,
+    totalAbstain: 4,
+    ...overrides,
+  };
+}

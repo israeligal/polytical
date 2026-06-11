@@ -66,3 +66,16 @@
 | 2026-06-01 | 8649d61 | auth + ledger (signup→grant→faucet) | ✅ | signup→1,000 grant; faucet→1,200; 2nd claim cooldown; balance revalidates in shared header |
 | 2026-06-01 | 8649d61 | `/market/[id]` detail (mock) | ✅ | 70/30 odds bar, bet panel "תצוגה מקדימה", 0 console errors |
 | 2026-06-01 | 8649d61 | `/` mobile render | ✅ | 0px horizontal overflow; logged-in header usable |
+| 2026-06-11 | e174e70 | /politicians active-filter (120 not 148) | ✅ | departed absent; ⚠️ 2 caricature 400s = cross-branch asset skew |
+| 2026-06-11 | e174e70 | /politician/427 activity (bills backfill) | ✅ | 301 bills + 2 queries real; provenance line ok |
+| 2026-06-11 | e174e70 | /politician/30083 departed direct-URL | ✅ | renders w/ fallback card; role שר correct (Norwegian law) |
+| 2026-06-11 | e174e70 | / home featured + mobile 380px | ✅ | 12 active MKs; 0 errors; no h-scroll |
+| 2026-06-11 | 6ef8bec | /votes feed + pagination + tokens | 🔴 | getFeaturedVotes Date-in-raw-sql crash + stale CSS cache; both fixed in-pass |
+| 2026-06-11 | 6ef8bec | stance set/flip/retract + k-gate (vote/46077) | ✅ | optimistic pills; progress nudge; aggregate hidden <10 |
+| 2026-06-11 | 6ef8bec | /my-match unlock at 5 stances | 🔴 | worst-party tie contradiction → hidden when tied; basis lines honest |
+| 2026-06-11 | 6ef8bec | politician record + home module + mobile | ✅ | 16 vote links on /politician/427; no h-scroll 380px |
+| 2026-06-11 | 6ef8bec | admin votes: queue/featured/agenda round-trips | ✅ | featured→rail→untoggle; agenda add→drop; left prod clean |
+| 2026-06-11 | 127c976 | review-fix re-verify: composite cursor + garbage ?before= | ✅ | literal trigger re-run: page2 200, garbage→first page no boundary |
+| 2026-06-11 | 127c976 | review-fix re-verify: returning-user stance seeding /vote/46076 | ✅ | server-rendered בעד✓ + match link w/o casting |
+| 2026-06-11 | 2d497e4 | FULL sweep (8 parallel agents): pagination/states/dark/mobile/geometry/auth/departed/regression | ✅ | all flows green; heartbeat stamped (freshness line restored); hamburger 36px + gallery=119 are pre-existing/cross-branch |
+| 2026-06-11 | 2d497e4 | /code-review 7-angle batch (14 fixes) | ✅ | set-based decisive recompute, scoreable single-source, signup callbackUrl, parallelized pages |

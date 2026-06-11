@@ -23,9 +23,12 @@ type DB = PgDatabase<
 // normalized Hebrew search name (niqqud/finals/particles already stripped).
 const GALLERY_ORDER = [asc(politicians.party), asc(politicians.searchName)] as const;
 
-/** All current (sitting) MKs, party-then-name ordered (for the full gallery).
- *  Only `active` MKs are surfaced — former/seatless politicians have no card and
- *  would otherwise render an empty placeholder. */
+/**
+ * All CURRENT (sitting) MKs, party-then-name ordered (for the full gallery).
+ * The roster also holds departed K25 MKs (`active=false`, needed for vote
+ * attribution — see normalizeK25Members); list surfaces filter them out, while
+ * getPoliticianByPersonId keeps serving their profile pages.
+ */
 export async function getAllPoliticians({
   db = defaultDb,
 }: { db?: DB } = {}): Promise<PoliticianRow[]> {
@@ -79,6 +82,35 @@ export async function searchPoliticians({
     .where(includeInactive ? match : and(eq(politicians.active, true), match))
     .orderBy(...GALLERY_ORDER)
     .limit(limit);
+}
+
+/** True iff a politician row exists for this stable id (admin validation). */
+export async function politicianExists({
+  db = defaultDb,
+  personId,
+}: { db?: DB; personId: number }): Promise<boolean> {
+  if (!Number.isInteger(personId)) return false;
+  const [row] = await db
+    .select({ personId: politicians.personId })
+    .from(politicians)
+    .where(eq(politicians.personId, personId))
+    .limit(1);
+  return Boolean(row);
+}
+
+/**
+ * Every politician's (personId, nameHe) INCLUDING departed MKs — the identity
+ * queue may resolve a name to a former member, which the active-filtered
+ * gallery reads would hide.
+ */
+export async function listAllPoliticianNames({
+  db = defaultDb,
+}: { db?: DB } = {}): Promise<{ personId: number; name: string }[]> {
+  const rows = await db
+    .select({ personId: politicians.personId, name: politicians.nameHe })
+    .from(politicians)
+    .orderBy(asc(politicians.searchName));
+  return rows;
 }
 
 /** Politicians by a set of stable personIds (admin-side existence validation

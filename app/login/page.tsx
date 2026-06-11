@@ -10,6 +10,8 @@ import { signIn } from "@/lib/auth-client";
 // Contextual "why am I here" notes per gated destination (matched by prefix).
 const CALLBACK_NOTES: { prefix: string; note: string }[] = [
   { prefix: "/suggest", note: "התחברו כדי להגיש הצעה לסדר משלכם — ההצעה תישלח לאישור ותיפתח לכל הקהילה" },
+  { prefix: "/vote", note: "התחברו כדי לקבוע עמדה על הצבעות אמיתיות במליאה — ולגלות מי מצביע כמוכם" },
+  { prefix: "/my-match", note: "התחברו כדי לראות איזה חברי כנסת מצביעים הכי קרוב לעמדות שלכם" },
 ];
 
 /** Internal-only redirect target: a same-origin path like "/suggest" (rejects
@@ -34,8 +36,9 @@ function LoginForm() {
     setPending(true);
     // `callbackURL` only drives OAuth / email-verification redirects — the
     // email/password fetch sets the session cookie but does NOT navigate. So we
-    // navigate ourselves on success, then refresh so the server-rendered header
-    // (a layout Server Component) re-reads the new session.
+    // navigate ourselves on success (back to where the user came from — e.g.
+    // the vote they were about to stance), then refresh so the server-rendered
+    // header (a layout Server Component) re-reads the new session.
     const { error: err } = await signIn.email({ email, password });
     if (err) {
       setPending(false);
@@ -120,7 +123,10 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}
-          <Link href="/signup" className="font-semibold text-primary hover:underline">
+          <Link
+            href={callbackUrl === "/" ? "/signup" : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="font-semibold text-primary hover:underline"
+          >
             הרשמה
           </Link>
         </p>

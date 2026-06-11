@@ -31,6 +31,7 @@
 - **Facts on a card and every market resolution carry a cited source URL** and are attributed only by an exact identifier — never inferred, never fuzzy-matched. Fuzzy / `ILIKE` / trigram lookups are for *discovery* only; an absent fact shows an explicit "not found" state, it is never guessed (dirot's "reputation rule").
 - When ingesting gov/newsletter data, **store provenance on every row** (`sourceDataset`, `sourceUrl`, `fetchedAt`). See the `government-data-sources` + `data-pipeline` skills.
 - **Resolve entities by stable id, not by Hebrew string.** Politicians/parties have spelling variants — join on a numeric/canonical id, keep a whitelist of variants, never inline `ILIKE '%name%'`.
+- **Knesset plenum votes** (K25 per-MK roll-calls, ~484k rows) ingest from the website API via `app/lib/votes/`; user stances + MK matching in `app/lib/stances/` + `app/lib/match/`. Load the `knesset-votes` skill for the full feature context (API payloads, attribution invariants, scoring); `docs/decisions/knesset-votes.md` has the why.
 
 ## Code style
 - Files **< 500 lines**; small single-responsibility functions; **named exports**; modules, not classes.
@@ -54,7 +55,8 @@
 
 ## Neon / Drizzle specifics
 - Use `prepare: false` for the pgbouncer (pooled) connection; **import the shared `db` client only** — never re-instantiate `neon()`/`drizzle()` per script.
-- Use `drizzle-kit push` in non-interactive/CI shells (`generate` needs a TTY); batch inserts ≈100 rows to stay under Neon's parameter limit.
+- Use `drizzle-kit push` in non-interactive/CI shells (`generate` needs a TTY); batch inserts ≈100 rows to stay under Neon's parameter limit. NB: `push` can offer a destructive TTY prompt (e.g. truncate-on-unique-constraint) — when it does, apply the generated migration SQL via a guarded one-off runner instead.
+- Schema is split: `app/lib/schema.ts` (core) + `app/lib/schema-votes.ts` (votes domain), re-exported from `schema.ts`; `drizzle.config.ts` lists both. Declare ALL indexes in-schema — `db:push` drops migration-only indexes.
 - **Every DB-mutating script's first line is `assertNonProductionDb()`** (throws on `NODE_ENV=production` or a prod-hostname `DATABASE_URL`).
 
 ## Testing

@@ -56,6 +56,8 @@
   --color-negative: var(--negative);          /* NO · down · loss (coral) */
   --color-negative-foreground: var(--negative-foreground);
   --color-negative-soft: var(--negative-soft);
+  --color-abstain: var(--abstain);            /* נמנע — neutral slate, NOT the muted track */
+  --color-abstain-soft: var(--abstain-soft);
 
   /* Feedback / info / special */
   --color-destructive: var(--negative);
@@ -148,6 +150,8 @@
   --negative: #d92d20;
   --negative-foreground: #ffffff;
   --negative-soft: #fde8e6;
+  --abstain: #51607a;
+  --abstain-soft: #e8edf5;
 
   /* Info / special */
   --blue: #2563eb;
@@ -217,6 +221,8 @@
   --negative: #ff4d6d;
   --negative-foreground: #07112b;
   --negative-soft: #3a1626;
+  --abstain: #a9b2d6;
+  --abstain-soft: #1a2138;
 
   --blue: #5b8def;
   --purple: #b36bff;

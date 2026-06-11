@@ -90,6 +90,90 @@ interface NormalizeMembersArgs {
 }
 
 /**
+ * The K25-TENURE recipe (supersedes the IsCurrent-only roster for the votes
+ * feature): input is ALL `KnessetNum eq 25` PersonToPosition rows (verified:
+ * no current row has a NULL KnessetNum, so nothing is missed), roster = any
+ * person with a 43/61 row in the term — INCLUDING departed MKs (Norwegian-law
+ * churn, resignations), who get `active=false`. The K25 vote backfill spans
+ * ~3.5 years; without the departed, their roll-call rows could never attribute.
+ *
+ * Per person: `active` = has a current 43/61 row. Faction/roles prefer current
+ * rows (preserving the existing card data for the 120 actives) and fall back
+ * to the latest K25 rows for the departed. inKnessetSince = MIN(StartDate) of
+ * all 54 rows. Faction NULL (or the 911 sentinel) stays NULL.
+ */
+export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], factionNameById }: NormalizeMembersArgs): MemberRow[] {
+  const byPersonAll = new Map<number, KnsPersonToPosition[]>();
+  for (const r of p2p) {
+    const list = byPersonAll.get(r.PersonID) ?? [];
+    list.push(r);
+    byPersonAll.set(r.PersonID, list);
+  }
+  const nameByPerson = new Map<number, string>();
+  for (const p of persons) {
+    const he = [p.FirstName, p.LastName].filter(Boolean).join(" ").trim();
+    if (he) nameByPerson.set(p.PersonID, he);
+  }
+
+  const out: MemberRow[] = [];
+  for (const [personId, allRows] of byPersonAll) {
+    const mkRows = allRows.filter((r) => MK_POSITIONS.has(r.PositionID));
+    if (!mkRows.length) continue; // roster = had a 43/61 seat this term
+    const active = mkRows.some((r) => r.IsCurrent === true);
+    // Actives keep the proven current-rows recipe; departed use their K25 history.
+    const rows = active ? allRows.filter((r) => r.IsCurrent === true) : allRows;
+
+    const factionRows = allRows.filter((r) => r.PositionID === FACTION_MEMBER_POSITION);
+    const factionCandidates = factionRows.filter((r) => r.FactionID != null && r.FactionID !== SENTINEL_FACTION_ID);
+    const factionRow =
+      factionCandidates.find((r) => r.IsCurrent === true) ??
+      factionCandidates
+        .slice()
+        .sort((a, b) => (toDateOnly(b.StartDate) ?? "").localeCompare(toDateOnly(a.StartDate) ?? ""))[0] ??
+      null;
+    const factionId = factionRow?.FactionID ?? null;
+    let party: string | null = null;
+    if (factionId != null) {
+      const joined = factionNameById?.get(factionId) ?? null;
+      const inline = factionRow?.FactionName ?? null;
+      if (joined != null && inline != null && joined !== inline) {
+        logger.warn("knesset.normalize.faction_name_mismatch", { factionId, joined, inline });
+      }
+      party = joined ?? inline;
+    }
+
+    const startDates = factionRows.map((r) => toDateOnly(r.StartDate)).filter((d): d is string => !!d);
+    const inKnessetSince = startDates.length ? startDates.sort()[0] : null; // MIN
+
+    const roleRows = rows.filter((r) => !MK_POSITIONS.has(r.PositionID) && r.PositionID !== FACTION_MEMBER_POSITION);
+    const roles = roleRows
+      .map((r) => positionLabels.get(r.PositionID))
+      .filter((l): l is string => !!l);
+    const ministries = roleRows.map((r) => r.GovMinistryName).filter((m): m is string => !!m);
+    const committeesNamed = roleRows.map((r) => r.CommitteeName).filter((c): c is string => !!c);
+
+    const nameHe = nameByPerson.get(personId) ?? "";
+    out.push({
+      personId,
+      nameHe,
+      nameEn: null,
+      party,
+      factionId,
+      roleHe: roles[0] ?? null,
+      inKnessetSince,
+      dob: null,
+      facts: { roles, ministries, committees: committeesNamed },
+      active,
+      searchName: normalizeSearchName(nameHe),
+      sourceDataset: "KNS_PersonToPosition",
+      sourceUrl: prov.sourceUrl,
+      fetchedAt: prov.fetchedAt,
+    });
+  }
+  return out.sort((a, b) => a.personId - b.personId);
+}
+
+/**
  * The CONFIRMED current-members recipe. Roster = current 43/61 rows (dedup by
  * PersonID). Party = same person's current 54 row (FactionID/FactionName).
  * Roles = the person's other current rows, labelled via KNS_Position.Description.
@@ -252,6 +336,40 @@ export function normalizeCommitteeMemberships(
       sourceUrl, fetchedAt,
     }))
     .filter((m) => Number.isFinite(m.committeeId) && Number.isFinite(m.personId));
+}
+
+export interface FactionStintRow {
+  personToPositionId: number; personId: number; factionId: number; knessetNum: number;
+  startDate: Date; finishDate: Date | null;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+/**
+ * Faction-membership intervals (PositionID 54) — the faction-AT-VOTE-TIME
+ * source for mk_votes attribution: a vote dated inside [startDate, finishDate)
+ * belongs to that stint's faction. Rows without a usable StartDate or carrying
+ * the 911 sentinel are dropped (they can't anchor an interval).
+ */
+export function normalizeFactionStints(raw: KnsPersonToPosition[], prov: Prov): FactionStintRow[] {
+  const out: FactionStintRow[] = [];
+  for (const r of raw) {
+    if (r.PositionID !== FACTION_MEMBER_POSITION) continue;
+    if (r.FactionID == null || r.FactionID === SENTINEL_FACTION_ID) continue;
+    if (r.KnessetNum == null) continue;
+    const startDate = parseODataDate(r.StartDate);
+    if (!startDate) continue;
+    out.push({
+      personToPositionId: r.PersonToPositionID,
+      personId: r.PersonID,
+      factionId: r.FactionID,
+      knessetNum: r.KnessetNum,
+      startDate,
+      finishDate: parseODataDate(r.FinishDate),
+      sourceDataset: "KNS_PersonToPosition",
+      sourceUrl: prov.sourceUrl,
+      fetchedAt: prov.fetchedAt,
+    });
+  }
+  return out;
 }
 
 /** Applies Open Knesset English names onto members, reconciling by PersonID. */

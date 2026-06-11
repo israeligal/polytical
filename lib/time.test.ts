@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, APP_TIMEZONE } from "./time";
+import { formatDate, formatDateTime, jerusalemWallToUtc, APP_TIMEZONE } from "./time";
 
 describe("lib/time — Asia/Jerusalem formatting", () => {
   it("formatDateTime renders an Israel-time clock (summer = UTC+3)", () => {
@@ -47,5 +47,53 @@ describe("lib/time — Asia/Jerusalem formatting", () => {
 
   it("exposes the timezone constant", () => {
     expect(APP_TIMEZONE).toBe("Asia/Jerusalem");
+  });
+});
+
+describe("jerusalemWallToUtc — Knesset website naive wall-clock → UTC instant", () => {
+  // Israel 2026: IDT (UTC+3) starts Fri 2026-03-27 02:00, ends Sun 2026-10-25 02:00.
+
+  it("winter wall time is IST (UTC+2)", () => {
+    expect(jerusalemWallToUtc("2026-01-15T12:00:00").toISOString()).toBe("2026-01-15T10:00:00.000Z");
+  });
+
+  it("summer wall time is IDT (UTC+3) — real vote timestamp", () => {
+    // VoteId 46078's header VoteDate
+    expect(jerusalemWallToUtc("2026-06-09T19:00:00").toISOString()).toBe("2026-06-09T16:00:00.000Z");
+  });
+
+  it("seconds are optional and default to 0", () => {
+    expect(jerusalemWallToUtc("2026-06-09T19:00").toISOString()).toBe("2026-06-09T16:00:00.000Z");
+  });
+
+  it("just before the spring-forward gap is still IST", () => {
+    expect(jerusalemWallToUtc("2026-03-27T01:59:00").toISOString()).toBe("2026-03-26T23:59:00.000Z");
+  });
+
+  it("just after the spring-forward gap is IDT", () => {
+    expect(jerusalemWallToUtc("2026-03-27T03:00:00").toISOString()).toBe("2026-03-27T00:00:00.000Z");
+  });
+
+  it("after the fall-back boundary is IST again", () => {
+    expect(jerusalemWallToUtc("2026-10-25T03:00:00").toISOString()).toBe("2026-10-25T01:00:00.000Z");
+  });
+
+  it("midnight wall time maps to the previous UTC day (hand votes carry T00:00:00)", () => {
+    expect(jerusalemWallToUtc("2026-06-08T00:00:00").toISOString()).toBe("2026-06-07T21:00:00.000Z");
+  });
+
+  it("is host-timezone independent", () => {
+    const prev = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      expect(jerusalemWallToUtc("2026-06-09T19:00:00").toISOString()).toBe("2026-06-09T16:00:00.000Z");
+    } finally {
+      process.env.TZ = prev;
+    }
+  });
+
+  it("rejects non-naive or malformed input", () => {
+    expect(() => jerusalemWallToUtc("2026-06-09T19:00:00Z")).toThrow();
+    expect(() => jerusalemWallToUtc("9.6.2026")).toThrow();
   });
 });

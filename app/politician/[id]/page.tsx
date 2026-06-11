@@ -15,6 +15,8 @@ import { ChevronForward, Trophy, Lock } from "@/components/icons";
 import { getSession } from "@/lib/auth";
 import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
 import { unlockThreshold } from "@/lib/rarity";
+import { getRecentMkVotes } from "@/app/lib/votes/read-repo";
+import { formatDate } from "@/lib/time";
 
 export default async function PoliticianPage({
   params,
@@ -29,7 +31,10 @@ export default async function PoliticianPage({
   if (!row) notFound();
 
   const politician = dbToCard(row);
-  const activity = await getPoliticianActivity({ personId });
+  const [activity, recentVotes] = await Promise.all([
+    getPoliticianActivity({ personId }),
+    getRecentMkVotes({ personId }),
+  ]);
 
   // Collection is unlocked by ACCURACY: getting `threshold` correct predictions on
   // this MK's markets auto-grants the card. Show ownership or progress toward it.
@@ -161,6 +166,55 @@ export default async function PoliticianPage({
           )}
           <p className="mt-3 text-xs text-muted-foreground">
             נתונים ממקור רשמי · הכנסת (OData)
+          </p>
+
+          <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">הצבעות אחרונות</h2>
+          {recentVotes.for.length === 0 && recentVotes.against.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center">
+              <p className="font-bold text-foreground">אין הצבעות מתועדות</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                טרם נרשמו ל{politician.name} הצבעות אישיות במליאת הכנסת ה-25.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  { key: "for", title: "הצביע/ה בעד", votes: recentVotes.for },
+                  { key: "against", title: "הצביע/ה נגד", votes: recentVotes.against },
+                ] as const
+              ).map((col) => (
+                <div key={col.key}>
+                  <h3 className={`mb-2 text-sm font-bold ${col.key === "for" ? "text-positive" : "text-negative"}`}>
+                    {col.title}
+                  </h3>
+                  {col.votes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">אין הצבעות {col.key === "for" ? "בעד" : "נגד"} לאחרונה.</p>
+                  ) : (
+                    <ul className="grid gap-2">
+                      {col.votes.map((v) => (
+                        <li key={v.voteId}>
+                          <Link
+                            href={`/vote/${v.voteId}`}
+                            className="block rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/60"
+                          >
+                            <span className="line-clamp-2">{v.titleHe}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground nums">
+                              {formatDate(v.voteDate)}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-start">
+            <Link href="/votes" className="text-sm font-semibold text-primary hover:underline">
+              לכל ההצבעות במליאה
+            </Link>
           </p>
 
           <div className="mb-3 mt-8 flex items-center justify-between gap-3">

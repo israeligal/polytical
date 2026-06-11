@@ -3,11 +3,11 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";
 import {
-  politicians, factions, bills, billSponsors, queries, committees, committeeMemberships,
+  politicians, factions, bills, billSponsors, queries, committees, committeeMemberships, factionStints,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import type {
-  MemberRow, FactionRow, BillRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow,
+  MemberRow, FactionRow, BillRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow, FactionStintRow,
 } from "./normalize";
 
 // Driver-agnostic DB handle (mirrors the markets repo's injectable-DB pattern): the
@@ -139,6 +139,25 @@ export async function upsertCommittees({ db, rows }: { db: DB; rows: CommitteeRo
     n += batch.length;
   }
   logger.info("knesset.repo.upsert", { entity: "committees", rows: n });
+  return n;
+}
+
+// faction_stints — conflict on the unique stable id PersonToPositionID.
+export async function upsertFactionStints({ db, rows }: { db: DB; rows: FactionStintRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(factionStints).values(batch).onConflictDoUpdate({
+      target: factionStints.personToPositionId,
+      set: {
+        personId: sqlExcluded("personId"), factionId: sqlExcluded("factionId"),
+        knessetNum: sqlExcluded("knessetNum"), startDate: sqlExcluded("startDate"),
+        finishDate: sqlExcluded("finishDate"), sourceDataset: sqlExcluded("sourceDataset"),
+        sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "faction_stints", rows: n });
   return n;
 }
 

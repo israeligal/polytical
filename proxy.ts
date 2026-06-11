@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
 // Markets feed (/) and most pages are public. These require a session:
-const PROTECTED_ROUTES = ["/profile", "/admin", "/notifications", "/collection", "/onboarding"];
+const PROTECTED_ROUTES = ["/profile", "/admin", "/notifications", "/collection", "/onboarding", "/my-match"];
 const AUTH_ROUTES = ["/login", "/signup"];
 const ONBOARDING_ROUTE = "/onboarding";
 

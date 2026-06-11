@@ -106,6 +106,19 @@ export default async function ProfilePage() {
             </span>
           </StatCard>
         </div>
+
+        <Link
+          href="/my-match"
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <span>
+            <span className="block text-sm font-bold text-foreground">מי מצביע כמוכם?</span>
+            <span className="block text-xs text-muted-foreground">
+              ההתאמה בין העמדות שלכם להצבעות האמיתיות במליאה
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-bold text-primary">לצפייה ←</span>
+        </Link>
       </section>
 
       {/* SETTINGS — push notifications */}

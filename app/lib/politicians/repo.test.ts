@@ -78,3 +78,16 @@ test("getFeaturedPoliticians caps to the requested limit, same gallery order", a
   const rows = await getFeaturedPoliticians({ db: h.db, limit: 2 });
   expect(rows.map((r) => r.personId)).toEqual([20, 10]);
 });
+
+test("list reads exclude departed MKs (active=false); direct id lookup still serves them", async () => {
+  await h.db.insert(politicians).values({
+    personId: 40, nameHe: "פורש", searchName: "פורש", active: false, facts: {},
+    sourceDataset: "test", sourceUrl: "https://example.test", fetchedAt: new Date("2026-06-01T00:00:00Z"),
+  });
+  const all = await getAllPoliticians({ db: h.db });
+  expect(all.map((r) => r.personId)).not.toContain(40); // gallery filters departed
+  const featured = await getFeaturedPoliticians({ db: h.db, limit: 10 });
+  expect(featured.map((r) => r.personId)).not.toContain(40);
+  // profile pages stay reachable by stable id
+  expect((await getPoliticianByPersonId({ db: h.db, personId: 40 }))?.nameHe).toBe("פורש");
+});
