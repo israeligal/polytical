@@ -38,9 +38,6 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      // Theme-aware SVG first (darker star on light chrome, bright on dark);
-      // PNG/ico fallbacks carry the darkened palette.
-      { url: "/icons/favicon.svg", type: "image/svg+xml" },
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
     ],
