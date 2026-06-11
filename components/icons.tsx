@@ -1,14 +1,15 @@
 // Minimal inline icon set (no icon dependency). Line icons use currentColor; size via className.
 type IconProps = { className?: string };
 
-/** The Polytical mark: a rounded badge with an interlaced Magen David — mint up-triangle (YES) woven with a coral down-triangle (NO). */
+/** The Polytical mark: an interlaced Magen David — the YES up-triangle woven with the NO
+ *  down-triangle. No badge; strokes ride the outcome tokens, so the star is techelet
+ *  blue + red on the light theme and mint + coral on the dark one. */
 export function PolyticalLogo({ className }: IconProps) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <rect x="6" y="6" width="108" height="108" rx="30" fill="#121831" stroke="#FFC23D" strokeWidth="2" strokeOpacity=".5" />
-      <path d="M60 25.5 L30.2 77.1 L89.8 77.1 Z" stroke="#00E0A4" strokeWidth="8" strokeLinejoin="round" fill="none" />
-      <path d="M60 94.5 L89.8 42.9 L30.2 42.9 Z" stroke="#FF4D6D" strokeWidth="8" strokeLinejoin="round" fill="none" />
-      <path d="M53.8 36.3 L45.6 50.5 M75.5 53.8 L83.7 68 M42 77.1 L58 77.1" stroke="#00E0A4" strokeWidth="8" />
+      <path d="M60 10 L16.7 85 L103.3 85 Z" stroke="var(--positive)" strokeWidth="11" strokeLinejoin="round" fill="none" />
+      <path d="M60 110 L103.3 35 L16.7 35 Z" stroke="var(--negative)" strokeWidth="11" strokeLinejoin="round" fill="none" />
+      <path d="M50.6 26.3 L40.6 43.7 M83.9 51.3 L93.9 68.7 M35.6 85 L55.6 85" stroke="var(--positive)" strokeWidth="11" />
     </svg>
   );
 }
