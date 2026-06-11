@@ -43,3 +43,5 @@ export class SeasonNotFoundError extends Error { constructor() { super("Season n
 export class InvalidSeasonError extends Error { constructor() { super("Invalid season definition"); this.name = "InvalidSeasonError"; } }
 // --- Knesset votes ---
 export class UnverifiedMappingsError extends Error { constructor(count: number) { super(`${count} MK name mappings are unverified — sign off before attribution`); this.name = "UnverifiedMappingsError"; } }
+export class VoteNotFoundError extends Error { constructor() { super("Vote not found"); this.name = "VoteNotFoundError"; } }
+export class VoteNotStanceableError extends Error { constructor() { super("Stances attach only to an item's decisive vote"); this.name = "VoteNotStanceableError"; } }

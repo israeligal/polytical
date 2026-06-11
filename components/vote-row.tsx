@@ -14,7 +14,16 @@ const TYPE_HE: Record<FeedVote["voteType"], string> = {
   secret: "הצבעה חשאית",
 };
 
-export function VoteRow({ vote, dateHe }: { vote: FeedVote; dateHe: string }) {
+export function VoteRow({
+  vote,
+  dateHe,
+  userStance,
+}: {
+  vote: FeedVote;
+  dateHe: string;
+  /** The viewer's recorded עמדה — display-only chip; setting happens on the detail page. */
+  userStance?: "for" | "against" | null;
+}) {
   return (
     <Link
       href={`/vote/${vote.voteId}`}
@@ -22,11 +31,18 @@ export function VoteRow({ vote, dateHe }: { vote: FeedVote; dateHe: string }) {
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 flex-1 text-sm font-bold leading-snug text-foreground">{vote.titleHe}</h3>
-        {vote.isAccepted != null && (
-          <StatusChip tone={vote.isAccepted ? "positive" : "negative"}>
-            {vote.isAccepted ? "התקבל" : "נדחה"}
-          </StatusChip>
-        )}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {userStance && (
+            <StatusChip tone={userStance === "for" ? "positive" : "negative"}>
+              העמדה שלי: {userStance === "for" ? "בעד" : "נגד"}
+            </StatusChip>
+          )}
+          {vote.isAccepted != null && (
+            <StatusChip tone={vote.isAccepted ? "positive" : "negative"}>
+              {vote.isAccepted ? "התקבל" : "נדחה"}
+            </StatusChip>
+          )}
+        </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         <span className="nums">{dateHe}</span> · {TYPE_HE[vote.voteType]}

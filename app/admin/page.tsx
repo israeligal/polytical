@@ -7,6 +7,13 @@ import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { CreateMarketForm } from "@/components/admin/create-market-form";
 import { MarketAdminRow } from "@/components/admin/market-admin-row";
 import { SuggestionReviewRow } from "@/components/admin/suggestion-review-row";
+import { AgendaAdmin, UnmappedNameRow, VoteFeatureToggle } from "@/components/admin/votes-admin";
+import {
+  listAgendaItemsForAdmin, listPendingUnmappedNames, listRecentVotesForAdmin,
+} from "@/app/lib/votes/read-repo";
+import { politicians } from "@/app/lib/schema";
+import { db } from "@/app/lib/db";
+import { formatDate } from "@/lib/time";
 
 // Minimal admin console (Server Component). The `/admin` route is gated by
 // proxy.ts (requires a session); here we additionally redirect non-admins, and
@@ -30,6 +37,19 @@ export default async function AdminPage() {
   if (pendingSuggestions.some((s) => s.personId != null)) {
     for (const p of await getAllPoliticians()) nameByPersonId.set(p.personId, p.nameHe);
   }
+
+  // Votes domain: identity queue needs the FULL roster (a queued name may be a
+  // departed MK — getAllPoliticians filters active, so query directly).
+  const [unmappedNames, recentVotes, agendaList] = await Promise.all([
+    listPendingUnmappedNames(),
+    listRecentVotesForAdmin(),
+    listAgendaItemsForAdmin(),
+  ]);
+  const fullRoster = unmappedNames.length
+    ? (await db.select({ personId: politicians.personId, nameHe: politicians.nameHe }).from(politicians)).map(
+        (p) => ({ personId: p.personId, name: p.nameHe }),
+      )
+    : [];
 
   return (
     <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -103,6 +123,56 @@ export default async function AdminPage() {
             אין שווקים פתוחים או סגורים כרגע.
           </p>
         )}
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-3 font-display text-xl font-bold text-foreground">
+          שמות ממתינים לאימות זהות ({unmappedNames.length})
+        </h2>
+        {unmappedNames.length > 0 ? (
+          <div className="grid gap-2">
+            {unmappedNames.map((n) => (
+              <UnmappedNameRow
+                key={n.nameKey}
+                nameKey={n.nameKey}
+                nameRaw={n.nameRaw}
+                occurrences={n.occurrences}
+                roster={fullRoster}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
+            אין שמות ממתינים — כל הצבעה משויכת.
+          </p>
+        )}
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-3 font-display text-xl font-bold text-foreground">הצבעות מובילות</h2>
+        <div className="grid gap-2">
+          {recentVotes.map((v) => (
+            <VoteFeatureToggle
+              key={v.voteId}
+              voteId={v.voteId}
+              titleHe={v.titleHe}
+              dateHe={formatDate(v.voteDate)}
+              initialFeatured={v.featured}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-3 font-display text-xl font-bold text-foreground">סדר היום ({agendaList.length})</h2>
+        <AgendaAdmin
+          items={agendaList.map((a) => ({
+            id: a.id,
+            titleHe: a.titleHe,
+            expectedDate: a.expectedDate,
+            status: a.status,
+          }))}
+        />
       </section>
     </main>
   );

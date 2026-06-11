@@ -6,6 +6,8 @@ import {
 import { VoteRow } from "@/components/vote-row";
 import { EmptyState } from "@/components/empty-state";
 import { track } from "@/app/lib/track";
+import { getSession } from "@/lib/auth";
+import { getStancesForVotes } from "@/app/lib/stances/repo";
 
 export const metadata = {
   title: "הצבעות במליאה — פוליטיקל",
@@ -25,6 +27,11 @@ export default async function VotesPage({
     getVotesFreshness(),
   ]);
   track("feed_viewed", { page: before ? "older" : "first" });
+  const session = await getSession();
+  const allIds = [...feed.votes, ...featured].map((v) => v.voteId);
+  const myStances = session?.user
+    ? await getStancesForVotes({ userId: session.user.id, voteIds: allIds })
+    : new Map<number, "for" | "against">();
 
   return (
     <main className="mx-auto max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -55,7 +62,12 @@ export default async function VotesPage({
           <h2 className="mb-3 font-display text-xl font-bold text-foreground">מצביעים על זה</h2>
           <div className="grid gap-3">
             {featured.map((v) => (
-              <VoteRow key={v.voteId} vote={{ ...v, siblingCount: 0 }} dateHe={formatDate(v.voteDate)} />
+              <VoteRow
+                key={v.voteId}
+                vote={{ ...v, siblingCount: 0 }}
+                dateHe={formatDate(v.voteDate)}
+                userStance={myStances.get(v.voteId) ?? null}
+              />
             ))}
           </div>
         </section>
@@ -68,7 +80,7 @@ export default async function VotesPage({
         ) : (
           <div className="grid gap-3">
             {feed.votes.map((v) => (
-              <VoteRow key={v.voteId} vote={v} dateHe={formatDate(v.voteDate)} />
+              <VoteRow key={v.voteId} vote={v} dateHe={formatDate(v.voteDate)} userStance={myStances.get(v.voteId) ?? null} />
             ))}
           </div>
         )}

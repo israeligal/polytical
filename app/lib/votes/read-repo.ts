@@ -5,7 +5,7 @@
 import { and, count, desc, eq, inArray, isNull, lt, max, or, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import {
-  agendaItems, factions, knessetVotes, mkVotes, mkVotesRaw, politicians,
+  agendaItems, factions, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames,
 } from "@/app/lib/schema";
 import type { VotesDb } from "./repo";
 
@@ -193,5 +193,58 @@ export async function getAnnouncedAgendaItems({
     .from(agendaItems)
     .where(eq(agendaItems.status, "announced"))
     .orderBy(sql`${agendaItems.expectedDate} asc nulls last`, desc(agendaItems.createdAt))
+    .limit(limit);
+}
+
+// --- admin reads ---
+
+export interface PendingUnmappedName {
+  nameKey: string;
+  nameRaw: string;
+  firstSeenAt: Date;
+  /** Retained raw rows carrying this key — what resolution would backfill. */
+  occurrences: number;
+}
+
+/** The identity-review queue with evidence counts (admin dashboard). */
+export async function listPendingUnmappedNames({
+  db = defaultDb,
+}: { db?: DB } = {}): Promise<PendingUnmappedName[]> {
+  return db
+    .select({
+      nameKey: unmappedMkNames.nameKey,
+      nameRaw: unmappedMkNames.nameRaw,
+      firstSeenAt: unmappedMkNames.firstSeenAt,
+      occurrences: count(mkVotesRaw.id),
+    })
+    .from(unmappedMkNames)
+    .leftJoin(mkVotesRaw, eq(mkVotesRaw.mkNameKey, unmappedMkNames.nameKey))
+    .where(eq(unmappedMkNames.status, "pending"))
+    .groupBy(unmappedMkNames.nameKey, unmappedMkNames.nameRaw, unmappedMkNames.firstSeenAt)
+    .orderBy(desc(count(mkVotesRaw.id)));
+}
+
+/** Recent primary votes for the admin featured-toggle list. */
+export async function listRecentVotesForAdmin({
+  db = defaultDb,
+  limit = 15,
+}: { db?: DB; limit?: number } = {}): Promise<KnessetVoteRow[]> {
+  return db
+    .select()
+    .from(knessetVotes)
+    .where(FEED_PRIMARY)
+    .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId))
+    .limit(limit);
+}
+
+/** Agenda items in every status (admin CRUD list). */
+export async function listAgendaItemsForAdmin({
+  db = defaultDb,
+  limit = 30,
+}: { db?: DB; limit?: number } = {}): Promise<AgendaItemRow[]> {
+  return db
+    .select()
+    .from(agendaItems)
+    .orderBy(desc(agendaItems.createdAt))
     .limit(limit);
 }
