@@ -26,20 +26,27 @@ export function MarketCard({
   return (
     <Link
       href={`/market/${market.id}`}
-      className="group block rounded-card border border-border bg-card p-4 shadow-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-3 hover:shadow-glow-mint"
+      className="group flex h-full flex-col rounded-card border border-border bg-card p-4 shadow-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-3 hover:shadow-glow-mint"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <CategoryBadge category={market.category} />
         {market.hot && <HotBadge />}
       </div>
 
-      <h3 className="mb-4 font-sans text-[17px] font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary">
+      <h3 className="mb-4 min-h-[2.75em] font-sans text-[17px] font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary line-clamp-2">
         {market.question}
       </h3>
 
-      <OddsBar market={market} compact />
+      {/* mb-4 is the MINIMUM gap before the pinned footer — on the tallest card
+          in a row, the footer's mt-auto computes to 0 and only this margin
+          keeps the border-t off the odds bar. */}
+      <div className="mb-4">
+        <OddsBar market={market} compact />
+      </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3 text-sm">
+      {/* min-h-9 = the sm portrait height — a portrait-less footer reserves the
+          same row height, so the border-t separator aligns across siblings. */}
+      <div className="mt-auto flex min-h-[calc(2.25rem+0.75rem)] items-center justify-between gap-2 border-t border-border pt-3 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Users className="h-[18px] w-[18px]" />

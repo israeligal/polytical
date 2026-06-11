@@ -54,6 +54,8 @@ export interface PoliticianOption {
   personId: number;
   nameHe: string;
   roleHe: string | null;
+  /** AI caricature path (e.g. /caricatures/<personId>.png); null when not yet generated. */
+  imageUrl?: string | null;
 }
 
 export interface Market {

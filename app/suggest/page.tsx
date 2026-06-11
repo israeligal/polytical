@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/categories";
-import { getAllPoliticians } from "@/app/lib/politicians/repo";
+import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
+import type { PoliticianOption } from "@/lib/types";
 import { SuggestMarketForm } from "@/components/suggest-market-form";
 
 // Public "propose a market" surface (the community half of admin+community).
@@ -18,9 +19,20 @@ export default async function SuggestPage({
 
   const { person } = await searchParams;
   const personNum = Number(person);
-  const defaultPersonId = Number.isInteger(personNum) && personNum > 0 ? personNum : undefined;
+  const defaultPersonId = Number.isInteger(personNum) && personNum > 0 ? personNum : null;
 
-  const politicians = (await getAllPoliticians()).map((p) => ({ personId: p.personId, name: p.nameHe }));
+  let defaultPolitician: PoliticianOption | null = null;
+  if (defaultPersonId) {
+    const row = await getPoliticianByPersonId({ personId: defaultPersonId });
+    if (row) {
+      defaultPolitician = {
+        personId: row.personId,
+        nameHe: row.nameHe,
+        roleHe: row.roleHe,
+        imageUrl: row.imageUrl,
+      };
+    }
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -35,8 +47,7 @@ export default async function SuggestPage({
 
       <SuggestMarketForm
         categories={CATEGORIES.map((c) => ({ key: c.key, he: c.he }))}
-        politicians={politicians}
-        defaultPersonId={defaultPersonId}
+        defaultPolitician={defaultPolitician}
       />
 
       <p className="mt-4 text-xs text-muted-foreground">

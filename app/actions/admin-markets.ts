@@ -155,7 +155,7 @@ export async function searchPoliticiansAction({
   const normalized = normalizeSearchName(q);
   if (normalized.length < MIN_QUERY_LEN) return [];
   const rows = await searchPoliticians({ q: normalized, limit: 8, includeInactive: true });
-  return rows.map((p) => ({ personId: p.personId, nameHe: p.nameHe, roleHe: p.roleHe }));
+  return rows.map((p) => ({ personId: p.personId, nameHe: p.nameHe, roleHe: p.roleHe, imageUrl: p.imageUrl }));
 }
 
 /** Resolves a market to its winning outcome — tallies right/wrong for every
