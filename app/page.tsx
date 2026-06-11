@@ -15,6 +15,7 @@ import { Trophy } from "@/components/icons";
 import { VoteRow } from "@/components/vote-row";
 import { getVotesFeed } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
+import { HOME_SECTION_INNER } from "@/components/skeletons/containers";
 
 export default async function Home({
   searchParams,
@@ -94,7 +95,7 @@ export default async function Home({
       <main className="flex-1">
         {/* HERO */}
         <section className="border-b border-border bg-muted">
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+          <div className={HOME_SECTION_INNER}>
             <div className="grid items-center gap-8 lg:grid-cols-2">
               <div>
                 <p className="text-sm font-bold text-primary">
@@ -141,7 +142,7 @@ export default async function Home({
         {/* MARKETS */}
         <section
           id="markets"
-          className="mx-auto max-w-6xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8 lg:py-16"
+          className={`scroll-mt-24 ${HOME_SECTION_INNER}`}
         >
           <div className="mb-5">
             <p className="text-sm font-bold text-primary">התחזיות</p>
@@ -168,7 +169,7 @@ export default async function Home({
           id="politicians"
           className="scroll-mt-24 border-y border-border bg-muted"
         >
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+          <div className={HOME_SECTION_INNER}>
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div className="max-w-2xl">
                 <p className="text-sm font-bold text-primary">הקלפים</p>
@@ -202,7 +203,7 @@ export default async function Home({
         {/* LEADERBOARD */}
         <section
           id="leaderboard"
-          className="mx-auto max-w-6xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8 lg:py-16"
+          className={`scroll-mt-24 ${HOME_SECTION_INNER}`}
         >
           <div className="mb-6 flex items-center gap-2">
             <Trophy className="h-7 w-7 text-accent" />
@@ -233,7 +234,7 @@ export default async function Home({
 
         {/* KNESSET VOTES — real plenum roll-calls (muted stripe continues the alternation) */}
         <section id="votes" className="scroll-mt-24 border-t border-border bg-muted">
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+          <div className={HOME_SECTION_INNER}>
             <div className="mb-6">
               <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
               <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>

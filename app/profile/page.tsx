@@ -17,6 +17,7 @@ import { PushSettings } from "@/components/pwa/push-settings";
 import { NotificationPrefs } from "@/components/pwa/notification-prefs";
 import { getMutedPushTypes } from "@/app/lib/notifications/prefs";
 import { Trophy } from "@/components/icons";
+import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
 
 /** Whether a resolved prediction picked the winning outcome. */
 function isCorrect(p: PortfolioPrediction): boolean {
@@ -58,7 +59,7 @@ export default async function ProfilePage() {
   const initial = user.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
-    <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={PROFILE_CONTAINER}>
       <CelebrationHost predictions={celebrations} />
       {/* HEADER + STAT CARDS */}
       <section className="mb-8">

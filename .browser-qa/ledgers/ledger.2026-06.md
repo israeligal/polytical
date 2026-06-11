@@ -79,3 +79,4 @@
 | 2026-06-11 | 127c976 | review-fix re-verify: returning-user stance seeding /vote/46076 | ✅ | server-rendered בעד✓ + match link w/o casting |
 | 2026-06-11 | 2d497e4 | FULL sweep (8 parallel agents): pagination/states/dark/mobile/geometry/auth/departed/regression | ✅ | all flows green; heartbeat stamped (freshness line restored); hamburger 36px + gallery=119 are pre-existing/cross-branch |
 | 2026-06-11 | 2d497e4 | /code-review 7-angle batch (14 fixes) | ✅ | set-based decisive recompute, scoreable single-source, signup callbackUrl, parallelized pages |
+| 2026-06-11 | 6dc8786 | loading-states overhaul: 12 route skeletons + stories + shared containers | ✅ | audit found home 3/5 sections, my-match wrong state, vote/[id] missing StanceWidget; all rebuilt; collection+notifications gained skeletons |
