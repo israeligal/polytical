@@ -137,26 +137,25 @@ export default async function Home({
           </div>
           <div className="min-h-[28rem]">
             {visibleGrid.length > 0 ? (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {visibleGrid.map((c) => (
-                    <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
-                  ))}
-                </div>
-                {hiddenCount > 0 && (
-                  <div className="mt-6 text-center">
-                    <Link
-                      href={`/markets${active ? `?cat=${active}` : ""}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
-                    >
-                      לכל התחזיות
-                    </Link>
-                  </div>
-                )}
-              </>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleGrid.map((c) => (
+                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+                ))}
+              </div>
             ) : (
               <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
             )}
+            {/* Always-on gateway to the full feed — the homepage is a teaser,
+                /markets is the real list (even when nothing is hidden). */}
+            <div className="mt-6 text-center">
+              <Link
+                href={`/markets${active ? `?cat=${active}` : ""}`}
+                className="inline-flex items-center gap-2 rounded-full border-2 border-primary px-6 py-2.5 text-sm font-bold text-primary transition-all hover:-translate-y-0.5"
+              >
+                לכל התחזיות
+                {hiddenCount > 0 && <span className="nums">‎+{hiddenCount}</span>}
+              </Link>
+            </div>
           </div>
         </section>
 
