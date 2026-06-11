@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Maskable variant: same interlaced Magen David, scaled down so the mark
+       stays inside the maskable safe zone (central 80% circle) after OS shaping. -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.5" r="0.71">
+      <stop offset="0" stop-color="#171E3D"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(256 256) scale(0.82) translate(-256 -256)">
+    <path d="M256 106 L126.1 331 L385.9 331 Z" fill="none" stroke="#00E0A4" stroke-width="30" stroke-linejoin="round"/>
+    <path d="M256 406 L385.9 181 L126.1 181 Z" fill="none" stroke="#FF4D6D" stroke-width="30" stroke-linejoin="round"/>
+    <line x1="227.7" y1="155.0" x2="197.7" y2="207.0" stroke="#00E0A4" stroke-width="30"/>
+    <line x1="327.6" y1="230.0" x2="357.6" y2="282.0" stroke="#00E0A4" stroke-width="30"/>
+    <line x1="182.7" y1="331" x2="242.7" y2="331" stroke="#00E0A4" stroke-width="30"/>
+  </g>
+</svg>
