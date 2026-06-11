@@ -6,7 +6,7 @@
 
 ## Architecture
 - **Layered, one-directional**: Route → Service → Repository → DB. Routes never touch the Drizzle client; services orchestrate + validate; **repositories own all DB access**. Each layer imports only downward.
-- **Scope guard is the first line of a repository function** — e.g. `requireUserId({ userId })` that throws on a missing id (never silently returns empty). User-owned data is always filtered by the owning user/entity id.
+- **Scope guard is the first line of a repository function** — the shared `requireUserId(userId)` from `app/lib/errors.ts` (throws `MissingUserError`, never silently returns empty). User-owned data is always filtered by the owning user/entity id. Shared repo plumbing (`AppDb`, `sqlExcluded`, `chunk`/`BATCH`) lives in `app/lib/db-utils.ts`; the server-action result shape is `ActionResult` from `app/actions/types.ts` — never re-declare either.
 - **Errors over fallbacks**: throw / return a 4xx on a missing required value. Never silently default, and never add backward-compat shims. "Simple is king."
 - **Data fetching**: never raw `fetch()` in components — go through a data hook (React Query or the project's chosen pattern). Mutations run in event handlers, never in `useEffect`.
 - **Search before creating**: read existing code first; follow the established pattern and update all call sites when you change one (unified patterns).

@@ -47,7 +47,9 @@ cron (2h) / pnpm ingest:votes[:backfill]
   → upsertVoteHeaders (SET excludes featured/isDecisive/detailsStatus — the dob carve-out)
   → per pending vote: GetVoteDetails → ONE transaction:
       header patch + mk_votes_raw evidence + attribution + queue-on-miss
-  → recomputeDecisive per touched item → ingest_heartbeats stamp
+  → recomputeDecisive per touched item (ONE set-based UPDATE per batch)
+  → self-heal: retry votes stuck pending_details outside the window (≤50/run)
+  → ingest_heartbeats stamp
 ```
 
 - **Attribution** = exact `nameKey` match against human-verified `mk_name_mappings`; `ingestVotes` throws `UnverifiedMappingsError` if ANY row lacks `verifiedAt`. Unmapped → `unmapped_mk_names` queue; resolution backfills from retained `mk_votes_raw` (no re-fetch); dismissals sticky.
@@ -55,7 +57,7 @@ cron (2h) / pnpm ingest:votes[:backfill]
 - **Decisive**: one representative per item (highest accepted reading, else latest scoreable, else latest of ANY type). Scoreable = decisive ∧ (electronic|roll_call) — a hand vote can be decisive (feed spine) but never scored.
 - **Feed pagination**: composite keyset cursor `${iso}_${voteId}` — date-only cursors drop same-timestamp votes (137 live tie groups); garbage cursors → first page.
 - **Stances**: atomic toggle (DELETE-where-same first, else upsert); decisive votes only; aggregate k≥10 + viewer-has-stance; unlock at 5 scoreable stances (edge-triggered `match_unlocked`).
-- **Matching** (on-read, derive-don't-sync): per-MK `matches/shared` over for/against rows, qualify `shared≥5`, low-confidence `<10`, ties by shared→Hebrew name; faction majority needs >50% of for/against/abstain voters; <6 qualified MKs → partial list, never top/bottom panels; farthest party hidden when tied with closest.
+- **Matching** (on-read, derive-don't-sync): per-MK `matches/shared` over for/against rows, qualify `shared≥5`, low-confidence `<10`, ties by shared→Hebrew name; faction majority needs >50% of for/against/abstain voters; <6 qualified MKs → partial list, never top/bottom panels; `worstPartyHidden` discriminates a best/worst tie (page renders "כל הסיעות מסכימות") from having no second party.
 - **Freshness**: `ingest_heartbeats` (NOT max(fetchedAt) — freezes in recess); SLO 6h Mon–Wed (Jerusalem) / 24h else.
 
 ## Key invariants (break these and attribution lies)
