@@ -234,6 +234,14 @@ export default async function Home({
           <p className="text-sm opacity-80">
             משחק. בלי כסף אמיתי. עובדות ותוצאות ממקורות רשמיים בלבד.
           </p>
+          <nav className="flex gap-4 text-sm opacity-80">
+            <Link href="/terms" className="hover:underline">
+              תנאי שימוש
+            </Link>
+            <Link href="/privacy" className="hover:underline">
+              מדיניות פרטיות
+            </Link>
+          </nav>
         </div>
       </footer>
     </>
