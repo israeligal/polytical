@@ -5,7 +5,7 @@
 // detailsStatus) are EXCLUDED from the header upsert SET — the dob carve-out
 // pattern: re-ingest must never clobber them.
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";

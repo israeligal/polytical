@@ -5,6 +5,7 @@ import { computeMatch, LOW_CONFIDENCE_BELOW, type MkMatch } from "@/app/lib/matc
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { track } from "@/app/lib/track";
+import { MY_MATCH_CONTAINER } from "@/components/skeletons/containers";
 
 export const metadata = {
   title: "מי מצביע כמוכם? — פוליטיקל",
@@ -43,7 +44,7 @@ export default async function MyMatchPage() {
   track("match_viewed", { state: result.state });
 
   return (
-    <main className="mx-auto max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={MY_MATCH_CONTAINER}>
       <p className="text-sm font-bold text-primary">העמדות שלכם מול המליאה</p>
       <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">מי מצביע כמוכם?</h1>
       <p className="mt-2 mb-8 text-muted-foreground">

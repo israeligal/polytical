@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
 import { getStancesForVotes } from "@/app/lib/stances/repo";
+import { VOTES_PAGE_CONTAINER } from "@/components/skeletons/containers";
 
 export const metadata = {
   title: "הצבעות במליאה — פוליטיקל",
@@ -34,7 +35,7 @@ export default async function VotesPage({
     : new Map<number, "for" | "against">();
 
   return (
-    <main className="mx-auto max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={VOTES_PAGE_CONTAINER}>
       <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-primary">הקלפי של המליאה</p>

@@ -16,6 +16,7 @@ import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { ChatBubble, ChevronForward, Users } from "@/components/icons";
+import { MARKET_CONTAINER , MARKET_GRID } from "@/components/skeletons/containers";
 
 export default async function MarketPage({
   params,
@@ -66,7 +67,7 @@ export default async function MarketPage({
       : [];
 
   return (
-    <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={MARKET_CONTAINER}>
       <CelebrationHost predictions={celebrations} />
       <Link
         href="/#markets"
@@ -85,7 +86,7 @@ export default async function MarketPage({
       {/* min-w-0 on every grid child: grid items default to min-width:auto, so any
           unbreakable content (long word in a comment, wide image) would otherwise
           force the column wider than the viewport on mobile. */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className={MARKET_GRID}>
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           <div className="mb-3 flex items-center gap-3">
             <CategoryBadge category={market.category} />

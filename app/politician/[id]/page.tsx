@@ -17,6 +17,7 @@ import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
 import { unlockThreshold } from "@/lib/rarity";
 import { getRecentMkVotes } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
+import { POLITICIAN_CONTAINER , POLITICIAN_GRID } from "@/components/skeletons/containers";
 
 export default async function PoliticianPage({
   params,
@@ -62,7 +63,7 @@ export default async function PoliticianPage({
   }));
 
   return (
-    <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={POLITICIAN_CONTAINER}>
       <Link
         href="/politicians"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
@@ -71,7 +72,7 @@ export default async function PoliticianPage({
         חזרה לפוליטיקאים
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+      <div className={POLITICIAN_GRID}>
         <div className="lg:sticky lg:top-24 lg:self-start">
           <CaricatureCard politician={politician} realData interactive={false} />
           {session?.user ? (

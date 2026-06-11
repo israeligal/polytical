@@ -12,6 +12,7 @@ import { getSession } from "@/lib/auth";
 import { getStanceState, MATCH_UNLOCK_THRESHOLD } from "@/app/lib/stances/service";
 import { StanceWidget } from "@/components/stance-widget";
 import { VOTE_TYPE_HE } from "@/components/vote-row";
+import { VOTE_PAGE_CONTAINER } from "@/components/skeletons/containers";
 
 const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: ChipTone }> = {
   for: { label: "בעד", tone: "positive" },
@@ -64,7 +65,7 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
   const nonVoters = vote.totalDidntVote ?? 0;
 
   return (
-    <main className="mx-auto max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className={VOTE_PAGE_CONTAINER}>
       <Link
         href="/votes"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"

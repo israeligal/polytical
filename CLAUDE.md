@@ -52,6 +52,7 @@
 - **Logical Tailwind properties end-to-end**: `ms`/`me`, `ps`/`pe`, `text-start`/`text-end`, `rounded-s`/`rounded-e`, `border-s`/`border-e` — **never** `ml/mr/pl/pr/left/right`.
 - Set `dir`/`lang` from a single source; wrap Radix in a `DirectionProvider`; flip directional icons under `[dir="rtl"]`.
 - All v1 user-facing copy is **Hebrew**; times display in **Asia/Jerusalem**, stored as UTC (see `time-and-timezone`).
+- **Loading states**: every route's `loading.tsx` imports a named skeleton from `components/skeletons/` (stories in `skeletons.stories.tsx` — review them against the real page whenever sections change); pages and skeletons share container/grid classes via `components/skeletons/containers.ts`, so the page shape can't drift from its skeleton.
 
 ## Neon / Drizzle specifics
 - Use `prepare: false` for the pgbouncer (pooled) connection; **import the shared `db` client only** — never re-instantiate `neon()`/`drizzle()` per script.
