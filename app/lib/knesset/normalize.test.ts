@@ -184,6 +184,14 @@ test("resolveRoleLabel: bare/blank minister DutyDesc → 'שר ללא תיק'", 
   expect(resolveRoleLabel({ rows: [ptp({ PositionID: 39, DutyDesc: "שר" })], positionLabels: LABELS })).toBe("שר ללא תיק");
 });
 
+test("resolveRoleLabel: female multi-portfolio skips 'שרה נוספת' secondary", () => {
+  const rows = [
+    ptp({ PositionID: 57, DutyDesc: "שרה נוספת במשרד האוצר" }),
+    ptp({ PositionID: 57, DutyDesc: "שרת התחבורה" }),
+  ];
+  expect(resolveRoleLabel({ rows, positionLabels: LABELS })).toBe("שרת התחבורה");
+});
+
 test("resolveRoleLabel: PM outranks everything", () => {
   const rows = [ptp({ PositionID: 45 }), ptp({ PositionID: 39, DutyDesc: "שר האוצר" })];
   expect(resolveRoleLabel({ rows, positionLabels: LABELS })).toBe("ראש הממשלה");

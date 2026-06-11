@@ -23,14 +23,16 @@ export const PM_POSITIONS = new Set([45, 51, 73]);        // PM / acting / alter
 export const MINISTER_POSITIONS = new Set([39, 57]);      // שר / שרה
 export const DEPUTY_MINISTER_POSITIONS = new Set([40, 59]);
 const SPEAKER = 122, DEPUTY_SPEAKER = 70, FACTION_CHAIR = 48;
-const SECONDARY_MINISTER_PREFIX = "שר נוסף"; // an "additional minister at X" qualifier
+// "additional minister at X" qualifier (masc. "שר נוסף" — final pe ף; fem. "שרה נוספת" —
+// regular pe פ) — secondary, never the primary portfolio.
+const SECONDARY_MINISTER_RE = /^שר(ה)? נוס[פף]/;
 
 /** Specific minister title from DutyDesc; bare/blank → "שר ללא תיק" (no portfolio). */
 function ministerTitle(rows: KnsPersonToPosition[]): string | null {
   const mins = rows.filter((r) => MINISTER_POSITIONS.has(r.PositionID));
   if (!mins.length) return null;
   const titles = mins.map((r) => (r.DutyDesc ?? "").trim()).filter(Boolean);
-  const primary = titles.find((t) => !t.startsWith(SECONDARY_MINISTER_PREFIX)) ?? titles[0];
+  const primary = titles.find((t) => !SECONDARY_MINISTER_RE.test(t)) ?? titles[0];
   if (!primary || primary === "שר" || primary === "שרה") {
     const femaleOnly = mins.every((r) => r.PositionID === 57);
     return femaleOnly ? "שרה ללא תיק" : "שר ללא תיק";

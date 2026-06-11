@@ -51,7 +51,10 @@ export function dbToCard(row: PoliticianRow): Politician {
   const facts: PoliticianFact[] = [
     ...(hasParty ? [{ label: "סיעה", value: party }] : []),
     { label: "תפקיד", value: role },
-    ...(sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
+    // "בסיעה מאז" only makes sense alongside a current faction — omit it for
+    // partyless cards (Norwegian-law ministers, departed MKs) even if a past
+    // stint gives a year.
+    ...(hasParty && sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
   ];
 
   return {

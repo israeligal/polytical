@@ -86,7 +86,8 @@ export function CaricatureCard({
           )}
         </h3>
         <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
-          {politician.role} · {politician.party}
+          {politician.role}
+          {politician.party ? ` · ${politician.party}` : ""}
         </p>
         {politician.tagline ? (
           <p className="mt-0.5 text-sm italic text-muted-foreground">
