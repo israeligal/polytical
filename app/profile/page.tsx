@@ -300,7 +300,7 @@ function SeasonCard({ board }: { board: Awaited<ReturnType<typeof getSeasonBoard
 
   return (
     <Link
-      href="/seasons"
+      href="/seasons?from=profile"
       className="group block rounded-card border border-accent/30 bg-card p-5 shadow-sm transition-shadow hover:shadow-glow-gold"
     >
       <div className="flex items-center justify-between gap-2">
@@ -347,7 +347,7 @@ function CollectionCard({
 }) {
   return (
     <Link
-      href="/collection"
+      href="/collection?from=profile"
       className="group block rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary"
     >
       <div className="flex items-center justify-between gap-2">
