@@ -7,6 +7,7 @@ const TONE = {
   neutral: "bg-muted text-foreground",
   positive: "bg-positive-soft text-positive",
   negative: "bg-negative-soft text-negative",
+  abstain: "bg-abstain-soft text-abstain", // נמנע — dedicated neutral, not the muted track
 } as const;
 
 export type ChipTone = keyof typeof TONE;

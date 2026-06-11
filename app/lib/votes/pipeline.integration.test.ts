@@ -229,11 +229,12 @@ test("decisive: accepted 2nd reading beats later reservation votes; reservations
   expect(votes.map((v) => v.isDecisive)).toEqual([false, true, false]);
 });
 
-test("pickDecisiveVoteId: no scoreable votes (hand/secret only) → null", () => {
+test("pickDecisiveVoteId: hand/secret-only items fall back to the latest vote (feed spine, never scored)", () => {
   expect(
     pickDecisiveVoteId([
       { voteId: 1, voteType: "hand", decisionHe: null, isAccepted: true, voteDate: new Date("2026-06-01T00:00:00Z") },
       { voteId: 2, voteType: "secret", decisionHe: null, isAccepted: null, voteDate: new Date("2026-06-02T00:00:00Z") },
     ]),
-  ).toBeNull();
+  ).toBe(2);
+  expect(pickDecisiveVoteId([])).toBeNull();
 });

@@ -11,6 +11,7 @@ import { getUnreadCount } from "@/app/lib/notifications/service";
 
 const NAV = [
   { href: "/#markets", label: "שווקים" },
+  { href: "/votes", label: "הצבעות" },
   { href: "/#politicians", label: "פוליטיקאים" },
   { href: "/collection", label: "האוסף" },
   { href: "/seasons", label: "עונה" },

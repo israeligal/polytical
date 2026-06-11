@@ -12,6 +12,9 @@ import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
 import { LeaderboardRow } from "@/components/leaderboard-row";
 import { Trophy } from "@/components/icons";
+import { VoteRow } from "@/components/vote-row";
+import { getVotesFeed } from "@/app/lib/votes/read-repo";
+import { formatDate } from "@/lib/time";
 
 export default async function Home({
   searchParams,
@@ -57,6 +60,7 @@ export default async function Home({
   const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
+  const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
 
   // Real leaderboard: top 8 by correct predictions (handle = display name for
   // now). If the viewer is logged in but outside the top 8, append their own row
@@ -225,6 +229,33 @@ export default async function Home({
               עוד אין מספיק פעילות לטבלה. נחשו על שוק ראשון כדי לפתוח את הדירוג.
             </EmptyState>
           )}
+        </section>
+
+        {/* KNESSET VOTES — real plenum roll-calls (muted stripe continues the alternation) */}
+        <section id="votes" className="scroll-mt-24 border-t border-border bg-muted">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+            <div className="mb-6">
+              <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
+              <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>
+            </div>
+            {recentVotes.length > 0 ? (
+              <div className="mx-auto grid max-w-2xl gap-3">
+                {recentVotes.map((v) => (
+                  <VoteRow key={v.voteId} vote={v} dateHe={formatDate(v.voteDate)} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState className="mx-auto max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
+            )}
+            <p className="mt-5 text-center">
+              <Link
+                href="/votes"
+                className="inline-flex items-center rounded-full border-2 border-primary px-6 py-2.5 text-sm font-bold text-primary transition-all hover:-translate-y-0.5"
+              >
+                לכל ההצבעות — מי בעד ומי נגד
+              </Link>
+            </p>
+          </div>
         </section>
       </main>
 

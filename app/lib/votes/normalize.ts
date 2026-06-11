@@ -137,15 +137,19 @@ function readingRank(decisionHe: string | null): number {
 }
 
 /**
- * The decisive (scoreable) vote of an item: the highest ACCEPTED reading vote,
- * else the latest scoreable vote. Reservation roll-calls (lower/no rank) are
- * thereby excluded from matching — they read as coalition discipline, not
- * positions. Returns null when the item has no scoreable votes at all.
+ * The decisive (representative) vote of an item: the highest ACCEPTED reading
+ * vote among scoreable types, else the latest scoreable vote, else — for
+ * items whose votes are all hand/secret — the latest vote of any type (so the
+ * item still has a feed representative). Reservation roll-calls (lower/no
+ * rank) are thereby excluded from matching — they read as coalition
+ * discipline, not positions. NB: matching must ALSO filter voteType to the
+ * scoreable set; a hand vote can be decisive (feed spine) but never scored.
  */
 export function pickDecisiveVoteId(votes: DecisiveCandidate[]): number | null {
+  if (!votes.length) return null;
   const scoreable = votes.filter((v) => isScoreableType(v.voteType));
-  if (!scoreable.length) return null;
-  const ranked = scoreable
+  const pool = scoreable.length ? scoreable : votes;
+  const ranked = pool
     .map((v) => ({ v, rank: v.isAccepted ? readingRank(v.decisionHe) : 0 }))
     .sort((a, b) =>
       b.rank - a.rank ||
