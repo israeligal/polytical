@@ -112,7 +112,7 @@ export function HotRail({
 }) {
   if (items.length === 0) return null;
   return (
-    <aside className="flex flex-col rounded-card border border-border bg-card shadow-2">
+    <aside className="flex min-w-0 flex-col rounded-card border border-border bg-card shadow-2">
       <p className="flex items-center gap-1.5 border-b border-border px-4 py-3 font-accent text-sm font-bold text-foreground">
         <Flame className="h-4 w-4 text-gold" />
         חם עכשיו
