@@ -19,8 +19,7 @@ import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { PushSettings } from "@/components/pwa/push-settings";
 import { NotificationPrefs } from "@/components/pwa/notification-prefs";
 import { getMutedPushTypes } from "@/app/lib/notifications/prefs";
-import { ChevronForward, Crest, Trophy } from "@/components/icons";
-import { suitForCat } from "@/lib/rarity";
+import { ChevronForward, Gem, Trophy } from "@/components/icons";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
@@ -350,7 +349,7 @@ function CollectionCard({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-2 font-accent text-sm font-bold text-primary">
-          <Crest suit={suitForCat(1)} className="h-4 w-4" />
+          <Gem rarity="legendary" className="h-4 w-4" />
           האוסף שלי
         </span>
         <ChevronForward className="h-4 w-4 text-muted-foreground transition-transform duration-150 group-hover:-translate-x-0.5" />
