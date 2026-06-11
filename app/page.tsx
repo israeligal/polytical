@@ -127,14 +127,9 @@ export default async function Home({
             marketing copy. */}
         <section className="border-b border-border bg-muted">
           <div className={HOME_SECTION_INNER}>
-            <div className="mb-6">
-              <h1 className="font-display text-2xl font-black text-foreground sm:text-3xl">
-                תנו מנדט על הפוליטיקה הישראלית
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                צפו לאן הקהל נוטה ואספו קלפי קריקטורה לפי הדיוק שלכם.
-              </p>
-            </div>
+            {/* No visible title — the markets are the hero (Polymarket-style);
+                sr-only h1 keeps the page's heading structure for a11y/SEO. */}
+            <h1 className="sr-only">פוליטיקל — תחזיות על הפוליטיקה הישראלית</h1>
             {featured && (
               <div className="grid gap-4 lg:grid-cols-3">
                 <div className={hotItems.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}>
