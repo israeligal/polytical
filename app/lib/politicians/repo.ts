@@ -144,13 +144,26 @@ export async function getPoliticianByPersonId({
   return row ?? null;
 }
 
+export type ActivityCounts = { bills: number; queries: number };
 export type PoliticianActivity = {
-  billCount: number;
-  queryCount: number;
+  current: ActivityCounts;          // the current Knesset
+  lifetime: ActivityCounts | null;  // all Knessets — null until the activity-counts ingest runs
   recentBills: { billId: number; nameHe: string }[];
 };
 
-/** An MK's parliamentary activity: bills sponsored, queries submitted, recent bills. */
+/**
+ * An MK's parliamentary activity for the card: bills + queries for the current
+ * Knesset and across their whole career, plus a short recent-bills list.
+ *
+ * The headline counts come from official OData `$inlinecount` totals stored on the
+ * politician row (`billsCurrent`/`billsLifetime`/…), NOT from a join over our K25-only
+ * bill/query tables — that join undercounts a career (a Speaker or ex-minister shows
+ * "2" when the real lifetime total is 213). Until the activity-counts ingest first runs
+ * those columns are null, so we fall back to the legacy join for the current term and
+ * report no lifetime — the card degrades to its old behavior rather than showing a bogus
+ * 0. The recent-bills list always comes from the stored K25 bills (lifetime bill rows
+ * aren't stored — the design is counts-only).
+ */
 export async function getPoliticianActivity({
   db = defaultDb,
   personId,
@@ -158,17 +171,20 @@ export async function getPoliticianActivity({
   db?: DB;
   personId: number;
 }): Promise<PoliticianActivity> {
-  // Join to `bills` so the count only reflects bills we actually store (current
-  // Knesset) — never a stray sponsor row pointing at a bill outside our set.
-  const [bc] = await db
-    .select({ n: sql<number>`count(distinct ${billSponsors.billId})::int` })
-    .from(billSponsors)
-    .innerJoin(bills, eq(bills.billId, billSponsors.billId))
-    .where(eq(billSponsors.personId, personId));
-  const [qc] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(queries)
-    .where(eq(queries.personId, personId));
+  const [p] = await db
+    .select({
+      billsCurrent: politicians.billsCurrent,
+      billsLifetime: politicians.billsLifetime,
+      queriesCurrent: politicians.queriesCurrent,
+      queriesLifetime: politicians.queriesLifetime,
+      activityCountsFetchedAt: politicians.activityCountsFetchedAt,
+    })
+    .from(politicians)
+    .where(eq(politicians.personId, personId))
+    .limit(1);
+
+  // Recent bills: distinct stored (K25) bills this MK sponsored. Join to `bills` so a
+  // stray sponsor row pointing at a bill outside our set never appears.
   const recentBills = await db
     .selectDistinct({ billId: bills.billId, nameHe: bills.nameHe })
     .from(billSponsors)
@@ -176,5 +192,27 @@ export async function getPoliticianActivity({
     .where(eq(billSponsors.personId, personId))
     .orderBy(desc(bills.billId))
     .limit(6);
-  return { billCount: bc?.n ?? 0, queryCount: qc?.n ?? 0, recentBills };
+
+  // Gate on activityCountsFetchedAt — the marker that the activity-counts ingest has run
+  // for this MK — NOT on any single count value (a real count can be 0). Until it runs (or
+  // for an unknown MK), fall back to the stored-bill join for the current term and report
+  // no lifetime figure rather than a misleading 0.
+  if (p?.activityCountsFetchedAt == null) {
+    const [bc] = await db
+      .select({ n: sql<number>`count(distinct ${billSponsors.billId})::int` })
+      .from(billSponsors)
+      .innerJoin(bills, eq(bills.billId, billSponsors.billId))
+      .where(eq(billSponsors.personId, personId));
+    const [qc] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(queries)
+      .where(eq(queries.personId, personId));
+    return { current: { bills: bc?.n ?? 0, queries: qc?.n ?? 0 }, lifetime: null, recentBills };
+  }
+
+  return {
+    current: { bills: p.billsCurrent ?? 0, queries: p.queriesCurrent ?? 0 },
+    lifetime: { bills: p.billsLifetime ?? 0, queries: p.queriesLifetime ?? 0 },
+    recentBills,
+  };
 }

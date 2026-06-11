@@ -1,9 +1,9 @@
 import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
-import { bills } from "@/app/lib/schema";
+import { bills, politicians } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import {
-  fetchAll, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl,
+  fetchAll, fetchCount, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl, CURRENT_KNESSET,
 } from "@/app/lib/knesset/odata";
 import type {
   KnsBill, KnsBillInitiator, KnsCommittee, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsQuery,
@@ -15,10 +15,13 @@ import {
 } from "@/app/lib/knesset/normalize";
 import {
   upsertFactions, upsertMembers, upsertBills, upsertBillSponsors, upsertQueries,
-  upsertCommittees, upsertCommitteeMemberships, upsertFactionStints,
+  upsertCommittees, upsertCommitteeMemberships, upsertFactionStints, upsertActivityCounts,
 } from "@/app/lib/knesset/repo";
+import type { ActivityCountsRow } from "@/app/lib/knesset/repo";
 
-const KNESSET_NUM = 25;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const KNESSET_NUM = CURRENT_KNESSET;
 
 function arg(name: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -128,6 +131,48 @@ async function ingestQueries(prov: { fetchedAt: Date }) {
   logger.info("knesset.ingest.entity_done", { entity: "queries", fetched: raw.length, upserted: n });
 }
 
+// Per-MK parliamentary-activity counts (card-critical, cheap). For EVERY politician on
+// the roster — including departed K25 MKs (active=false), whose profile pages stay live —
+// we ask the official OData for FOUR totals via `$inlinecount` (no row downloads): bills &
+// queries, current-Knesset and lifetime. KNS_BillInitiator has no KnessetNum, so the
+// current-term bill count scopes through the KNS_Bill nav property; KNS_Query carries its
+// own KnessetNum. ~140 MKs × 4 tiny calls — bounded, so it runs in the default ingest.
+async function ingestActivityCounts(prov: { fetchedAt: Date }) {
+  const mks = await db
+    .select({ personId: politicians.personId })
+    .from(politicians);
+  if (mks.length === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "activity_counts", reason: "no politicians — run members first" });
+    return;
+  }
+  const rows: ActivityCountsRow[] = [];
+  let failed = 0;
+  for (const { personId } of mks) {
+    try {
+      const [billsLifetime, billsCurrent, queriesLifetime, queriesCurrent] = await Promise.all([
+        fetchCount({ entity: "KNS_BillInitiator", filter: `PersonID eq ${personId}` }),
+        fetchCount({ entity: "KNS_BillInitiator", filter: `PersonID eq ${personId} and KNS_Bill/KnessetNum eq ${KNESSET_NUM}` }),
+        fetchCount({ entity: "KNS_Query", filter: `PersonID eq ${personId}` }),
+        fetchCount({ entity: "KNS_Query", filter: `PersonID eq ${personId} and KnessetNum eq ${KNESSET_NUM}` }),
+      ]);
+      rows.push({ personId, billsCurrent, billsLifetime, queriesCurrent, queriesLifetime, activityCountsFetchedAt: prov.fetchedAt });
+    } catch (err) {
+      // One MK's fetch failing (after fetchCount's own retries) must not discard every
+      // other MK's counts. Log + skip; the next run retries this MK (idempotent UPDATE).
+      failed += 1;
+      logger.warn("knesset.ingest.activity_count_failed", { personId, err: String(err) });
+    }
+    await sleep(250); // be polite to the service across ~120 MKs
+  }
+  if (rows.length === 0) {
+    // Per-MK tolerance must not extend to total failure: every other step fails the run
+    // loudly, and a green run that wrote nothing would let counts go stale unnoticed.
+    throw new Error(`activity counts: all ${failed} MK count fetches failed — API shape change?`);
+  }
+  const n = await upsertActivityCounts({ db, rows });
+  logger.info("knesset.ingest.entity_done", { entity: "activity_counts", mks: mks.length, written: n, failed });
+}
+
 // Committee LIST (card-critical) — always part of the bounded default.
 async function ingestCommittees(prov: { fetchedAt: Date }) {
   const filter = `KnessetNum eq ${KNESSET_NUM}`;
@@ -166,6 +211,7 @@ async function main() {
   const steps: Record<string, () => Promise<void>> = {
     factions: () => ingestFactions(prov),
     members: () => ingestMembers(prov),
+    activityCounts: () => ingestActivityCounts(prov),
     bills: () => ingestBills(prov),
     billSponsors: () => ingestBillSponsors(prov),
     queries: () => ingestQueries(prov),
@@ -173,13 +219,16 @@ async function main() {
     committeeMemberships: () => ingestCommitteeMemberships(prov),
   };
 
-  // Bounded default (card-critical, ~120 MKs + factions + roles + committee LIST):
-  // factions before members (members reference factionId), then committees.
-  const bounded = ["factions", "members", "committees"];
+  // Bounded default (card-critical, ~120 MKs + factions + roles + activity counts +
+  // committee LIST): factions before members (members reference factionId), activity
+  // counts after members (they UPDATE existing rows by personId), then committees.
+  const bounded = ["factions", "members", "activityCounts", "committees"];
   // Heavy entities (~7387 bills / ~1538 queries + bulk membership CSV) only on --full.
   const heavy = ["bills", "billSponsors", "queries", "committeeMemberships"];
   // Run order keeps dependency order; heavy steps appended when --full is set.
-  const order = full ? ["factions", "members", "bills", "billSponsors", "queries", "committees", "committeeMemberships"] : bounded;
+  const order = full
+    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "queries", "committees", "committeeMemberships"]
+    : bounded;
 
   // A specific --only=<entity> always runs that one (even a heavy one), bypassing the bound.
   for (const key of order) {

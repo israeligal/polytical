@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Tiny-favicon variant (16/32px): same star, strokes thickened from 30 to
+       44 so the triangles survive downscaling; weave covers widened to match. -->
+  <defs>
+    <radialGradient id="bg" cx="0.5" cy="0.5" r="0.71">
+      <stop offset="0" stop-color="#171E3D"/>
+      <stop offset="1" stop-color="#0B1020"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M256 106 L126.1 331 L385.9 331 Z" fill="none" stroke="#00E0A4" stroke-width="44" stroke-linejoin="round"/>
+  <path d="M256 406 L385.9 181 L126.1 181 Z" fill="none" stroke="#FF4D6D" stroke-width="44" stroke-linejoin="round"/>
+  <line x1="231.7" y1="148.0" x2="193.7" y2="214.0" stroke="#00E0A4" stroke-width="44"/>
+  <line x1="323.6" y1="223.0" x2="361.6" y2="289.0" stroke="#00E0A4" stroke-width="44"/>
+  <line x1="176.7" y1="331" x2="248.7" y2="331" stroke="#00E0A4" stroke-width="44"/>
+</svg>

@@ -4,6 +4,13 @@ import type { ODataPage } from "./odata-types";
 /** System of record. ParliamentInfo.svc — NOT Votes.svc (frozen at K24, deferred). */
 export const PARLIAMENT_BASE = "https://knesset.gov.il/Odata/ParliamentInfo.svc/";
 
+/**
+ * The current Knesset number — single source of truth for the ingest filters AND the
+ * "current term" UI label, so they never drift. Verified current 2026-06-11 (no K26
+ * bills exist). Bump this one line when the 26th Knesset is seated.
+ */
+export const CURRENT_KNESSET = 25;
+
 export type KnsEntity =
   | "KNS_Person"
   | "KNS_PersonToPosition"
@@ -124,6 +131,38 @@ export async function fetchAll<T>({
   }
   logger.info("knesset.odata.fetched", { entity, filter, rows: out.length, pages });
   return out;
+}
+
+/**
+ * Pulls the total off an `$inlinecount=allpages` response. The live service returns
+ * `odata.count` as a STRING ("213"), so we coerce. Throws on a missing/garbage value
+ * rather than silently reporting 0 — a wrong count is worse than a loud failure.
+ */
+export function odataCountFromPage(page: ODataPage<unknown>): number {
+  const raw = page["odata.count"];
+  // NB: Number("") === 0, so an empty/whitespace string must be treated as garbage too.
+  const n = raw == null || (typeof raw === "string" && raw.trim() === "") ? NaN : Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new Error(`odata.count missing/invalid (got ${JSON.stringify(raw)}) — API shape changed?`);
+  }
+  return n;
+}
+
+/**
+ * Counts rows matching a filter in ONE call, WITHOUT downloading them, via
+ * `$inlinecount=allpages&$top=1`. This is the only working count mechanism on
+ * ParliamentInfo.svc (`$count=true`/`$count` path are unsupported — see the
+ * `knesset-odata` skill). Used for per-MK activity totals (bills/queries,
+ * current-term and lifetime) so a single MK costs 4 tiny calls, not a bulk download.
+ */
+export async function fetchCount({
+  entity, filter, retries = 2, retryDelayMs = 500, base = PARLIAMENT_BASE,
+}: {
+  entity: KnsEntity; filter: string; retries?: number; retryDelayMs?: number; base?: string;
+}): Promise<number> {
+  const url = `${buildODataUrl({ entity, filter, top: 1, base })}&${encodeURIComponent("$inlinecount")}=allpages`;
+  const page = await fetchPage(url, retries, retryDelayMs);
+  return odataCountFromPage(page);
 }
 
 /** Convenience for the verified current-MK roster filter. */

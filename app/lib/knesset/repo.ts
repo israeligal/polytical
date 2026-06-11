@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { chunk, sqlExcluded, type AppDb } from "@/app/lib/db-utils";
 import {
   politicians, factions, bills, billSponsors, queries, committees, committeeMemberships, factionStints,
@@ -29,6 +30,47 @@ export async function upsertMembers({ db, rows }: { db: DB; rows: MemberRow[] })
     n += batch.length;
   }
   logger.info("knesset.repo.upsert", { entity: "politicians", rows: n });
+  return n;
+}
+
+/** Per-MK parliamentary-activity counts (official OData $inlinecount totals). */
+export interface ActivityCountsRow {
+  personId: number;
+  billsCurrent: number;
+  billsLifetime: number;
+  queriesCurrent: number;
+  queriesLifetime: number;
+  activityCountsFetchedAt: Date;
+}
+
+/**
+ * Writes the 4 activity counts onto existing politician rows (keyed by the stable
+ * personId — members are ingested first, and the caller sources these personIds from
+ * the politicians table, so every UPDATE matches). These columns are carved out of
+ * `upsertMembers`' SET, so the roster refresh never clobbers them and vice-versa.
+ *
+ * Deliberately a per-row UPDATE, not the file's batched `insert … onConflictDoUpdate`
+ * pattern: `politicians` has NOT NULL roster columns (nameHe/searchName/provenance) we
+ * don't carry here, so an insert path would fail those constraints before reaching the
+ * conflict. The rows already exist; this only ever updates. ~120 write-rare rows/run.
+ */
+export async function upsertActivityCounts({ db, rows }: { db: DB; rows: ActivityCountsRow[] }): Promise<number> {
+  let n = 0;
+  for (const r of rows) {
+    const updated = await db.update(politicians)
+      .set({
+        billsCurrent: r.billsCurrent, billsLifetime: r.billsLifetime,
+        queriesCurrent: r.queriesCurrent, queriesLifetime: r.queriesLifetime,
+        activityCountsFetchedAt: r.activityCountsFetchedAt,
+      })
+      .where(eq(politicians.personId, r.personId))
+      .returning({ personId: politicians.personId });
+    if (updated.length === 0) {
+      throw new Error(`activity counts: no politician row for personId ${r.personId} — roster out of sync`);
+    }
+    n += 1;
+  }
+  logger.info("knesset.repo.upsert", { entity: "activity_counts", rows: n });
   return n;
 }
 
