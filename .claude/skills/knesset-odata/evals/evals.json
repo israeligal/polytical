@@ -1,0 +1,42 @@
+{
+  "skill_name": "knesset-odata",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "ohana-career-vs-current",
+      "prompt": "On Amir Ohana's politician page in our app it says he proposed only 2 bills. He's been an MK since 2015, so that can't be his whole record. How many bills has he actually proposed across his entire career versus just in the current Knesset? Give me the real numbers and how you got them.",
+      "files": [],
+      "assertions": [
+        {"text": "Reports current-term (25th Knesset) bills = 2", "type": "qualitative"},
+        {"text": "Reports lifetime bills = 213", "type": "qualitative"},
+        {"text": "Uses $inlinecount=allpages for the count (NOT the broken $count=true / $count path)", "type": "qualitative"},
+        {"text": "Resolves Ohana to PersonID 30300 (by id, not Hebrew string), and does not confuse him with the homonym 585", "type": "qualitative"},
+        {"text": "Does NOT bulk-download every Knesset / sum-up to get the total", "type": "qualitative"}
+      ]
+    },
+    {
+      "id": 1,
+      "eval_name": "wire-counts-into-cards",
+      "prompt": "I want to add 'current term vs lifetime' bill and query counts to our politician cards. For a given Knesset PersonID, how do I pull those four numbers from the Knesset OData without downloading every Knesset's worth of bills? Show me the exact queries.",
+      "files": [],
+      "assertions": [
+        {"text": "Recommends $inlinecount=allpages to get a total in one call without downloading rows", "type": "qualitative"},
+        {"text": "Uses KNS_BillInitiator filtered by PersonID, with KNS_Bill/KnessetNum nav-property filter for the current-term bills", "type": "qualitative"},
+        {"text": "Uses KNS_Query (which carries its own KnessetNum) for the query counts", "type": "qualitative"},
+        {"text": "Surfaces at least one real gotcha (odata.count is a string / KNS_BillInitiator has no KnessetNum / $count=true is broken / %20 not +)", "type": "qualitative"},
+        {"text": "Explicitly avoids a bulk per-Knesset download", "type": "qualitative"}
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "mk427-queries-current-vs-lifetime",
+      "prompt": "How many parliamentary queries (שאילתות) did the MK with PersonID 427 file in the 25th Knesset versus in total across all Knessets?",
+      "files": [],
+      "assertions": [
+        {"text": "Reports current-term (25th Knesset) queries = 2", "type": "qualitative"},
+        {"text": "Reports lifetime queries = 3", "type": "qualitative"},
+        {"text": "Uses KNS_Query with PersonID eq 427 and $inlinecount=allpages (KnessetNum eq 25 for current term)", "type": "qualitative"}
+      ]
+    }
+  ]
+}

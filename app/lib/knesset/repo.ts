@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";
@@ -53,6 +53,43 @@ export async function upsertMembers({ db, rows }: { db: DB; rows: MemberRow[] })
     n += batch.length;
   }
   logger.info("knesset.repo.upsert", { entity: "politicians", rows: n });
+  return n;
+}
+
+/** Per-MK parliamentary-activity counts (official OData $inlinecount totals). */
+export interface ActivityCountsRow {
+  personId: number;
+  billsCurrent: number;
+  billsLifetime: number;
+  queriesCurrent: number;
+  queriesLifetime: number;
+  activityCountsFetchedAt: Date;
+}
+
+/**
+ * Writes the 4 activity counts onto existing politician rows (keyed by the stable
+ * personId — members are ingested first, and the caller sources these personIds from
+ * the politicians table, so every UPDATE matches). These columns are carved out of
+ * `upsertMembers`' SET, so the roster refresh never clobbers them and vice-versa.
+ *
+ * Deliberately a per-row UPDATE, not the file's batched `insert … onConflictDoUpdate`
+ * pattern: `politicians` has NOT NULL roster columns (nameHe/searchName/provenance) we
+ * don't carry here, so an insert path would fail those constraints before reaching the
+ * conflict. The rows already exist; this only ever updates. ~120 write-rare rows/run.
+ */
+export async function upsertActivityCounts({ db, rows }: { db: DB; rows: ActivityCountsRow[] }): Promise<number> {
+  let n = 0;
+  for (const r of rows) {
+    await db.update(politicians)
+      .set({
+        billsCurrent: r.billsCurrent, billsLifetime: r.billsLifetime,
+        queriesCurrent: r.queriesCurrent, queriesLifetime: r.queriesLifetime,
+        activityCountsFetchedAt: r.activityCountsFetchedAt,
+      })
+      .where(eq(politicians.personId, r.personId));
+    n += 1;
+  }
+  logger.info("knesset.repo.upsert", { entity: "activity_counts", rows: n });
   return n;
 }
 

@@ -7,6 +7,7 @@ import {
   getPoliticianByPersonId,
 } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
+import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 import { getMarketsForPolitician, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -137,15 +138,25 @@ export default async function PoliticianPage({
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
               <p className="nums font-display text-3xl font-black text-primary">
-                {activity.billCount}
+                {(activity.lifetime ?? activity.current).bills}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">הצעות חוק</p>
+              {activity.lifetime && (
+                <p className="nums mt-1 text-xs text-muted-foreground">
+                  <bdi>{activity.current.bills}</bdi> בכנסת ה-{CURRENT_KNESSET}
+                </p>
+              )}
             </div>
             <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
               <p className="nums font-display text-3xl font-black text-primary">
-                {activity.queryCount}
+                {(activity.lifetime ?? activity.current).queries}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">שאילתות</p>
+              {activity.lifetime && (
+                <p className="nums mt-1 text-xs text-muted-foreground">
+                  <bdi>{activity.current.queries}</bdi> בכנסת ה-{CURRENT_KNESSET}
+                </p>
+              )}
             </div>
           </div>
           {activity.recentBills.length > 0 && (

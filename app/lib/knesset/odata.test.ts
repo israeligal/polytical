@@ -1,8 +1,35 @@
 import { describe, expect, test, vi, afterEach } from "vitest";
-import { buildODataUrl, fetchAll, PARLIAMENT_BASE } from "./odata";
+import { buildODataUrl, fetchAll, fetchCount, odataCountFromPage, PARLIAMENT_BASE } from "./odata";
 import type { KnsFaction, ODataPage } from "./odata-types";
 
 afterEach(() => vi.restoreAllMocks());
+
+describe("odataCountFromPage", () => {
+  test("coerces the STRING odata.count the live service returns", () => {
+    expect(odataCountFromPage({ "odata.count": "213", value: [] })).toBe(213);
+    expect(odataCountFromPage({ "odata.count": "0", value: [] })).toBe(0);
+  });
+  test("throws (never silently 0) when odata.count is missing or garbage", () => {
+    expect(() => odataCountFromPage({ value: [] })).toThrow();
+    expect(() => odataCountFromPage({ "odata.count": "abc", value: [] })).toThrow();
+  });
+});
+
+describe("fetchCount", () => {
+  test("requests $inlinecount=allpages with $top=1 and returns the parsed total", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ "odata.count": "213", value: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const n = await fetchCount({ entity: "KNS_BillInitiator", filter: "PersonID eq 30300" });
+    expect(n).toBe(213);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("%24inlinecount=allpages");
+    expect(url).toContain("%24top=1");
+    expect(url).toContain("PersonID%20eq%2030300");
+  });
+});
 
 describe("buildODataUrl", () => {
   test("always sets $format=json and the base", () => {

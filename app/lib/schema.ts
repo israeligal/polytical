@@ -103,6 +103,15 @@ export const politicians = pgTable(
     imageUrl: text("imageUrl"),                        // AI caricature path (e.g. /caricatures/<personId>.png); null → styled fallback
     active: boolean("active").notNull().default(true),
     searchName: text("searchName").notNull().default(""), // unaccent(lower(nameHe)), niqqud/finals/particles normalized
+    // Parliamentary-activity counts, official OData `$inlinecount` totals (NOT a join
+    // over our K25-only bill/query tables — those undercount a career). "current" = the
+    // current Knesset; "lifetime" = all Knessets the MK served. Nullable until the
+    // activity-counts ingest step runs; member re-ingest never overwrites them (like dob).
+    billsCurrent: integer("billsCurrent"),
+    billsLifetime: integer("billsLifetime"),
+    queriesCurrent: integer("queriesCurrent"),
+    queriesLifetime: integer("queriesLifetime"),
+    activityCountsFetchedAt: timestamp("activityCountsFetchedAt"), // freshness/provenance of the 4 counts
     sourceDataset: text("sourceDataset").notNull(),
     sourceUrl: text("sourceUrl").notNull(),
     fetchedAt: timestamp("fetchedAt").notNull(),

@@ -104,4 +104,7 @@ export interface ODataPage<T> {
   value?: T[];
   "odata.nextLink"?: string;
   "@odata.nextLink"?: string;
+  // Total-row count when requested via `$inlinecount=allpages`. The service returns
+  // it as a STRING (e.g. "213") under this key — `$count=true` is NOT supported here.
+  "odata.count"?: string;
 }
