@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { MarketKind, OutcomeInput, PoliticianOption } from "@/lib/types";
 import { createMarketAction } from "@/app/actions/admin-markets";
 import { MULTI_MAX_OUTCOMES, MULTI_MIN_OUTCOMES } from "@/app/lib/markets/constants";
@@ -23,6 +23,11 @@ interface MultiRow {
   person: PoliticianOption | null;
 }
 
+// Module-level row-key counter: stable React keys for dynamic outcome rows
+// without reading a ref during render (react-hooks/refs).
+let nextRowKey = 0;
+const freshRow = (): MultiRow => ({ key: nextRowKey++, labelHe: "", person: null });
+
 /**
  * Functional-plain admin form to create a market. Two kinds: yes/no (two
  * labels) and multi — a single-pick market with MULTI_MIN..MULTI_MAX candidate
@@ -41,8 +46,6 @@ export function CreateMarketForm({
   const [kind, setKind] = useState<MarketKind>("binary");
   const [hot, setHot] = useState(false);
   const [binaryOutcomes, setBinaryOutcomes] = useState<[string, string]>(["כן", "לא"]);
-  const rowKey = useRef(0);
-  const freshRow = (): MultiRow => ({ key: rowKey.current++, labelHe: "", person: null });
   const [rows, setRows] = useState<MultiRow[]>(() => [freshRow(), freshRow(), freshRow()]);
   const [featured, setFeatured] = useState<PoliticianOption[]>([]);
   const [message, setMessage] = useState<string | null>(null);
