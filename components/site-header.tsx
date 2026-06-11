@@ -80,7 +80,8 @@ export async function SiteHeader() {
                   aria-label="פרופיל"
                   className="grid h-10 w-10 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
                 >
-                  <span aria-hidden="true">{initial}</span>
+                  {/* leading-none: the font's tall line box otherwise floats the glyph off-center */}
+                  <span aria-hidden="true" className="leading-none">{initial}</span>
                 </Link>
                 <SignOutButton />
               </>
