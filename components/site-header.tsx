@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
 import { MobileMenu } from "@/components/mobile-menu";
 import { getSession } from "@/lib/auth";
-import { THEME_COOKIE, type Theme } from "@/lib/theme";
+import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 
 // האוסף + עונה are personal progress — they live on /profile now, not the nav.
@@ -22,7 +22,7 @@ export async function SiteHeader() {
   const user = session?.user ?? null;
   const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
-  const theme: Theme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
+  const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
 
   return (
     <header

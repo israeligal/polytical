@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Secular_One, Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
-import { THEME_COOKIE, type Theme } from "@/lib/theme";
+import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { ServiceWorkerRegistration } from "@/components/pwa/sw-register";
 import { PwaInstall } from "@/components/pwa/pwa-install";
 
@@ -47,8 +47,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Light is the default canvas; the browser chrome matches white.
-  themeColor: "#ffffff",
+  // Dark is the default canvas; the browser chrome matches the trading floor.
+  themeColor: "#0b1020",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // iOS notch / safe-area handling
@@ -60,8 +60,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Read the persisted theme server-side so the correct palette is in the first
-  // paint — no flash. Default is light; only an explicit "dark" cookie opts out.
-  const theme: Theme = (await cookies()).get(THEME_COOKIE)?.value === "dark" ? "dark" : "light";
+  // paint — no flash. Default is dark; only an explicit "light" cookie opts out.
+  const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
   return (
     <html
       lang="he"
