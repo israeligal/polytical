@@ -160,7 +160,7 @@ export default async function ProfilePage() {
           <EmptyState>
             אין לך ניחושים פתוחים.{" "}
             <Link href="/#markets" className="font-semibold text-primary hover:underline">
-              בחרו שוק לנחש עליו
+              בחרו תחזית לנחש עליה
             </Link>
             .
           </EmptyState>

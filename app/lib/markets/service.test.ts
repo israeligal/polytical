@@ -13,6 +13,7 @@ import {
   markets,
   outcomes,
   bets,
+  comments,
   notifications,
   politicians,
   marketPoliticians,
@@ -22,12 +23,14 @@ import {
 import {
   AlreadyResolvedError,
   MarketClosedError,
+  MarketNotFoundError,
   InvalidOutcomeError,
 } from "@/app/lib/errors";
 import {
   makePrediction,
   resolveMarket,
   voidMarket,
+  deleteMarket,
   notifyClosingSoonMarkets,
 } from "./service";
 import { markClosingSoonNotified } from "./repo";
@@ -680,4 +683,175 @@ test("voidMarket on an already-voided market throws AlreadyResolvedError (termin
   const { marketId: mId } = await seedMarket();
   await voidMarket({ db: h.db, marketId: mId });
   await expect(voidMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(AlreadyResolvedError);
+});
+
+// ---------------------------------------------------------------------------
+// Multi markets: a politician-linked winning outcome scopes card progress
+// ---------------------------------------------------------------------------
+
+/** Seeds an open multi market ("מי ירכיב?") with two politician-linked candidate
+ *  outcomes + an unlinked "אחר", both MKs featured (as createMarket would sync). */
+async function seedMultiMarket() {
+  const personA = 9101;
+  const personB = 9102;
+  await h.db.insert(politicians).values([
+    {
+      personId: personA, nameHe: "מועמד א", roleHe: "חבר הכנסת",
+      sourceDataset: "test", sourceUrl: "https://test.example", fetchedAt: new Date(),
+      searchName: "מועמד א",
+    },
+    {
+      personId: personB, nameHe: "מועמד ב", roleHe: "חבר הכנסת",
+      sourceDataset: "test", sourceUrl: "https://test.example", fetchedAt: new Date(),
+      searchName: "מועמד ב",
+    },
+  ]);
+  const [m] = await h.db
+    .insert(markets)
+    .values({
+      questionHe: "מי ירכיב את הממשלה הבאה?",
+      category: "coalition",
+      type: "multi",
+      status: "open",
+      closeAt: new Date(Date.now() + 86400_000),
+    })
+    .returning({ id: markets.id });
+  const outs = await h.db
+    .insert(outcomes)
+    .values([
+      { marketId: m.id, labelHe: "מועמד א", cat: 1, ordinal: 0, personId: personA },
+      { marketId: m.id, labelHe: "מועמד ב", cat: 2, ordinal: 1, personId: personB },
+      { marketId: m.id, labelHe: "אחר", cat: 3, ordinal: 2 },
+    ])
+    .returning({ id: outcomes.id });
+  await h.db.insert(marketPoliticians).values([
+    { marketId: m.id, personId: personA },
+    { marketId: m.id, personId: personB },
+  ]);
+  return { marketId: m.id, outA: outs[0].id, outB: outs[1].id, outOther: outs[2].id, personA, personB };
+}
+
+async function progressFor(userId: string, personId: number) {
+  const [row] = await h.db
+    .select()
+    .from(cardProgress)
+    .where(and(eq(cardProgress.userId, userId), eq(cardProgress.personId, personId)));
+  return row?.correctCount ?? 0;
+}
+
+test("resolveMarket with a politician-linked winner advances ONLY that MK's progress", async () => {
+  await seedUser("scoped");
+  const m = await seedMultiMarket();
+  await makePrediction({ db: h.db, userId: "scoped", marketId: m.marketId, outcomeId: m.outA });
+  await resolveMarket({ db: h.db, marketId: m.marketId, winningOutcomeId: m.outA });
+
+  // Correct pick on the candidate-A outcome: A advances, B (also featured) does NOT.
+  expect(await progressFor("scoped", m.personA)).toBe(1);
+  expect(await progressFor("scoped", m.personB)).toBe(0);
+  expect(await userStats("scoped")).toEqual({ totalResolved: 1, totalWins: 1 });
+});
+
+test("resolveMarket with an unlinked winner (אחר) keeps the market-level behavior", async () => {
+  await seedUser("fallback");
+  const m = await seedMultiMarket();
+  await makePrediction({ db: h.db, userId: "fallback", marketId: m.marketId, outcomeId: m.outOther });
+  await resolveMarket({ db: h.db, marketId: m.marketId, winningOutcomeId: m.outOther });
+
+  // "אחר" carries no personId → every featured MK advances (legacy behavior).
+  expect(await progressFor("fallback", m.personA)).toBe(1);
+  expect(await progressFor("fallback", m.personB)).toBe(1);
+});
+
+test("a WRONG pick on a multi market advances nobody's progress", async () => {
+  await seedUser("wrongpick");
+  const m = await seedMultiMarket();
+  await makePrediction({ db: h.db, userId: "wrongpick", marketId: m.marketId, outcomeId: m.outB });
+  await resolveMarket({ db: h.db, marketId: m.marketId, winningOutcomeId: m.outA });
+
+  expect(await progressFor("wrongpick", m.personA)).toBe(0);
+  expect(await progressFor("wrongpick", m.personB)).toBe(0);
+  expect(await userStats("wrongpick")).toEqual({ totalResolved: 1, totalWins: 0 });
+});
+
+// ---------------------------------------------------------------------------
+// deleteMarket: hard removal — cascades, predictor notice, resolved guard
+// ---------------------------------------------------------------------------
+
+test("deleteMarket removes the market and cascades outcomes, predictions and comments", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await h.db.insert(comments).values({ marketId: mId, userId: "a", body: "תגובה" });
+
+  await deleteMarket({ db: h.db, marketId: mId });
+
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
+  expect((await h.db.select().from(outcomes).where(eq(outcomes.marketId, mId))).length).toBe(0);
+  expect((await h.db.select().from(bets).where(eq(bets.marketId, mId))).length).toBe(0);
+  expect((await h.db.select().from(comments).where(eq(comments.marketId, mId))).length).toBe(0);
+});
+
+test("deleteMarket notifies each predictor (rows survive the delete) and pushes once after commit", async () => {
+  await seedUser("a");
+  await seedUser("b");
+  const { marketId: mId, yesId, noId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await makePrediction({ db: h.db, userId: "b", marketId: mId, outcomeId: noId });
+
+  await deleteMarket({ db: h.db, marketId: mId });
+
+  // In-app market_voided rows survive the delete, with a NULL market ref so
+  // the feed/push links fall back to /profile//notifications instead of 404ing.
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.map((n) => n.userId).sort()).toEqual(["a", "b"]);
+  expect(voided.every((n) => n.refMarketId === null)).toBe(true);
+
+  expect(dispatchPushMock).toHaveBeenCalledTimes(1);
+  const { events } = dispatchPushMock.mock.calls[0][0];
+  expect(
+    events
+      .filter((e: { type: string; userId: string }) => e.type === "market_voided")
+      .map((e: { type: string; userId: string }) => e.userId)
+      .sort(),
+  ).toEqual(["a", "b"]);
+});
+
+test("deleteMarket on a resolved market throws AlreadyResolvedError and deletes nothing", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await resolveMarket({ db: h.db, marketId: mId, winningOutcomeId: yesId });
+
+  await expect(deleteMarket({ db: h.db, marketId: mId })).rejects.toBeInstanceOf(AlreadyResolvedError);
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(1);
+});
+
+test("deleteMarket on an unknown market throws MarketNotFoundError", async () => {
+  await expect(
+    deleteMarket({ db: h.db, marketId: "00000000-0000-0000-0000-000000000000" }),
+  ).rejects.toBeInstanceOf(MarketNotFoundError);
+});
+
+test("deleteMarket CAN remove a voided market without re-notifying its predictors", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  await voidMarket({ db: h.db, marketId: mId }); // predictor notified here
+
+  await deleteMarket({ db: h.db, marketId: mId });
+
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
+  // Only the void's notice exists — the delete must not send a duplicate.
+  const voided = (await h.db.select().from(notifications)).filter((n) => n.type === "market_voided");
+  expect(voided.length).toBe(1);
+});
+
+test("deleteMarket survives a push rejection — the delete is not undone", async () => {
+  await seedUser("a");
+  const { marketId: mId, yesId } = await seedMarket();
+  await makePrediction({ db: h.db, userId: "a", marketId: mId, outcomeId: yesId });
+  dispatchPushMock.mockRejectedValueOnce(new Error("push down"));
+
+  await deleteMarket({ db: h.db, marketId: mId });
+  expect((await h.db.select().from(markets).where(eq(markets.id, mId))).length).toBe(0);
 });

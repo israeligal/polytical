@@ -28,7 +28,7 @@ export default async function SuggestPage({
         <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">הצעה לסדר</h1>
         <p className="mt-2 text-muted-foreground">
           יש לכם שאלה שחייבת לעלות לסדר־היום? הגישו אותה כמו חבר כנסת מן המניין.
-          הצעות שמאושרות על ידי ההנהלה נפתחות כשוק לכל הקהילה. נסחו שאלה שאפשר
+          הצעות שמאושרות על ידי ההנהלה נפתחות כתחזית לכל הקהילה. נסחו שאלה שאפשר
           להכריע באופן חד־משמעי ממקור רשמי, וקבעו מתי היא תוכרע.
         </p>
       </header>

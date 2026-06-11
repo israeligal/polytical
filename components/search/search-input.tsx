@@ -33,7 +33,7 @@ export function SearchInput({ initialQuery }: { initialQuery: string }) {
         autoFocus
         defaultValue={initialQuery}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="חיפוש שווקים ופוליטיקאים…"
+        placeholder="חיפוש תחזיות ופוליטיקאים…"
         className="w-full rounded-card border-2 border-border bg-card py-3 ps-12 pe-4 text-lg text-foreground shadow-3 transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none"
       />
     </div>

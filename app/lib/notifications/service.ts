@@ -20,7 +20,10 @@ export type NotificationEvent =
   | { type: "market_resolved"; userId: string; marketId: string; questionHe: string }
   | { type: "suggestion_approved"; userId: string; suggestionId: string; marketId: string; questionHe: string }
   | { type: "suggestion_rejected"; userId: string; suggestionId: string; questionHe: string; note?: string | null }
-  | { type: "market_voided"; userId: string; marketId: string; questionHe: string }
+  // marketId is null when the market was hard-DELETED (not just voided) — the
+  // in-app link and push URL then fall back to /profile and /notifications
+  // instead of deep-linking a market page that would 404.
+  | { type: "market_voided"; userId: string; marketId: string | null; questionHe: string }
   | { type: "market_closing_soon"; userId: string; marketId: string; questionHe: string };
 
 // Exported so the push dispatcher derives its `{title, body}` from the SAME
@@ -31,13 +34,13 @@ export function composeNotification(e: NotificationEvent): NewNotification {
       return {
         userId: e.userId, type: "bet_won",
         titleHe: "ניחשת נכון! 🎯",
-        bodyHe: `צדקת בתחזית · ${e.questionHe}`,
+        bodyHe: `צדקת בניחוש · ${e.questionHe}`,
         refMarketId: e.marketId, refBetId: e.betId,
       };
     case "market_resolved":
       return {
         userId: e.userId, type: "market_resolved",
-        titleHe: "שוק שניחשת בו הוכרע",
+        titleHe: "תחזית שניחשת בה הוכרעה",
         bodyHe: e.questionHe,
         refMarketId: e.marketId,
       };
@@ -45,7 +48,7 @@ export function composeNotification(e: NotificationEvent): NewNotification {
       return {
         userId: e.userId, type: "suggestion_approved",
         titleHe: "ההצעה שלך אושרה",
-        bodyHe: `נפתח שוק חדש: ${e.questionHe}`,
+        bodyHe: `נפתחה תחזית חדשה: ${e.questionHe}`,
         refMarketId: e.marketId, refSuggestionId: e.suggestionId,
       };
     case "suggestion_rejected":
@@ -58,14 +61,14 @@ export function composeNotification(e: NotificationEvent): NewNotification {
     case "market_voided":
       return {
         userId: e.userId, type: "market_voided",
-        titleHe: "השוק בוטל",
-        bodyHe: `התחזית שלך בוטלה · ${e.questionHe}`,
+        titleHe: "התחזית בוטלה",
+        bodyHe: `הניחוש שלך בוטל · ${e.questionHe}`,
         refMarketId: e.marketId,
       };
     case "market_closing_soon":
       return {
         userId: e.userId, type: "market_closing_soon",
-        titleHe: "שוק נסגר בקרוב ⏰",
+        titleHe: "תחזית נסגרת בקרוב ⏰",
         bodyHe: `הספיקו לנחש לפני הסגירה · ${e.questionHe}`,
         refMarketId: e.marketId,
       };

@@ -68,7 +68,7 @@ test("resolveMarket emits bet_won for the correct predictor + market_resolved pe
   expect(won?.refMarketId).toBe(marketId);
   // New copy: no coins — just accuracy confirmation.
   expect(won?.titleHe).toBe("ניחשת נכון! 🎯");
-  expect(won?.bodyHe).toContain("צדקת בתחזית");
+  expect(won?.bodyHe).toContain("צדקת בניחוש");
 });
 
 test("getUnreadCount + markNotificationRead are scope-guarded", async () => {

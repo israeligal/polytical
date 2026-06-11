@@ -11,21 +11,29 @@ import { ChevronForward, Crest, Gem, Lock } from "@/components/icons";
  * `realData` flags a DB-backed MK (no mock markets exist for them): the footer
  * shows a neutral "קלף שחקן" badge instead of calling `marketsForPolitician`.
  * Mock-driven callers (homepage markets, market detail) omit it and keep the
- * live "X שווקים פעילים" count — so existing behavior is untouched.
+ * live "X תחזיות פעילות" count — so existing behavior is untouched.
  *
  * `owned` (defaults true) drives the collection gallery: an un-owned card renders
  * dimmed + desaturated with a lock chip, so all existing call sites stay untouched.
+ *
+ * Click model: portrait, name, and the footer CTA all link to the politician
+ * page. The CTA is the single keyboard/screen-reader link (portrait + name are
+ * tabIndex={-1}) so each card costs one tab stop, not three. The politician
+ * page renders its own card with `interactive={false}` — no self-links, no CTA.
  */
 export function CaricatureCard({
   politician,
   realData = false,
   owned = true,
+  interactive = true,
 }: {
   politician: Politician;
   realData?: boolean;
   owned?: boolean;
+  interactive?: boolean;
 }) {
   const count = realData ? 0 : marketsForPolitician(politician.id).length;
+  const href = `/politician/${politician.id}`;
   // Stature ladder: gold=sitting PM, silver=former PM, bronze=great office, base=MK.
   const rarity = statureTierForPolitician({ personId: Number(politician.id), role: politician.role });
   const suit = suitForCat(politician.cat);
@@ -50,11 +58,32 @@ export function CaricatureCard({
         </span>
       </div>
 
-      <div className="px-4 pb-4">
-        <PoliticianPortrait politician={politician} size="card" />
+      <div className={interactive ? "px-4" : "px-4 pb-4"}>
+        {interactive ? (
+          <Link
+            href={href}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="block transition duration-200 hover:brightness-105 active:scale-[.99]"
+          >
+            <PoliticianPortrait politician={politician} size="card" />
+          </Link>
+        ) : (
+          <PoliticianPortrait politician={politician} size="card" />
+        )}
 
         <h3 className="mt-3 font-display text-2xl leading-tight text-foreground">
-          {politician.name}
+          {interactive ? (
+            <Link
+              href={href}
+              tabIndex={-1}
+              className="transition-colors hover:text-primary"
+            >
+              {politician.name}
+            </Link>
+          ) : (
+            politician.name
+          )}
         </h3>
         <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
           {politician.role} · {politician.party}
@@ -75,21 +104,25 @@ export function CaricatureCard({
         </dl>
       </div>
 
-      <Link
-        href={`/politician/${politician.id}`}
-        className="mt-auto flex items-center justify-between border-t border-border px-4 py-3 text-sm font-bold text-muted-foreground transition-colors hover:text-primary"
-      >
-        <span>
-          {realData ? (
-            "קלף שחקן"
-          ) : (
-            <>
-              <span className="nums">{count}</span> שווקים פעילים
-            </>
-          )}
-        </span>
-        <ChevronForward className="h-4 w-4" />
-      </Link>
+      {interactive && (
+      <div className="mt-auto px-4 pb-4 pt-4">
+        <Link
+          href={href}
+          className="group flex w-full items-center justify-center gap-2 rounded-[12px] bg-primary py-3 font-accent text-sm font-extrabold text-primary-foreground transition-all duration-150 hover:bg-primary-hover hover:shadow-glow-mint active:scale-[.99]"
+        >
+          <span>
+            {realData ? (
+              "לקלף השחקן"
+            ) : (
+              <>
+                <span className="nums">{count}</span> תחזיות פעילות
+              </>
+            )}
+          </span>
+          <ChevronForward className="h-4 w-4 transition-transform duration-150 group-hover:-translate-x-0.5" />
+        </Link>
+      </div>
+      )}
     </article>
   );
 }

@@ -57,8 +57,10 @@ export async function makePrediction({
 /** Resolves a market to its winning outcome and tallies right/wrong for every
  *  predictor in one tx. A predictor is RIGHT iff their pick is the winning
  *  outcome → bump totalWins; everyone who predicted gets +1 totalResolved. Each
- *  correct call also advances the user's card-unlock progress for every politician
- *  featured in the market, granting the card when the rarity threshold is reached.
+ *  correct call also advances the user's card-unlock progress — for the winning
+ *  outcome's linked politician alone when the outcome carries a personId (multi
+ *  markets), otherwise for every politician featured in the market — granting
+ *  the card when the rarity threshold is reached.
  *  No pools, no payouts, no refunds. Market-first lock ordering: concurrent
  *  predictions block on the market lock and cannot race the settlement. */
 export async function resolveMarket({
@@ -87,7 +89,26 @@ export async function resolveMarket({
     if (!winner) throw new InvalidOutcomeError();
     const predictions = await repo.listPredictions({ tx, marketId });
     // The market's featured politicians (+ their role) drive card-unlock thresholds.
+    // A winning outcome that is ITSELF a politician (outcomes.personId — multi
+    // markets like "מי ירכיב את הממשלה?") scopes progress to that MK alone:
+    // predicting Netanyahu must not advance Bennett's card. The role is looked
+    // up by personId directly (not via market_politicians) so the scoping also
+    // survives links backfilled outside createMarket's auto-feature sync. An
+    // unlinked winner ("אחר", or any binary outcome) keeps the market-level
+    // behavior — every featured MK advances.
     const persons = await repo.getMarketPoliticianRoles({ tx, marketId });
+    let progressPersons = persons;
+    if (winner.personId != null) {
+      const linked = await repo.getPoliticianRoleByPersonId({ tx, personId: winner.personId });
+      progressPersons = linked ? [linked] : persons.filter((p) => p.personId === winner.personId);
+      if (progressPersons.length === 0)
+        // A linked winner pointing at a politician we can't resolve means card
+        // progress would be silently skipped — surface it, don't bury it.
+        logger.error("markets.resolve.linked_winner_unresolvable", {
+          marketId,
+          personId: winner.personId,
+        });
+    }
     // Notification events accumulate here and emit (in this same tx) after the
     // market is marked resolved — so the "you were right" notice is atomic with it.
     const events: NotificationEvent[] = [];
@@ -95,9 +116,9 @@ export async function resolveMarket({
       const won = p.outcomeId === winningOutcomeId;
       await repo.bumpUserStats({ tx, userId: p.userId, won });
       if (won) {
-        // Each correct call advances accuracy progress on every featured MK; cross
+        // Each correct call advances accuracy progress on the scoped MKs; cross
         // the rarity threshold → grant the card (idempotent on the unique index).
-        for (const person of persons) {
+        for (const person of progressPersons) {
           const count = await cardsRepo.bumpCardProgress({ tx, userId: p.userId, personId: person.personId });
           if (count >= unlockThreshold({ personId: person.personId, role: person.roleHe }))
             await cardsRepo.insertOwnership({ tx, userId: p.userId, personId: person.personId });
@@ -152,6 +173,50 @@ export async function voidMarket({
     await dispatchPush({ db, events: dispatched });
   } catch (e) {
     logger.error("push.void_dispatch_failed", { marketId, err: String(e) });
+  }
+}
+
+/** Hard-deletes an invalid market: notifies every predictor ("התחזית בוטלה" —
+ *  reuses the market_voided copy; notifications carry no market FK so the rows
+ *  survive), then deletes the row — FK cascades wipe outcomes, predictions and
+ *  comments atomically. The notice carries marketId: null so its link falls
+ *  back to the inbox/profile instead of 404ing on the deleted market page, and
+ *  an already-VOIDED market notifies nobody (its predictors got the void notice).
+ *  RESOLVED markets are protected (their outcome already bumped accuracy stats
+ *  and card progress; deleting one would orphan those), so an admin catches an
+ *  invalid market before resolution — or voids it. Same market-first lock
+ *  ordering as resolveMarket. */
+export async function deleteMarket({
+  db = defaultDb,
+  marketId,
+}: {
+  db?: DB;
+  marketId: string;
+}): Promise<void> {
+  let dispatched: NotificationEvent[] = [];
+  await db.transaction(async (tx) => {
+    const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
+    if (!market) throw new MarketNotFoundError();
+    if (market.status === "resolved") throw new AlreadyResolvedError();
+    // One notice per distinct predictor, emitted BEFORE the delete so both
+    // commit (or roll back) together. Skipped for voided markets — those
+    // predictors were already notified when the market was voided.
+    const bettors = market.status === "voided" ? [] : await repo.getMarketBettors({ tx, marketId });
+    const events: NotificationEvent[] = bettors.map((uid) => ({
+      type: "market_voided" as const,
+      userId: uid,
+      marketId: null,
+      questionHe: market.questionHe,
+    }));
+    await emitNotifications({ tx, events });
+    await repo.deleteMarket({ tx, marketId });
+    dispatched = events;
+  });
+  // Best-effort push AFTER commit (a push failure must never undo the delete).
+  try {
+    await dispatchPush({ db, events: dispatched });
+  } catch (e) {
+    logger.error("push.delete_dispatch_failed", { marketId, err: String(e) });
   }
 }
 

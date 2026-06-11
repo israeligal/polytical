@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { makePrediction } from "@/app/lib/markets/service";
-import { MarketClosedError } from "@/app/lib/errors";
+import { MarketClosedError, MarketNotFoundError } from "@/app/lib/errors";
 
 /** Server action: record (or change) the signed-in user's prediction on a market.
  *  Stake-less — one pick per market, changeable until close. Returns a
@@ -26,7 +26,9 @@ export async function makePredictionAction({
     revalidatePath(`/market/${marketId}`);
     return { ok: true };
   } catch (e) {
-    if (e instanceof MarketClosedError) return { ok: false, message: "השוק סגור" };
+    if (e instanceof MarketClosedError) return { ok: false, message: "התחזית סגורה" };
+    // The market can be hard-deleted by an admin while the page is open.
+    if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית הוסרה" };
     throw e;
   }
 }

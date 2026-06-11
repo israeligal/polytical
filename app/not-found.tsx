@@ -11,14 +11,14 @@ export default function NotFound() {
         הדף לא נמצא
       </h1>
       <p className="mt-3 max-w-md text-muted-foreground">
-        הקלף או השוק שחיפשתם לא קיים — אולי הקישור שגוי או שהשוק הוסר.
+        הקלף או התחזית שחיפשתם לא קיימים — אולי הקישור שגוי או שהתחזית הוסרה.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
           href="/"
           className="rounded-lg bg-primary px-5 py-3 font-bold text-primary-foreground transition-colors hover:bg-primary-hover"
         >
-          חזרה לשווקים
+          חזרה לתחזיות
         </Link>
         <Link
           href="/politicians"

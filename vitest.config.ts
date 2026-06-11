@@ -26,6 +26,9 @@ export default defineConfig({
           name: "node",
           environment: "node",
           include: ["**/*.test.ts"],
+          // .claude/worktrees holds other sessions' in-progress checkouts —
+          // their duplicated suites must not run (or fail) in the root run.
+          exclude: ["**/node_modules/**", "**/.claude/**"],
           pool: "forks",
           testTimeout: 30000,
           hookTimeout: 30000,
@@ -37,6 +40,7 @@ export default defineConfig({
           name: "dom",
           environment: "happy-dom",
           include: ["**/*.test.tsx"],
+          exclude: ["**/node_modules/**", "**/.claude/**"],
         },
       },
     ],

@@ -2,6 +2,10 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-11 | 7e4a516 | prod: Bennett missing from מי-ירכיב market (user report) | 🔴 | NO politicians row; inserted 23511 (OData provenance, inactive) + market link; renders live |
+| 2026-06-11 | 7e4a516 | prod: Eizenkot caricature missing (user report) | 🔴 | imageUrl NULL, no file; generated sapphire card via Gemini → /caricatures/30836.png; Bennett silver card too |
+| 2026-06-11 | 7e4a516 | prod: ALL 119 active MKs image sweep | ✅ | every politicians.imageUrl set AND serves 200 on prod; no wider issue |
+| 2026-06-11 | 1662daa | rename שווקים→תחזיות + card CTA + suggest pill + login note | ✅ | suite 294/294; browser-verified home/login/politicians/seasons; rebased over multi-outcome merge (2 new strings renamed) |
 | 2026-06-10 | b605d11 | onboarding: Hebrew handle prefill + 🎲 reroll + mixed-script reject | ✅ | fresh signup → @סגן_אמיץ_75 פנוי✓; reroll; מנדטx inline error; onboarded @הסכם_מסתורי |
 | 2026-06-10 | b605d11 | /suggest הצעה לסדר rename + required due date + source field | ✅ | submit gated on date; מגישים…; success copy; no מהקהל eyebrow |
 | 2026-06-10 | b605d11 | /admin queue pre-fill from proposedCloseAt + source note | ✅ | closeAt prefilled 2026-12-31T20:00 exact; rejected QA row → queue 0 |

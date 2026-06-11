@@ -1,6 +1,6 @@
 CREATE TYPE "public"."agenda_item_source" AS ENUM('ingest', 'admin');--> statement-breakpoint
 CREATE TYPE "public"."agenda_item_status" AS ENUM('announced', 'voted', 'dropped');--> statement-breakpoint
-CREATE TYPE "public"."knesset_vote_type" AS ENUM('electronic', 'hand');--> statement-breakpoint
+CREATE TYPE "public"."knesset_vote_type" AS ENUM('electronic', 'hand', 'roll_call', 'secret');--> statement-breakpoint
 CREATE TYPE "public"."mapping_status" AS ENUM('pending', 'resolved', 'dismissed');--> statement-breakpoint
 CREATE TYPE "public"."mk_vote_result" AS ENUM('for', 'against', 'abstain', 'didnt_vote');--> statement-breakpoint
 CREATE TYPE "public"."user_stance" AS ENUM('for', 'against');--> statement-breakpoint
@@ -33,6 +33,11 @@ CREATE TABLE "faction_stints" (
 	"sourceUrl" text NOT NULL,
 	"fetchedAt" timestamp NOT NULL,
 	CONSTRAINT "faction_stints_personToPositionId_unique" UNIQUE("personToPositionId")
+);
+--> statement-breakpoint
+CREATE TABLE "ingest_heartbeats" (
+	"job" text PRIMARY KEY NOT NULL,
+	"lastSuccessAt" timestamp NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "knesset_votes" (

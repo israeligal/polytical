@@ -61,7 +61,7 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   }
 
   if (items.length === 0) {
-    return <EmptyState>אין התראות עדיין. נחשו על שוק כדי להתחיל.</EmptyState>;
+    return <EmptyState>אין התראות עדיין. נחשו על תחזית כדי להתחיל.</EmptyState>;
   }
 
   const hasUnread = items.some((i) => !i.read);

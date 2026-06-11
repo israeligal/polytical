@@ -4,7 +4,7 @@ export default function Loading() {
     <main
       role="status"
       aria-busy="true"
-      aria-label="טוען שוק"
+      aria-label="טוען תחזית"
       className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
     >
       <span className="sr-only">טוען…</span>

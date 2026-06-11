@@ -98,7 +98,7 @@ export default async function Home({
             <div className="grid items-center gap-8 lg:grid-cols-2">
               <div>
                 <p className="text-sm font-bold text-primary">
-                  מהדורת היום · שוק הניחושים
+                  מהדורת היום · זירת התחזיות
                 </p>
                 <h1 className="mt-2 font-display text-4xl font-black leading-[1.1] text-foreground sm:text-5xl">
                   נחשו את הפוליטיקה הישראלית.
@@ -128,7 +128,7 @@ export default async function Home({
                 <div>
                   <p className="mb-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">
-                      {featuredIsHot ? "השוק החם של היום" : "שוק היום · הכי פעיל"}
+                      {featuredIsHot ? "התחזית החמה של היום" : "תחזית היום · הכי פעילה"}
                     </span>
                   </p>
                   <MarketCard market={featured.market} featured={featured.featured} />
@@ -144,7 +144,7 @@ export default async function Home({
           className="mx-auto max-w-6xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8 lg:py-16"
         >
           <div className="mb-5">
-            <p className="text-sm font-bold text-primary">השווקים</p>
+            <p className="text-sm font-bold text-primary">התחזיות</p>
             <h2 className="font-display text-3xl font-bold text-foreground">
               על מה מנחשים עכשיו
             </h2>
@@ -159,7 +159,7 @@ export default async function Home({
               ))}
             </div>
           ) : (
-            <EmptyState>אין שווקים פתוחים בקטגוריה הזו כרגע.</EmptyState>
+            <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
           )}
         </section>
 
@@ -176,7 +176,7 @@ export default async function Home({
                   פוליטיקאים על המגרש
                 </h2>
                 <p className="mt-2 text-lg text-muted-foreground">
-                  כל פוליטיקאי הוא קלף קריקטורה — עובדות, סטטיסטיקות, והשווקים
+                  כל פוליטיקאי הוא קלף קריקטורה — עובדות, סטטיסטיקות, והתחזיות
                   שסביבו. כל עובדה ממקור רשמי.
                 </p>
               </div>
@@ -226,7 +226,7 @@ export default async function Home({
             </div>
           ) : (
             <EmptyState className="mx-auto max-w-2xl">
-              עוד אין מספיק פעילות לטבלה. נחשו על שוק ראשון כדי לפתוח את הדירוג.
+              עוד אין מספיק פעילות לטבלה. נחשו על תחזית ראשונה כדי לפתוח את הדירוג.
             </EmptyState>
           )}
         </section>
@@ -265,6 +265,14 @@ export default async function Home({
           <p className="text-sm opacity-80">
             משחק. בלי כסף אמיתי. עובדות ותוצאות ממקורות רשמיים בלבד.
           </p>
+          <nav className="flex gap-4 text-sm opacity-80">
+            <Link href="/terms" className="hover:underline">
+              תנאי שימוש
+            </Link>
+            <Link href="/privacy" className="hover:underline">
+              מדיניות פרטיות
+            </Link>
+          </nav>
         </div>
       </footer>
     </>

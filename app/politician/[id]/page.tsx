@@ -73,7 +73,7 @@ export default async function PoliticianPage({
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <CaricatureCard politician={politician} realData />
+          <CaricatureCard politician={politician} realData interactive={false} />
           {session?.user ? (
             owned ? (
               <div className="mt-4 flex items-center justify-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-bold text-accent">
@@ -87,7 +87,7 @@ export default async function PoliticianPage({
                   פתחו את הקלף בדיוק
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  נחשו נכון <span className="nums font-bold text-foreground">{threshold}</span> פעמים בשווקים שמופיע בהם כדי לאסוף את הקלף.
+                  נחשו נכון <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות שהוא מופיע בהן כדי לאסוף את הקלף.
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
                   <div
@@ -219,7 +219,7 @@ export default async function PoliticianPage({
 
           <div className="mb-3 mt-8 flex items-center justify-between gap-3">
             <h2 className="font-display text-xl font-bold text-foreground">
-              השווקים של {politician.name}
+              התחזיות של {politician.name}
             </h2>
             <Link
               href={`/suggest?person=${personId}`}
@@ -236,9 +236,9 @@ export default async function PoliticianPage({
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center">
-              <p className="font-display text-lg font-bold text-foreground">עדיין אין שווקים</p>
+              <p className="font-display text-lg font-bold text-foreground">עדיין אין תחזיות</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                עוד לא נפתחו שווקים סביב {politician.name}.{" "}
+                עוד לא נפתחו תחזיות סביב {politician.name}.{" "}
                 <Link href={`/suggest?person=${personId}`} className="font-bold text-primary hover:underline">
                   הגישו הצעה לסדר
                 </Link>

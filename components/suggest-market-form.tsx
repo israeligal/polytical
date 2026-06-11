@@ -76,7 +76,7 @@ export function SuggestMarketForm({
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div>
         <label className={LABEL} htmlFor="question">
-          שאלת השוק
+          שאלת התחזית
         </label>
         <textarea
           id="question"

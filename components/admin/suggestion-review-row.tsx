@@ -140,7 +140,7 @@ export function SuggestionReviewRow({
           disabled={pending}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          {pending ? "…" : "אשר ופתח שוק"}
+          {pending ? "…" : "אשר ופתח תחזית"}
         </button>
         <button
           type="button"

@@ -1,0 +1,1 @@
+ALTER TABLE "outcomes" ADD COLUMN "personId" integer;

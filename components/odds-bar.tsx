@@ -1,5 +1,5 @@
 import type { Market } from "@/lib/types";
-import { pct } from "@/lib/format";
+import { pct, pctLabel } from "@/lib/format";
 import { catBg } from "@/lib/cat";
 
 /**
@@ -9,7 +9,7 @@ import { catBg } from "@/lib/cat";
  * the crowd of predictors moves. Multi uses categorical segments + a legend.
  * The split is the share of predictors (people) on each outcome.
  */
-export function OddsBar({ market }: { market: Market }) {
+export function OddsBar({ market, compact = false }: { market: Market; compact?: boolean }) {
   const total = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
 
   if (market.type === "binary") {
@@ -46,15 +46,31 @@ export function OddsBar({ market }: { market: Market }) {
           />
         ))}
       </div>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1">
-        {sorted.map((o) => (
-          <li key={o.id} className="inline-flex items-center gap-1.5 text-sm">
-            <span className={`h-2.5 w-2.5 rounded-full ${catBg[o.color ?? 1]}`} />
-            <span className="font-semibold text-foreground">{o.label}</span>
-            <span className="nums font-bold text-muted-foreground">{pct(o.predictors, total)}%</span>
-          </li>
-        ))}
-      </ul>
+      {compact ? (
+        // Feed-card footprint: just the two front-runners + how many more.
+        <p className="truncate text-sm text-muted-foreground">
+          {sorted.slice(0, 2).map((o, i) => (
+            <span key={o.id}>
+              {i > 0 && <span className="mx-1.5 text-border">·</span>}
+              <span className="font-semibold text-foreground">{o.label}</span>{" "}
+              <span className="nums font-bold">{pctLabel(o.predictors, total)}</span>
+            </span>
+          ))}
+          {sorted.length > 2 && (
+            <span className="nums ms-1.5 font-bold">‎+{sorted.length - 2}</span>
+          )}
+        </p>
+      ) : (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1">
+          {sorted.map((o) => (
+            <li key={o.id} className="inline-flex items-center gap-1.5 text-sm">
+              <span className={`h-2.5 w-2.5 rounded-full ${catBg[o.color ?? 1]}`} />
+              <span className="font-semibold text-foreground">{o.label}</span>
+              <span className="nums font-bold text-muted-foreground">{pctLabel(o.predictors, total)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { resolveMarketAction, voidMarketAction } from "@/app/actions/admin-markets";
+import { deleteMarketAction, resolveMarketAction, voidMarketAction } from "@/app/actions/admin-markets";
 import { formatDateTime } from "@/lib/time";
 
 const FIELD =
@@ -10,8 +10,8 @@ const FIELD =
 /**
  * One row of the admin market list: shows the market, its outcomes + the live
  * crowd split (predictor counts), and inline resolve (pick a winning outcome,
- * optional source/note) and void controls. Both call admin server actions (which
- * re-check admin + tally right/wrong) and surface the result message.
+ * optional source/note), void, and hard-delete controls. All call admin server
+ * actions (which re-check admin) and surface the result message.
  */
 export function MarketAdminRow({
   marketId,
@@ -61,8 +61,14 @@ export function MarketAdminRow({
   }
 
   function onVoid() {
-    if (!window.confirm("לבטל את השוק?")) return;
+    if (!window.confirm("לבטל את התחזית?")) return;
     run(() => voidMarketAction({ marketId }));
+  }
+
+  function onDelete() {
+    if (!window.confirm("למחוק את התחזית לצמיתות? כל הניחושים והתגובות יימחקו ולא ניתן לשחזר."))
+      return;
+    run(() => deleteMarketAction({ marketId }));
   }
 
   return (
@@ -127,7 +133,7 @@ export function MarketAdminRow({
             disabled={pending}
             className="rounded-lg bg-positive px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
-            {pending ? "מסלק…" : "הכרע שוק"}
+            {pending ? "מסלק…" : "הכרע תחזית"}
           </button>
           <button
             type="button"
@@ -135,7 +141,15 @@ export function MarketAdminRow({
             disabled={pending}
             className="rounded-lg border-2 border-negative px-4 py-2 text-sm font-bold text-negative transition-colors hover:bg-negative/5 disabled:opacity-60"
           >
-            בטל שוק
+            בטל תחזית
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={pending}
+            className="ms-auto rounded-lg bg-negative px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            מחק לצמיתות
           </button>
           {message && (
             <span

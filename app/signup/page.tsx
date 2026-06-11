@@ -122,7 +122,19 @@ function SignUpForm() {
 
         <OrDivider />
 
-        <GoogleSignInButton label="הרשמה עם Google" callbackUrl={callbackUrl} />
+        <GoogleSignInButton label="הרשמה עם Google" callbackURL={callbackUrl} />
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          בהרשמה אתם מאשרים שקראתם והסכמתם ל
+          <Link href="/terms" className="font-semibold text-primary hover:underline">
+            תנאי השימוש
+          </Link>{" "}
+          ול
+          <Link href="/privacy" className="font-semibold text-primary hover:underline">
+            מדיניות הפרטיות
+          </Link>
+          .
+        </p>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           כבר יש לכם חשבון?{" "}

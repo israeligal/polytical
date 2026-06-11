@@ -16,20 +16,20 @@ export interface PushPrefCategory {
 export const PUSH_PREF_CATEGORIES: PushPrefCategory[] = [
   {
     key: "outcomes",
-    labelHe: "תוצאות שווקים",
-    descHe: "ניחוש נכון, הכרעה או ביטול של שוק שניחשתם בו",
+    labelHe: "תוצאות תחזיות",
+    descHe: "ניחוש נכון, הכרעה או ביטול של תחזית שניחשתם בה",
     types: ["bet_won", "market_resolved", "market_voided"],
   },
   {
     key: "closing",
-    labelHe: "שווקים שנסגרים",
-    descHe: "תזכורת כששוק שניחשתם בו עומד להיסגר",
+    labelHe: "תחזיות שנסגרות",
+    descHe: "תזכורת כשתחזית שניחשתם בה עומדת להיסגר",
     types: ["market_closing_soon"],
   },
   {
     key: "suggestions",
-    labelHe: "הצעות שוק",
-    descHe: "אישור או דחייה של שוק שהצעתם",
+    labelHe: "הצעות תחזית",
+    descHe: "אישור או דחייה של תחזית שהצעתם",
     types: ["suggestion_approved", "suggestion_rejected"],
   },
 ];

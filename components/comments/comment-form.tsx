@@ -47,7 +47,7 @@ export function CommentForm({ marketId }: { marketId: string }) {
         onChange={(e) => setBody(e.target.value)}
         maxLength={MAX_COMMENT_LEN}
         rows={3}
-        placeholder="מה דעתכם על השוק הזה?"
+        placeholder="מה דעתכם על התחזית הזו?"
         className="w-full resize-none rounded-lg bg-muted px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
       />
       <div className="mt-3 flex items-center justify-between">

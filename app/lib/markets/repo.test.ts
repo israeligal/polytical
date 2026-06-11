@@ -182,6 +182,33 @@ test("createMarket populates the normalized searchText; searchMarkets finds it",
   expect(await searchMarkets({ db: h.db, q: "קואליציה" })).toEqual([]);
 });
 
+test("createMarket auto-features outcome-linked politicians (union with explicit ids, deduped)", async () => {
+  const { marketId } = await createMarket({
+    db: h.db,
+    questionHe: "מי ירכיב את הממשלה הבאה?",
+    category: "coalition",
+    type: "multi",
+    closeAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+    outcomes: [
+      { labelHe: "מועמד א", cat: 1, ordinal: 0, personId: 90 },
+      { labelHe: "מועמד ב", cat: 2, ordinal: 1, personId: 2107 },
+      { labelHe: "אחר", cat: 3, ordinal: 2 },
+    ],
+    // 90 is ALSO outcome-linked → must not produce a duplicate link row.
+    personIds: [90, 555],
+  });
+
+  const links = await h.db
+    .select()
+    .from(marketPoliticians)
+    .where(eq(marketPoliticians.marketId, marketId));
+  expect(links.map((l) => l.personId).sort((a, b) => a - b)).toEqual([90, 555, 2107]);
+
+  const outs = await h.db.select().from(outcomes).where(eq(outcomes.marketId, marketId));
+  outs.sort((a, b) => a.ordinal - b.ordinal);
+  expect(outs.map((o) => o.personId)).toEqual([90, 2107, null]);
+});
+
 // ================================================================
 // upsertPrediction — one-per-market, changeable pick
 // ================================================================

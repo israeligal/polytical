@@ -1,6 +1,6 @@
 {
-  "id": "135bbec2-0b55-4d5b-a850-b1498d4388bb",
-  "prevId": "b322ed42-23e3-4e04-899c-45b99975d826",
+  "id": "5299ae74-3329-4fd0-bee3-310568b269bb",
+  "prevId": "35f0b931-1331-4706-8b74-aad5b91f679f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1567,6 +1567,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "personId": {
+          "name": "personId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -2580,6 +2586,31 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ingest_heartbeats": {
+      "name": "ingest_heartbeats",
+      "schema": "",
+      "columns": {
+        "job": {
+          "name": "job",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "lastSuccessAt": {
+          "name": "lastSuccessAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

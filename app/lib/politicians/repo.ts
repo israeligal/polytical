@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
@@ -24,18 +24,22 @@ type DB = PgDatabase<
 const GALLERY_ORDER = [asc(politicians.party), asc(politicians.searchName)] as const;
 
 /**
- * All CURRENT MKs, party-then-name ordered (for the full gallery). The roster
- * now also holds departed K25 MKs (`active=false`, needed for vote attribution
- * — see normalizeK25Members); list surfaces filter them out, while
+ * All CURRENT (sitting) MKs, party-then-name ordered (for the full gallery).
+ * The roster also holds departed K25 MKs (`active=false`, needed for vote
+ * attribution — see normalizeK25Members); list surfaces filter them out, while
  * getPoliticianByPersonId keeps serving their profile pages.
  */
 export async function getAllPoliticians({
   db = defaultDb,
 }: { db?: DB } = {}): Promise<PoliticianRow[]> {
-  return db.select().from(politicians).where(eq(politicians.active, true)).orderBy(...GALLERY_ORDER);
+  return db
+    .select()
+    .from(politicians)
+    .where(eq(politicians.active, true))
+    .orderBy(...GALLERY_ORDER);
 }
 
-/** A capped slice of current MKs for the homepage "on the field" section. */
+/** A capped slice of current (sitting) MKs for the homepage "on the field" section. */
 export async function getFeaturedPoliticians({
   db = defaultDb,
   limit = 12,
@@ -59,17 +63,23 @@ export async function searchPoliticians({
   db = defaultDb,
   q,
   limit = 24,
+  includeInactive = false,
 }: {
   db?: DB;
   q: string;
   limit?: number;
+  /** Admin market-creation only: a candidate outcome can be a FORMER MK/PM
+   *  ("מי ירכיב את הממשלה?" with a non-sitting contender), so the picker may
+   *  search past the active roster. Public discovery stays active-only. */
+  includeInactive?: boolean;
 }): Promise<PoliticianRow[]> {
   const needle = q.trim();
   if (!needle) return [];
+  const match = sql`${politicians.searchName} ILIKE ${"%" + needle + "%"}`;
   return db
     .select()
     .from(politicians)
-    .where(and(eq(politicians.active, true), sql`${politicians.searchName} ILIKE ${"%" + needle + "%"}`))
+    .where(includeInactive ? match : and(eq(politicians.active, true), match))
     .orderBy(...GALLERY_ORDER)
     .limit(limit);
 }
@@ -101,6 +111,20 @@ export async function listAllPoliticianNames({
     .from(politicians)
     .orderBy(asc(politicians.searchName));
   return rows;
+}
+
+/** Politicians by a set of stable personIds (admin-side existence validation
+ *  for outcome links — never name-matched). */
+export async function getPoliticiansByPersonIds({
+  db = defaultDb,
+  personIds,
+}: {
+  db?: DB;
+  personIds: number[];
+}): Promise<PoliticianRow[]> {
+  const ids = [...new Set(personIds)];
+  if (ids.length === 0) return [];
+  return db.select().from(politicians).where(inArray(politicians.personId, ids));
 }
 
 /** A single MK by their canonical KNS_Person.PersonID (the route id). */

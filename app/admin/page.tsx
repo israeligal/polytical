@@ -51,15 +51,15 @@ export default async function AdminPage() {
     <main className="mx-auto max-w-4xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-8">
         <p className="text-sm font-bold text-primary">קונסולת ניהול</p>
-        <h1 className="font-display text-3xl font-black text-foreground">ניהול שווקים</h1>
+        <h1 className="font-display text-3xl font-black text-foreground">ניהול תחזיות</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          יצירת שווקים, הכרעה (סיכום מי ניחש נכון) וביטול שוק. ההכרעה מעדכנת את
+          יצירת תחזיות, הכרעה (סיכום מי ניחש נכון) וביטול תחזית. ההכרעה מעדכנת את
           רשומת הניחושים של כל מי שניחש.
         </p>
       </header>
 
       <section className="mb-12">
-        <h2 className="mb-3 font-display text-xl font-bold text-foreground">שוק חדש</h2>
+        <h2 className="mb-3 font-display text-xl font-bold text-foreground">תחזית חדשה</h2>
         <CreateMarketForm
           categories={CATEGORIES.map((c) => ({ key: c.key, he: c.he }))}
         />
@@ -94,7 +94,7 @@ export default async function AdminPage() {
 
       <section>
         <h2 className="mb-3 font-display text-xl font-bold text-foreground">
-          שווקים פתוחים וסגורים ({manageable.length})
+          תחזיות בניהול ({manageable.length})
         </h2>
         {manageable.length > 0 ? (
           <div className="space-y-4">
@@ -116,7 +116,7 @@ export default async function AdminPage() {
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center text-muted-foreground">
-            אין שווקים פתוחים או סגורים כרגע.
+            אין תחזיות בניהול כרגע.
           </p>
         )}
       </section>

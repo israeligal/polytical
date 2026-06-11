@@ -5,6 +5,7 @@
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 2 | 9/9 |
+| [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
 | [global-search](#global-search) | 2026-06-02 `c36fc23` | 1 | 5/5 |
@@ -42,6 +43,24 @@
 - `worktree-knesset-votes` (2026-06-11): first walk — 2 bugs found+fixed in-pass (raw-sql Date crash in getFeaturedVotes; worst-party tie contradiction on /my-match).
 
 **Known gaps:** panels-mode /my-match (needs 6+ qualified MKs — requires stances on contested votes); withheld-attribution line (queue is empty — data too clean!).
+
+## prod-data-integrity
+
+**What it is:** Every politician a market references resolves to a real row with deployed card art — a user opening any market sees all its politicians with caricatures, never a silent drop or a fallback dome.
+
+**Last walked:** 2026-06-11 `7e4a516`. **Walks:** 1. **Coverage:** 4/5
+
+**Steps:**
+- ✅ every market_politicians personId joins a politicians row (SQL sweep; Bennett 23511 was missing → inserted with Knesset-OData provenance)
+- ✅ every active MK (119) has imageUrl set
+- ✅ every active-MK caricature file serves 200 on prod (curl sweep)
+- ✅ inactive-but-market-linked politicians have card art (Eizenkot 30836 + Bennett 23511 generated)
+- ❌ post-deploy: trigger market shows all three caricatures live (pending Vercel deploy + DB imageUrl flip)
+
+**Notable history:**
+- `7e4a516` (2026-06-11): user report — Eizenkot fallback dome + Bennett absent on מי-ירכיב-את-הממשלה. Root causes: market page resolves by personId WITHOUT an active filter (inactive rows render but had no art); Bennett had no row at all (sync only ingests sitting MKs).
+
+**Known gaps:** no automated guard — a future market linking a politician with no row/art will silently regress; consider a CI check or admin-form validation (the multi-outcome merge added `getPoliticiansByPersonIds` existence validation at creation, which covers the no-row case going forward).
 
 ## notifications-push
 

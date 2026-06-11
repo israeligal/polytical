@@ -24,11 +24,11 @@ describe("NotificationPrefs", () => {
   it("renders a category OFF when its type is muted", () => {
     render(<NotificationPrefs mutedPushTypes={["market_closing_soon"]} />);
     expect(
-      screen.getByRole("switch", { name: "שווקים שנסגרים" }).getAttribute("aria-checked"),
+      screen.getByRole("switch", { name: "תחזיות שנסגרות" }).getAttribute("aria-checked"),
     ).toBe("false");
     // independent: suggestions stays on
     expect(
-      screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
+      screen.getByRole("switch", { name: "הצעות תחזית" }).getAttribute("aria-checked"),
     ).toBe("true");
   });
 
@@ -36,14 +36,14 @@ describe("NotificationPrefs", () => {
     setPushCategoryAction.mockResolvedValue({ ok: true, mutedPushTypes: ["suggestion_approved", "suggestion_rejected"] });
     render(<NotificationPrefs mutedPushTypes={[]} />);
 
-    screen.getByRole("switch", { name: "הצעות שוק" }).click();
+    screen.getByRole("switch", { name: "הצעות תחזית" }).click();
 
     await waitFor(() =>
       expect(setPushCategoryAction).toHaveBeenCalledWith({ category: "suggestions", enabled: false }),
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
+        screen.getByRole("switch", { name: "הצעות תחזית" }).getAttribute("aria-checked"),
       ).toBe("false"),
     );
   });
@@ -52,14 +52,14 @@ describe("NotificationPrefs", () => {
     setPushCategoryAction.mockResolvedValue({ ok: false, message: "האטו לרגע" });
     render(<NotificationPrefs mutedPushTypes={[]} />);
 
-    const sw = screen.getByRole("switch", { name: "הצעות שוק" });
+    const sw = screen.getByRole("switch", { name: "הצעות תחזית" });
     sw.click();
 
     await waitFor(() => expect(setPushCategoryAction).toHaveBeenCalled());
     // failed → reverts back to ON
     await waitFor(() =>
       expect(
-        screen.getByRole("switch", { name: "הצעות שוק" }).getAttribute("aria-checked"),
+        screen.getByRole("switch", { name: "הצעות תחזית" }).getAttribute("aria-checked"),
       ).toBe("true"),
     );
   });

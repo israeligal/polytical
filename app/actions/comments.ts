@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { postComment, toggleCommentUpvote, hideComment } from "@/app/lib/comments/service";
 import { EmptyCommentError, CommentTooLongError } from "@/app/lib/errors";
+import { isForeignKeyViolation } from "@/app/lib/pg-errors";
 
 export async function postCommentAction({ marketId, body }: { marketId: string; body: string }) {
   const s = await getSession();
@@ -17,6 +18,9 @@ export async function postCommentAction({ marketId, body }: { marketId: string; 
   } catch (e) {
     if (e instanceof EmptyCommentError) return { ok: false, message: "אי אפשר להגיב ריק" };
     if (e instanceof CommentTooLongError) return { ok: false, message: "התגובה ארוכה מדי (עד 500 תווים)" };
+    // The market can be hard-deleted while the page is open — the insert then
+    // hits the comments.marketId FK instead of a domain error.
+    if (isForeignKeyViolation(e)) return { ok: false, message: "התחזית הוסרה" };
     throw e;
   }
 }

@@ -45,7 +45,11 @@ async function main() {
   // Discover real featured MKs (only those present in the current roster attach).
   const netanyahu = await findPersonIds(["נתניהו"]);
   const netanyahuLapid = await findPersonIds(["נתניהו", "לפיד"]);
-  const liberman = await findPersonIds(["ליברמן", "כץ"]); // finance-ministry candidates
+  // Finance-ministry candidates resolved INDIVIDUALLY — each multi outcome
+  // links to its own politician (findPersonIds drops misses, which would shift
+  // a shared array's index↔candidate mapping).
+  const libermanId = await findPersonId("ליברמן");
+  const katzId = await findPersonId("כץ");
   const gantz = await findPersonIds(["גנץ"]);
   const benGvir = await findPersonIds(["בן גביר"]);
   const ohana = await findPersonIds(["אוחנה"]);
@@ -84,10 +88,11 @@ async function main() {
       type: "multi",
       hot: false,
       closeAt: CLOSE_WEEKS(16),
-      personIds: liberman,
+      // Outcome-linked MKs are auto-featured by createMarket — no explicit list.
+      personIds: [],
       outcomes: [
-        { labelHe: "אביגדור ליברמן", cat: 1, ordinal: 0 },
-        { labelHe: "ישראל כץ", cat: 2, ordinal: 1 },
+        { labelHe: "אביגדור ליברמן", cat: 1, ordinal: 0, personId: libermanId ?? undefined },
+        { labelHe: "ישראל כץ", cat: 2, ordinal: 1, personId: katzId ?? undefined },
         { labelHe: "אחר", cat: 3, ordinal: 2 },
       ],
     },

@@ -42,7 +42,7 @@ export async function suggestMarketAction({
   resolutionSourceNote?: string | null;
 }): Promise<ActionResult> {
   const s = await getSession();
-  if (!s?.user) return { ok: false, message: "התחברו כדי להציע שוק" };
+  if (!s?.user) return { ok: false, message: "התחברו כדי להציע תחזית" };
 
   const limit = checkRateLimit({ key: `suggest:${s.user.id}`, max: 5, windowMs: 10 * 60 * 1000 });
   if (!limit.allowed) {
@@ -103,7 +103,7 @@ export async function approveSuggestionAction({
   revalidatePath("/admin");
   revalidatePath("/profile");
   revalidatePath("/", "layout");
-  return { ok: true, message: "ההצעה אושרה והשוק נפתח" };
+  return { ok: true, message: "ההצעה אושרה והתחזית נפתחה" };
 }
 
 /** Admin rejects a pending suggestion with an optional note. */
