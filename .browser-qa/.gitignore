@@ -3,3 +3,5 @@ qa-plan.md
 _*.png
 qa-in-progress/
 fixes-in-progress/
+*.png
+*.txt
