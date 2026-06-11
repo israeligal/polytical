@@ -4,8 +4,7 @@ import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { markNotificationRead, markAllNotificationsRead } from "@/app/lib/notifications/service";
 import { NotificationNotFoundError } from "@/app/lib/errors";
-
-type ActionResult = { ok: boolean; message?: string };
+import type { ActionResult } from "./types";
 
 export async function markNotificationReadAction({ id }: { id: string }): Promise<ActionResult> {
   const s = await getSession();

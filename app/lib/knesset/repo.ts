@@ -1,7 +1,4 @@
-import { sql } from "drizzle-orm";
-import type { ExtractTablesWithRelations } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import * as schema from "@/app/lib/schema";
+import { chunk, sqlExcluded, type AppDb } from "@/app/lib/db-utils";
 import {
   politicians, factions, bills, billSponsors, queries, committees, committeeMemberships, factionStints,
 } from "@/app/lib/schema";
@@ -10,29 +7,8 @@ import type {
   MemberRow, FactionRow, BillRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow, FactionStintRow,
 } from "./normalize";
 
-// Driver-agnostic DB handle (mirrors the markets repo's injectable-DB pattern): the
-// production postgres-js `db` and the PGlite test db share Drizzle's PG types
-// and differ only by the query-result HKT. Keeping `TQueryResult` generic lets
-// every upsert accept either without `as any`.
-export type KnessetDb = PgDatabase<
-  PgQueryResultHKT,
-  typeof schema,
-  ExtractTablesWithRelations<typeof schema>
->;
+export type KnessetDb = AppDb;
 type DB = KnessetDb;
-
-/** References the conflicting row's incoming value (Postgres `excluded.<col>`). */
-function sqlExcluded(column: string) {
-  return sql.raw(`excluded."${column}"`);
-}
-
-const BATCH = 100;
-
-function chunk<T>(rows: T[], size = BATCH): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
-  return out;
-}
 
 // politicians — conflict on the unique stable id `personId`.
 export async function upsertMembers({ db, rows }: { db: DB; rows: MemberRow[] }): Promise<number> {

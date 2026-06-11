@@ -5,7 +5,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
 import { typesForCategory, PUSH_PREF_CATEGORY_KEYS } from "@/lib/notification-prefs";
-import { InvalidPushPrefError, MissingUserError } from "@/app/lib/errors";
+import { InvalidPushPrefError, requireUserId } from "@/app/lib/errors";
 
 // Per-user push opt-outs, stored as `user.mutedPushTypes` (notification_type
 // values). Gates web-push only; the in-app notification log is never filtered.
@@ -15,11 +15,6 @@ type DB = PgDatabase<
   typeof schema,
   ExtractTablesWithRelations<typeof schema>
 >;
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /** A single user's muted push types. */
 export async function getMutedPushTypes({
@@ -32,7 +27,7 @@ export async function getMutedPushTypes({
   const [row] = await db
     .select({ muted: users.mutedPushTypes })
     .from(users)
-    .where(eq(users.id, reqUser(userId)));
+    .where(eq(users.id, requireUserId(userId)));
   return row?.muted ?? [];
 }
 
@@ -68,7 +63,7 @@ export async function setPushCategoryMuted({
   category: string;
   muted: boolean;
 }): Promise<{ mutedPushTypes: string[] }> {
-  reqUser(userId);
+  requireUserId(userId);
   if (!PUSH_PREF_CATEGORY_KEYS.includes(category)) throw new InvalidPushPrefError();
 
   const types = typesForCategory(category);

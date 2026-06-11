@@ -5,17 +5,12 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bets, markets, seasons, seasonTiers } from "@/app/lib/schema";
 import type { Tx } from "@/app/lib/db";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
 export type SeasonRow = typeof seasons.$inferSelect;
 export type SeasonTierRow = typeof seasonTiers.$inferSelect;
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /** The single active season (status='active'), or null. */
 export async function getActiveSeason({ db = defaultDb }: { db?: DB } = {}): Promise<SeasonRow | null> {
@@ -76,7 +71,7 @@ export async function getSeasonCorrect({
     .innerJoin(markets, eq(markets.id, bets.marketId))
     .where(
       and(
-        eq(bets.userId, reqUser(userId)),
+        eq(bets.userId, requireUserId(userId)),
         eq(markets.status, "resolved"),
         gte(markets.resolvedAt, startAt),
         lte(markets.resolvedAt, endAt),

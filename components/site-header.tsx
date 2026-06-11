@@ -61,7 +61,7 @@ export async function SiteHeader() {
             <Link
               href="/search"
               aria-label="חיפוש"
-              className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+              className="grid h-10 w-10 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
             >
               <Search className="h-5 w-5" />
             </Link>
@@ -78,7 +78,7 @@ export async function SiteHeader() {
                 <Link
                   href="/profile"
                   aria-label="פרופיל"
-                  className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
                 >
                   <span aria-hidden="true">{initial}</span>
                 </Link>

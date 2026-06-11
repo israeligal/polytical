@@ -5,7 +5,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { notifications } from "@/app/lib/schema";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 // Repository for the notifications event log. `insertNotifications` is tx-aware
 // so it rides the transaction of the event that produced it (resolveMarket /
@@ -31,11 +31,6 @@ export interface NewNotification {
   refSuggestionId?: string | null;
 }
 
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
-
 /** Batched insert that rides the caller's transaction. No-op on empty input. */
 export async function insertNotifications({
   tx,
@@ -47,7 +42,7 @@ export async function insertNotifications({
   if (rows.length === 0) return;
   await tx.insert(notifications).values(
     rows.map((r) => ({
-      userId: reqUser(r.userId),
+      userId: requireUserId(r.userId),
       type: r.type,
       titleHe: r.titleHe,
       bodyHe: r.bodyHe,
@@ -71,7 +66,7 @@ export async function listByUser({
   return db
     .select()
     .from(notifications)
-    .where(eq(notifications.userId, reqUser(userId)))
+    .where(eq(notifications.userId, requireUserId(userId)))
     .orderBy(desc(notifications.createdAt))
     .limit(limit);
 }
@@ -87,7 +82,7 @@ export async function countUnread({
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(notifications)
-    .where(and(eq(notifications.userId, reqUser(userId)), eq(notifications.read, false)));
+    .where(and(eq(notifications.userId, requireUserId(userId)), eq(notifications.read, false)));
   return row?.n ?? 0;
 }
 
@@ -104,7 +99,7 @@ export async function markRead({
   const rows = await db
     .update(notifications)
     .set({ read: true })
-    .where(and(eq(notifications.id, id), eq(notifications.userId, reqUser(userId))))
+    .where(and(eq(notifications.id, id), eq(notifications.userId, requireUserId(userId))))
     .returning({ id: notifications.id });
   return { updated: rows.length };
 }
@@ -120,7 +115,7 @@ export async function markAllRead({
   const rows = await db
     .update(notifications)
     .set({ read: true })
-    .where(and(eq(notifications.userId, reqUser(userId)), eq(notifications.read, false)))
+    .where(and(eq(notifications.userId, requireUserId(userId)), eq(notifications.read, false)))
     .returning({ id: notifications.id });
   return { updated: rows.length };
 }

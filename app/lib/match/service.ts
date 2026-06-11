@@ -62,6 +62,10 @@ export type MatchResult =
       bottom: MkMatch[];
       bestParty: PartyMatch | null;
       worstParty: PartyMatch | null;
+      /** Why worstParty is null when it is: no second qualified faction vs a
+       *  tie with the best (thin unanimous data) — lets the page render a
+       *  distinct "everyone agrees with you" state without a service change. */
+      worstPartyHidden: "none" | "tie" | null;
     };
 
 /** Deterministic order: agreement desc, then more shared evidence, then name. */
@@ -172,7 +176,9 @@ export async function computeMatch({
   // A "farthest" party tied with the best (common on thin unanimous data)
   // reads as a contradiction — show it only when it genuinely disagrees more.
   const last = parties.length > 1 ? parties[parties.length - 1] : null;
-  const worstParty = last && bestParty && last.agreementPct < bestParty.agreementPct ? last : null;
+  const isTie = Boolean(last && bestParty && last.agreementPct >= bestParty.agreementPct);
+  const worstParty = last && !isTie ? last : null;
+  const worstPartyHidden = worstParty ? null : isTie ? ("tie" as const) : ("none" as const);
 
   if (qualified.length >= PANELS_MIN_QUALIFIED) {
     return {
@@ -183,6 +189,7 @@ export async function computeMatch({
       bottom: qualified.slice(-3).reverse(),
       bestParty,
       worstParty,
+      worstPartyHidden,
     };
   }
   return {
@@ -193,5 +200,6 @@ export async function computeMatch({
     bottom: [],
     bestParty,
     worstParty,
+    worstPartyHidden,
   };
 }
