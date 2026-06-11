@@ -9,12 +9,11 @@ import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 
+// האוסף + עונה are personal progress — they live on /profile now, not the nav.
 const NAV = [
   { href: "/#markets", label: "תחזיות" },
   { href: "/votes", label: "הצבעות" },
   { href: "/#politicians", label: "פוליטיקאים" },
-  { href: "/collection", label: "האוסף" },
-  { href: "/seasons", label: "עונה" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];
 

@@ -67,6 +67,10 @@ function LoginForm() {
           </p>
         ) : null}
 
+        <GoogleSignInButton label="התחברות עם Google" callbackURL={callbackUrl} />
+
+        <OrDivider />
+
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-semibold text-foreground">אימייל</span>
@@ -116,10 +120,6 @@ function LoginForm() {
             שכחתם סיסמה?
           </Link>
         </form>
-
-        <OrDivider />
-
-        <GoogleSignInButton label="התחברות עם Google" callbackURL={callbackUrl} />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}

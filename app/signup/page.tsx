@@ -64,6 +64,10 @@ function SignUpForm() {
           <p className="text-sm text-muted-foreground">פתחו חשבון והתחילו לנחש</p>
         </div>
 
+        <GoogleSignInButton label="הרשמה עם Google" callbackURL={callbackUrl} />
+
+        <OrDivider />
+
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-semibold text-foreground">שם</span>
@@ -119,10 +123,6 @@ function SignUpForm() {
             {pending ? "נרשם…" : "הרשמה"}
           </button>
         </form>
-
-        <OrDivider />
-
-        <GoogleSignInButton label="הרשמה עם Google" callbackURL={callbackUrl} />
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           בהרשמה אתם מאשרים שקראתם והסכמתם ל

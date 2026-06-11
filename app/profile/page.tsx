@@ -2,8 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Market } from "@/lib/types";
 import { getSession } from "@/lib/auth";
-import { formatCount } from "@/lib/format";
+import { formatCount, timeUntil } from "@/lib/format";
 import { getUserStats } from "@/app/lib/leaderboard/repo";
+import { getSeasonBoard } from "@/app/lib/seasons/service";
+import { getAllPoliticians } from "@/app/lib/politicians/repo";
+import { getOwnedPersonIds } from "@/app/lib/cards/service";
 import { getUserPredictions, getMarketBundle, getOutcomeCounts, type PortfolioPrediction } from "@/app/lib/markets/repo";
 import { getMySuggestions } from "@/app/lib/suggestions/service";
 import { categoryLabel } from "@/lib/categories";
@@ -16,7 +19,10 @@ import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { PushSettings } from "@/components/pwa/push-settings";
 import { NotificationPrefs } from "@/components/pwa/notification-prefs";
 import { getMutedPushTypes } from "@/app/lib/notifications/prefs";
-import { Trophy } from "@/components/icons";
+import { ChevronForward, Crest, Trophy } from "@/components/icons";
+import { suitForCat } from "@/lib/rarity";
+import { dbToCard } from "@/app/lib/politicians/adapter";
+import { PoliticianPortrait } from "@/components/politician-portrait";
 import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
 
 /** Whether a resolved prediction picked the winning outcome. */
@@ -31,13 +37,23 @@ export default async function ProfilePage() {
   // callbackUrl) so a direct hit without a session still lands on login → back.
   if (!user) redirect("/login?callbackUrl=%2Fprofile");
 
-  const [stats, allPredictions, mySuggestions, celebrations, mutedPushTypes] = await Promise.all([
-    getUserStats({ userId: user.id }),
-    getUserPredictions({ userId: user.id }),
-    getMySuggestions({ userId: user.id }),
-    getCelebrations({ userId: user.id }),
-    getMutedPushTypes({ userId: user.id }),
-  ]);
+  const [stats, allPredictions, mySuggestions, celebrations, mutedPushTypes, seasonBoard, politicians, ownedIds] =
+    await Promise.all([
+      getUserStats({ userId: user.id }),
+      getUserPredictions({ userId: user.id }),
+      getMySuggestions({ userId: user.id }),
+      getCelebrations({ userId: user.id }),
+      getMutedPushTypes({ userId: user.id }),
+      getSeasonBoard({ userId: user.id }),
+      getAllPoliticians(),
+      getOwnedPersonIds({ userId: user.id }),
+    ]);
+
+  // Collection preview: the owned cards (newest-irrelevant — small set), capped.
+  const ownedCards = politicians
+    .filter((p) => ownedIds.has(p.personId))
+    .slice(0, 6)
+    .map((p) => dbToCard(p));
 
   // Open = still predictable or closed-pending; history = resolved or voided.
   const openPred = allPredictions.filter((p) => p.marketStatus === "open" || p.marketStatus === "closed");
@@ -122,9 +138,17 @@ export default async function ProfilePage() {
         </Link>
       </section>
 
-      {/* SETTINGS — push notifications */}
-      <PushSettings />
-      <NotificationPrefs mutedPushTypes={mutedPushTypes} />
+      {/* Two columns on desktop: activity feed (1fr) + personal-progress sidebar
+          (340px). Source order puts the sidebar first so on MOBILE the season +
+          collection cards land right after the stats; on lg explicit col/row
+          placement moves them into the side column (same pattern as /market). */}
+      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+        <aside className="space-y-5 lg:col-start-2 lg:row-start-1 lg:self-start xl:sticky xl:top-24">
+          <SeasonCard board={seasonBoard} />
+          <CollectionCard ownedCount={ownedIds.size} total={politicians.length} preview={ownedCards} />
+        </aside>
+
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
 
       {/* OPEN PREDICTIONS */}
       <section className="mb-10">
@@ -248,7 +272,110 @@ export default async function ProfilePage() {
           </EmptyState>
         )}
       </section>
+
+      {/* SETTINGS — push notifications (deliberately last: it's plumbing, not progress) */}
+      <section className="mt-10">
+        <h2 className="mb-3 font-display text-2xl font-bold text-foreground">הגדרות התראות</h2>
+        <PushSettings />
+        <NotificationPrefs mutedPushTypes={mutedPushTypes} />
+      </section>
+
+        </div>
+      </div>
     </main>
+  );
+}
+
+/** Compact season-progress card for the profile sidebar — the /seasons banner
+ *  distilled: countdown, correct-count, progress toward the next tier. */
+function SeasonCard({ board }: { board: Awaited<ReturnType<typeof getSeasonBoard>> }) {
+  if (!board) return null;
+  const { season, progress, tiers, ended } = board;
+  const nextGoal = tiers.find((t) => !t.reached)?.goalCorrect ?? null;
+  const topGoal = tiers.length ? tiers[tiers.length - 1].goalCorrect : 0;
+  const barPct = topGoal > 0 ? Math.min(100, (progress / topGoal) * 100) : 0;
+  const reachedName = [...tiers].reverse().find((t) => t.reached)?.nameHe ?? null;
+
+  return (
+    <Link
+      href="/seasons"
+      className="group block rounded-card border border-accent/30 bg-card p-5 shadow-sm transition-shadow hover:shadow-glow-gold"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-2 font-accent text-sm font-bold text-accent">
+          <Trophy className="h-4 w-4" />
+          {season.nameHe}
+        </span>
+        <ChevronForward className="h-4 w-4 text-muted-foreground transition-transform duration-150 group-hover:-translate-x-0.5" />
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        {ended ? "העונה הסתיימה" : <>מסתיימת {timeUntil(season.endAtIso)}</>}
+        {reachedName ? <> · דרגה נוכחית: <span className="font-bold text-foreground">{reachedName}</span></> : null}
+      </p>
+
+      <div className="mt-3">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="font-accent text-xs font-bold text-muted-foreground">ניחושים נכונים העונה</span>
+          <span className="nums font-display text-xl text-gold">{formatCount(progress)}</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-sunken">
+          <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${barPct}%` }} />
+        </div>
+        {nextGoal !== null && !ended && (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            עוד <span className="nums font-bold text-foreground">{formatCount(Math.max(0, nextGoal - progress))}</span> עד הדרגה הבאה
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+/** Compact collection card for the profile sidebar — owned count + a peek at
+ *  the latest owned caricatures, linking into the full gallery. */
+function CollectionCard({
+  ownedCount,
+  total,
+  preview,
+}: {
+  ownedCount: number;
+  total: number;
+  preview: ReturnType<typeof dbToCard>[];
+}) {
+  return (
+    <Link
+      href="/collection"
+      className="group block rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-2 font-accent text-sm font-bold text-primary">
+          <Crest suit={suitForCat(1)} className="h-4 w-4" />
+          האוסף שלי
+        </span>
+        <ChevronForward className="h-4 w-4 text-muted-foreground transition-transform duration-150 group-hover:-translate-x-0.5" />
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        <span className="nums font-bold text-foreground">{formatCount(ownedCount)}</span>
+        {" / "}
+        <span className="nums">{formatCount(total)}</span> קלפים נאספו
+      </p>
+
+      {preview.length > 0 ? (
+        <div className="mt-3 flex -space-x-2 space-x-reverse">
+          {preview.map((p) => (
+            <span key={p.id} className="rounded-full ring-2 ring-card">
+              <PoliticianPortrait politician={p} size="sm" />
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          נחשו נכון בתחזיות כדי לאסוף את הקלף הראשון שלכם.
+        </p>
+      )}
+    </Link>
   );
 }
 
