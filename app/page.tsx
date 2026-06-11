@@ -1,10 +1,10 @@
 import Link from "next/link";
-import type { Category, Politician } from "@/lib/types";
+import type { Category } from "@/lib/types";
 import { getSession } from "@/lib/auth";
-import { getAllPoliticians, getFeaturedPoliticians } from "@/app/lib/politicians/repo";
+import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, getMarketOfTheDay, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
-import { bundleToMarket } from "@/app/lib/markets/adapter";
+import { getMarketOfTheDay } from "@/app/lib/markets/repo";
+import { getMarketCards } from "@/app/lib/markets/feed";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { pctLabel } from "@/lib/format";
 import { CategoryRail } from "@/components/category-rail";
@@ -28,29 +28,7 @@ export default async function Home({
   const active = (cat as Category) || undefined;
   const showAll = all === "1";
 
-  // Real markets from the DB. Each card needs its featured MK portraits, so we
-  // pull each market's bundle (outcomes + personIds), build view models, and
-  // resolve personIds against a single politicians map (one query, no N+1).
-  const marketRows = await listOpenMarkets({ category: active });
-  const bundles = (
-    await Promise.all(marketRows.map((m) => getMarketBundle({ marketId: m.id })))
-  ).filter((b): b is NonNullable<typeof b> => b !== null);
-
-  const polById = new Map<string, Politician>();
-  for (const row of await getAllPoliticians()) {
-    polById.set(String(row.personId), dbToCard(row));
-  }
-  const featuredFor = (personIds: number[]): Politician[] =>
-    personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
-
-  // Live predictor counts for every card in one query so each OddsBar shows the
-  // real crowd split (not a blank 0/0 bar).
-  const countsByMarket = await getOutcomeCountsForMarkets({ marketIds: bundles.map((b) => b.market.id) });
-
-  const cards = bundles.map((b) => ({
-    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
-    featured: featuredFor(b.personIds),
-  }));
+  const cards = await getMarketCards({ category: active });
 
   // No category filter → spotlight a market in the hero, rest in the grid.
   // Preference: an admin-flagged `hot` market, else the data-driven "market of
