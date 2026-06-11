@@ -515,7 +515,7 @@ export async function createMarket({
   hot?: boolean;
   closeAt: Date;
   createdBy?: string;
-  outcomes: { labelHe: string; cat?: number; ordinal: number }[];
+  outcomes: { labelHe: string; cat?: number; ordinal: number; personId?: number }[];
   personIds?: number[];
 }): Promise<{ marketId: string }> {
   // The whole composite must be atomic. Standalone callers (admin/seed) open a
@@ -545,14 +545,24 @@ export async function createMarket({
           labelHe: o.labelHe,
           cat: o.cat,
           ordinal: o.ordinal,
+          personId: o.personId,
         })),
       );
     }
 
-    if (personIds.length > 0) {
+    // Featured links = explicit personIds ∪ per-outcome personIds, deduped — an
+    // outcome-linked MK is always featured (politician pages + the resolve-time
+    // progress scoping both read market_politicians), with no double entry.
+    const featuredIds = [
+      ...new Set([
+        ...personIds,
+        ...outcomeInputs.flatMap((o) => (o.personId != null ? [o.personId] : [])),
+      ]),
+    ];
+    if (featuredIds.length > 0) {
       await exec
         .insert(marketPoliticians)
-        .values(personIds.map((personId) => ({ marketId: market.id, personId })));
+        .values(featuredIds.map((personId) => ({ marketId: market.id, personId })));
     }
 
     return { marketId: market.id };

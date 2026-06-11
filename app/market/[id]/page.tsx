@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { formatCount } from "@/lib/format";
-import { getMarketBundle, getOutcomeCounts } from "@/app/lib/markets/repo";
+import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
@@ -10,6 +10,8 @@ import { getCelebrations } from "@/app/lib/bets/service";
 import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { OddsBar } from "@/components/odds-bar";
 import { BetPanel } from "@/components/bet-panel";
+import { OutcomeRows } from "@/components/outcome-rows";
+import { PoliticianPortrait } from "@/components/politician-portrait";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { CommentThread } from "@/components/comments/comment-thread";
@@ -43,6 +45,18 @@ export default async function MarketPage({
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
+  // Multi markets pick inside the outcome rows, so they need the viewer's
+  // current pick for the highlighted row (binary's BetPanel doesn't show it).
+  const multiOpen = market.type === "multi" && !settled;
+  const initialPickId =
+    multiOpen && session?.user
+      ? ((await getUserPositions({ userId: session.user.id, marketId: id }))[0]?.outcomeId ?? null)
+      : null;
+  // The politician a winning outcome IS (multi) — for the resolution panel portrait.
+  const winnerPol =
+    winningOutcome?.personId != null
+      ? (pols.find((p) => p.id === String(winningOutcome.personId)) ?? null)
+      : null;
   // One-time right/wrong reveal for this market's resolved prediction (first view).
   const celebrations =
     settled && session?.user
@@ -92,9 +106,22 @@ export default async function MarketPage({
             <Countdown closeAt={market.closeAt} />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <OddsBar market={market} />
-          </div>
+          {multiOpen ? (
+            /* Multi markets: the sorted candidate rows ARE the chart AND the
+               picker — no separate odds bar or side bet panel. */
+            <div className="mt-6">
+              <OutcomeRows
+                market={market}
+                politicians={pols}
+                initialPickId={initialPickId}
+                isLoggedIn={isLoggedIn}
+              />
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <OddsBar market={market} />
+            </div>
+          )}
         </div>
 
         <aside className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:self-start">
@@ -110,9 +137,12 @@ export default async function MarketPage({
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">התוצאה הזוכה:</p>
-                  <p className="mt-1 text-2xl font-black text-positive">
-                    {winningOutcome?.labelHe ?? "—"}
-                  </p>
+                  <div className="mt-1 flex items-center gap-3">
+                    {winnerPol && <PoliticianPortrait politician={winnerPol} size="sm" />}
+                    <p className="text-2xl font-black text-positive">
+                      {winningOutcome?.labelHe ?? "—"}
+                    </p>
+                  </div>
                   {bundle.market.resolutionSourceUrl && (
                     <a
                       href={bundle.market.resolutionSourceUrl}
@@ -125,6 +155,18 @@ export default async function MarketPage({
                   )}
                 </>
               )}
+            </div>
+          ) : multiOpen ? (
+            /* The rows in the main column do the picking — the sidebar carries
+               the resolution criterion (or a short how-it-works hint). */
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
+              <h3 className="mb-2 font-display text-lg font-bold text-foreground">
+                איך מכריעים?
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {bundle.market.descriptionHe ??
+                  "בוחרים תשובה אחת מהרשימה. כשהשוק יוכרע — ניחוש נכון נוסף לרקורד שלכם."}
+              </p>
             </div>
           ) : (
             <BetPanel market={market} isLoggedIn={isLoggedIn} />

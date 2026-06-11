@@ -26,6 +26,7 @@ function outcomeToView(row: OutcomeRow, counts?: Map<string, number>): Outcome {
     label: row.labelHe,
     predictors: counts?.get(row.id) ?? 0,
     color: toCatColor(row.cat),
+    personId: row.personId ?? undefined,
   };
 }
 
