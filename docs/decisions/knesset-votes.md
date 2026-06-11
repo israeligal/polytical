@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-06-11 — Feed spine: decisive = one representative per item, ANY type; scoreable = decisive ∧ (electronic|roll_call) (branch worktree-knesset-votes)
+
+**Decision.** `pickDecisiveVoteId` falls back to the latest vote of any type for hand/secret-only items (34 items) so every item has a feed representative; `isDecisive` therefore no longer implies scoreable. Matching and the unlock counter filter `isDecisive AND voteType IN (electronic, roll_call)`. Feed pagination uses a **composite keyset cursor** `(voteDate, voteId)` — a date-only cursor silently dropped same-timestamp votes at page boundaries (137 tie groups across 2.3k primaries, live-verified by the review panel); garbage cursors parse to first-page, never a 500.
+
+**Rejected.** Marking hand votes non-decisive (items vanish from the feed); offset pagination (drifts under live inserts).
+
+## 2026-06-11 — Stance mechanics: atomic toggle, decisive-only, no raw rethrow (branch worktree-knesset-votes)
+
+**Decision.** A stance tap is ONE atomic statement: `DELETE … AND stance = $same` (hit = retraction) else upsert — a read-then-write would let two concurrent casts interleave into a silently dropped stance. Stances attach only to an item's decisive vote (`VoteNotStanceableError` otherwise), so reservation votes never collect opinions. The action **never rethrows raw errors**: drizzle's `DrizzleQueryError` message embeds bound params — i.e. the stance direction — and a rethrow would land it in server logs, violating P0-9; failures log a sanitized `{voteId, errName}` marker only. `match_unlocked` is edge-triggered via `prevScoreableCount` (a level check re-fired on every flip while sitting at exactly 5).
+
+## 2026-06-11 — Freshness from an ingest heartbeat, not max(fetchedAt) (branch worktree-knesset-votes)
+
+**Decision.** User-visible staleness reads `ingest_heartbeats.lastSuccessAt` (migration 0022, stamped at the end of every successful `ingestVotes`), with the spec's SLO: 6h on plenum days (Mon–Wed, Asia/Jerusalem via `jerusalemWeekday`) / 24h otherwise. `max(fetchedAt)` was wrong in both directions: the 7-day sweep re-stamps only in-window rows, so a recess froze it (false "broken" banner on a healthy pipeline), and a flat 24h threshold missed the 6h plenum-day SLO.
+
+## 2026-06-11 — Party majority: abstain counts in the denominator (branch worktree-knesset-votes)
+
+**Decision.** A faction's per-vote majority is >50% of its for/against/**abstain** voters (didnt_vote excluded) — per the spec's ">50% of its voters" wording, a whipped-abstention faction yields NO majority and the vote skips. The farthest-party card is hidden when it ties the best (common on thin unanimous data — "farthest at 100%" reads as a contradiction).
+
+**Rejected.** for/against-only denominator (recorded mostly-abstaining factions as having a position they didn't take).
+
+## 2026-06-11 — Analytics: logger-shim track(), stance events carry voteId only (branch worktree-knesset-votes)
+
+**Decision.** `track()` emits structured `analytics.<event>` log lines (no vendor exists; PRD says TBD) for the five P0-10 events. `stance_cast` carries `voteId` only — never the direction — so political positions exist solely in `user_stances` (cascade-deleted with the account).
+
 ## 2026-06-10 — Vote source: Knesset website API (live K25), not OData / scraping (branch worktree-knesset-votes)
 
 **Decision.** Ingest K25 per-MK roll-call votes from the Knesset **website API** (`knesset.gov.il/WebSiteApi/knessetapi/Votes/*`): `POST GetVotesHeaders` (date-windowed sweep) + `GET GetVoteDetails/{voteId}`. Verified live through yesterday's votes; the apex host answers plain server-side HTTP (only `main.knesset.gov.il` pages sit behind Radware).

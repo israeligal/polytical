@@ -1,6 +1,6 @@
 # app/lib/votes — Knesset plenum votes pipeline
 
-K25 per-MK roll-call ingestion from the Knesset **website API** (the only live source; OData `Votes.svc` is frozen at K24). Spec: `docs/superpowers/specs/2026-06-10-knesset-votes-mk-matching.md` · decisions: `docs/decisions/knesset-votes.md`.
+K25 per-MK roll-call ingestion from the Knesset **website API** (the only live source; OData `Votes.svc` is frozen at K24). **Full feature context (API payloads, stances, matching, operations): the `knesset-votes` skill.** Spec: `docs/superpowers/specs/2026-06-10-knesset-votes-mk-matching.md` · decisions: `docs/decisions/knesset-votes.md`.
 
 ## Files
 
@@ -10,11 +10,12 @@ K25 per-MK roll-call ingestion from the Knesset **website API** (the only live s
 | `website-types.ts` | Raw API row shapes (PascalCase, captured live 2026-06-10) |
 | `test-payloads.ts` | VERBATIM captured responses (one per vote type) — test builders derive from these; refresh via the curl commands in the plan §5, never hand-edit |
 | `name-key.ts` | `nameKey()` — token-SORTED `normalizeSearchName` (website is "Last First", OData "First Last"). Both sides of every mapping lookup MUST use it |
-| `normalize.ts` | Closed maps (`WEBSITE_RESULT_BY_ID` 6/7/8/9, `HEADER_VOTE_TYPE` 4 types) — unknown values THROW; `pickDecisiveVoteId` (highest accepted reading, else latest scoreable) |
-| `repo.ts` | Upserts + transactional `applyVoteDetails` (patch + raw evidence + attribution + queue), `resolveUnmappedName` (backfills from retained `mk_votes_raw`, no re-fetch), `factionAtVoteTime` (stint intervals) |
-| `service.ts` | `ingestVotes` (monthly windows, truncation watchdog, dedupe), `ingestRecentVotes` (cron, last 7 days) |
+| `normalize.ts` | Closed maps (`WEBSITE_RESULT_BY_ID` 6/7/8/9, `HEADER_VOTE_TYPE` 4 types) — unknown values THROW; `pickDecisiveVoteId` (highest accepted reading → latest scoreable → latest of ANY type, so hand/secret-only items keep a feed representative; decisive ≠ scoreable) |
+| `repo.ts` | Write-side: upserts + transactional `applyVoteDetails` (patch + raw evidence + attribution + queue), `resolveUnmappedName` (backfills from retained `mk_votes_raw`, no re-fetch), `factionAtVoteTime`, admin writes (`setVoteFeatured`, agenda) |
+| `read-repo.ts` | Read-side: feed (composite keyset cursor `${iso}_${voteId}` — date-only drops same-timestamp rows), detail bundle, MK record, heartbeat-based freshness (6h Mon–Wed SLO), admin lists |
+| `service.ts` | `ingestVotes` (monthly windows, truncation watchdog, dedupe, heartbeat stamp), `ingestRecentVotes` (cron, last 7 days) |
 
-Schema lives in `app/lib/schema-votes.ts` (re-exported from `schema.ts`); entry points: `scripts/ingest-votes.ts` (backfill/manual), `app/api/cron/ingest-votes/route.ts` (2h cron), `scripts/bootstrap-mk-mapping.ts` (one-time mapping seed).
+Sibling domains: `app/lib/stances/` (atomic stance toggle, k≥10 aggregate), `app/lib/match/` (agreement engine). Schema in `app/lib/schema-votes.ts` (re-exported from `schema.ts`); entry points: `scripts/ingest-votes.ts` (backfill/manual), `app/api/cron/ingest-votes/route.ts` (2h cron), `scripts/bootstrap-mk-mapping.ts` (one-time mapping seed).
 
 ## Invariants (break these and attribution lies)
 
