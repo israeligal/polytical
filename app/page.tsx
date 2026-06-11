@@ -168,10 +168,6 @@ export default async function Home({
                 <h2 className="font-display text-3xl font-bold text-foreground">
                   פוליטיקאים על המגרש
                 </h2>
-                <p className="mt-2 text-lg text-muted-foreground">
-                  כל פוליטיקאי הוא קלף קריקטורה — עובדות, סטטיסטיקות, והתחזיות
-                  שסביבו. כל עובדה ממקור רשמי.
-                </p>
               </div>
               <Link
                 href="/politicians"

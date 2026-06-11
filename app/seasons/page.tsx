@@ -14,7 +14,13 @@ export const metadata = {
 // Public season board — anonymous visitors see the tiers + countdown (progress 0
 // until they sign in). Tiers unlock by accuracy, derived live from the prediction
 // record — no claims, no coins.
-export default async function SeasonsPage() {
+export default async function SeasonsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const { from } = await searchParams;
+  const fromProfile = from === "profile";
   const session = await getSession();
   const board = await getSeasonBoard({ userId: session?.user?.id ?? null });
 
@@ -38,11 +44,11 @@ export default async function SeasonsPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <Link
-        href="/"
+        href={fromProfile ? "/profile" : "/"}
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronForward className="h-4 w-4 rotate-180" />
-        חזרה לדף הבית
+        {fromProfile ? "חזרה לפרופיל" : "חזרה לדף הבית"}
       </Link>
 
       {/* banner */}
