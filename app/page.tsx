@@ -235,7 +235,7 @@ export default async function Home({
             </div>
           </div>
           {topEntries.length > 0 ? (
-            <div className="mx-auto max-w-2xl space-y-2">
+            <div className="mx-auto w-full max-w-2xl space-y-2">
               {topEntries.map(({ you, ...entry }) => (
                 <LeaderboardRow key={entry.rank} entry={entry} you={you} />
               ))}
@@ -246,7 +246,7 @@ export default async function Home({
               )}
             </div>
           ) : (
-            <EmptyState className="mx-auto max-w-2xl">
+            <EmptyState className="mx-auto w-full max-w-2xl">
               עוד אין מספיק פעילות לטבלה. נחשו על תחזית ראשונה כדי לפתוח את הדירוג.
             </EmptyState>
           )}
@@ -266,7 +266,7 @@ export default async function Home({
                 ))}
               </div>
             ) : (
-              <EmptyState className="mx-auto max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
+              <EmptyState className="mx-auto w-full max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
             )}
             <p className="mt-5 text-center">
               <Link

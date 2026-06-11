@@ -29,7 +29,7 @@ export default async function CollectionPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
       <Link
         href="/"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"

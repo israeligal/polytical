@@ -29,7 +29,7 @@ export default async function SearchPage({
   const total = politicians.length + markets.length;
 
   return (
-    <main className="mx-auto max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
         <p className="font-accent text-sm font-bold text-primary">חיפוש</p>
         <h1 className="mb-4 font-display text-3xl text-foreground sm:text-4xl">מה מחפשים?</h1>

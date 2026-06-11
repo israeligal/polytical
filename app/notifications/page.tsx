@@ -21,7 +21,7 @@ export default async function NotificationsPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
         <p className="font-accent text-sm font-bold text-primary">העדכונים שלך</p>
         <h1 className="font-display text-3xl text-foreground sm:text-4xl">התראות</h1>

@@ -20,7 +20,7 @@ export default async function SeasonsPage() {
 
   if (!board) {
     return (
-      <main className="mx-auto max-w-2xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <header className="mb-6">
           <p className="font-accent text-sm font-bold text-accent">העונה</p>
           <h1 className="font-display text-4xl text-foreground">דרגות דיוק</h1>
@@ -36,7 +36,7 @@ export default async function SeasonsPage() {
   const barPct = topGoal > 0 ? Math.min(100, (progress / topGoal) * 100) : 0;
 
   return (
-    <main className="mx-auto max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/"
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
