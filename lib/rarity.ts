@@ -22,6 +22,7 @@ import type { Rarity, Suit } from "@/components/icons";
  */
 const FORMER_PM_PERSON_IDS = new Set<number>([
   23594, // Yair Lapid — caretaker/alternate PM who served Jul–Dec 2022
+  23511, // Naftali Bennett — PM Jun 2021–Jul 2022 (not a sitting MK; row is inactive)
 ]);
 
 /**
