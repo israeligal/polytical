@@ -143,7 +143,7 @@ export function HotRail({
         ))}
       </ul>
       <Link
-        href="#markets"
+        href="/markets"
         className="border-t border-border px-4 py-3 text-center text-sm font-bold text-primary transition-colors hover:bg-raised"
       >
         כל התחזיות

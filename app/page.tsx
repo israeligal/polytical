@@ -22,40 +22,29 @@ import { HOME_SECTION_INNER } from "@/components/skeletons/containers";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; all?: string }>;
+  searchParams: Promise<{ cat?: string }>;
 }) {
-  const { cat, all } = await searchParams;
+  const { cat } = await searchParams;
   const active = (cat as Category) || undefined;
-  const showAll = all === "1";
 
-  const cards = await getMarketCards({ category: active });
+  // Fetch ALL open markets once; in-memory filtering keeps DB round-trips to 1.
+  const allCards = await getMarketCards({});
 
-  // No category filter → spotlight a market in the hero, rest in the grid.
-  // Preference: an admin-flagged `hot` market, else the data-driven "market of
-  // the day" (the open market with the most bets), else the newest. The badge
-  // reflects which rule chose it.
-  const motd = !active ? await getMarketOfTheDay() : null;
-  const hotCard = !active ? cards.find((c) => c.market.hot) ?? null : null;
-  const motdCard = motd ? cards.find((c) => c.market.id === motd.id) ?? null : null;
-  const featured = !active ? hotCard ?? motdCard ?? cards[0] ?? null : null;
+  // Hero: always spotlights a market globally — independent of the category
+  // filter so the hero persists when the user switches pills.
+  // Preference: admin-flagged `hot` → market-of-the-day (most bets) → newest.
+  const motd = await getMarketOfTheDay();
+  const hotCard = allCards.find((c) => c.market.hot) ?? null;
+  const motdCard = motd ? allCards.find((c) => c.market.id === motd.id) ?? null : null;
+  const featured = hotCard ?? motdCard ?? allCards[0] ?? null;
   const featuredIsHot = !!featured && featured === hotCard;
-  const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
 
-  // Cap the homepage grid at 3 full rows (Polymarket-density 3-col) so a
-  // growing market count can't make the page endless; `?all=1` (URL-derived,
-  // no client state) expands in place until the dedicated /markets page lands.
-  const MARKETS_CAP = 9;
-  const visibleGrid = showAll ? grid : grid.slice(0, MARKETS_CAP);
-  const hiddenCount = grid.length - visibleGrid.length;
-
-  // "Hot now" rail: the most-active open markets (by predictor count),
-  // excluding the spotlighted one. Only markets with actual predictions
-  // qualify — a "hot" rail of 0-predictor rows reads as broken, and the
-  // total>0 filter also guarantees a leading outcome exists.
-  const predictorsOf = (c: (typeof cards)[number]) =>
+  // "Hot now" rail: most-active open markets (by predictor count), excl. hero.
+  // Only markets with real predictions qualify.
+  const predictorsOf = (c: (typeof allCards)[number]) =>
     c.market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
   const hotItems = featured
-    ? cards
+    ? allCards
         .filter((c) => c.market.id !== featured.market.id)
         .map((c) => ({ c, total: predictorsOf(c) }))
         .filter(({ total }) => total > 0)
@@ -66,6 +55,17 @@ export default async function Home({
           return { market: c.market, predictors: total, leaderPct: pctLabel(leader.predictors, total) };
         })
     : [];
+
+  // Grid: filter in-memory by category (if active) then exclude the hero card.
+  const filteredCards = active
+    ? allCards.filter((c) => c.market.category === active)
+    : allCards;
+  const grid = filteredCards.filter((c) => c.market.id !== featured?.market.id);
+
+  // Cap the homepage grid at 3 full rows (3-col density).
+  const MARKETS_CAP = 9;
+  const visibleGrid = grid.slice(0, MARKETS_CAP);
+  const hiddenCount = grid.length - visibleGrid.length;
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
   const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
@@ -134,27 +134,29 @@ export default async function Home({
           <div className="mb-6">
             <CategoryRail active={active} />
           </div>
-          {visibleGrid.length > 0 ? (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visibleGrid.map((c) => (
-                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
-                ))}
-              </div>
-              {hiddenCount > 0 && (
-                <div className="mt-6 text-center">
-                  <Link
-                    href={`/?${active ? `cat=${active}&` : ""}all=1#markets`}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
-                  >
-                    הצגת כל <span className="nums">{grid.length}</span> התחזיות
-                  </Link>
+          <div className="min-h-[28rem]">
+            {visibleGrid.length > 0 ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {visibleGrid.map((c) => (
+                    <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+                  ))}
                 </div>
-              )}
-            </>
-          ) : (
-            <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
-          )}
+                {hiddenCount > 0 && (
+                  <div className="mt-6 text-center">
+                    <Link
+                      href={`/markets${active ? `?cat=${active}` : ""}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                    >
+                      לכל התחזיות
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
+            )}
+          </div>
         </section>
 
         {/* POLITICIANS */}

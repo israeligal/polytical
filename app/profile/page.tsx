@@ -184,7 +184,7 @@ export default async function ProfilePage() {
         ) : (
           <EmptyState>
             אין לך מנדטים פתוחים.{" "}
-            <Link href="/#markets" className="font-semibold text-primary hover:underline">
+            <Link href="/markets" className="font-semibold text-primary hover:underline">
               בחרו תחזית לתת עליה מנדט
             </Link>
             .
