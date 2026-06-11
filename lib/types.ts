@@ -29,6 +29,11 @@ export interface Politician {
   imageUrl?: string;
   /** Minister serving without a Knesset seat (Norwegian Law) — drives the נורבגי chip. */
   isNorwegianMinister?: boolean;
+  /**
+   * Gender sourced from KNS_Person.GenderDesc. Absent/null means unknown —
+   * all copy must fall back to the established neutral form (no inference).
+   */
+  gender?: "male" | "female";
 }
 
 export interface Outcome {

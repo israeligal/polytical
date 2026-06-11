@@ -25,6 +25,7 @@ function row(overrides: Partial<PoliticianRow>): PoliticianRow {
     imageUrl: null,
     facts: {},
     active: true,
+    gender: null,
     searchName: "israel israeli",
     billsCurrent: null,
     billsLifetime: null,
@@ -98,6 +99,30 @@ test("dbToCard: a normal MK keeps party and is not flagged", () => {
   const card = dbToCard(row({ party: "מפלגה" }));
   expect(card.isNorwegianMinister).toBe(false);
   expect(card.party).toBe("מפלגה");
+});
+
+test("gender=male → gendered role fallback 'חבר הכנסת'", () => {
+  const card = dbToCard(row({ roleHe: null, gender: "male" }));
+  expect(card.role).toBe("חבר הכנסת");
+  expect(card.gender).toBe("male");
+});
+
+test("gender=female → gendered role fallback 'חברת הכנסת'", () => {
+  const card = dbToCard(row({ roleHe: null, gender: "female" }));
+  expect(card.role).toBe("חברת הכנסת");
+  expect(card.gender).toBe("female");
+});
+
+test("gender=null (unknown) → neutral role fallback 'חבר/ת הכנסת'", () => {
+  const card = dbToCard(row({ roleHe: null, gender: null }));
+  expect(card.role).toBe("חבר/ת הכנסת");
+  expect(card.gender).toBeUndefined();
+});
+
+test("explicit roleHe is never overridden by gender fallback", () => {
+  const card = dbToCard(row({ roleHe: "שרת החוץ", gender: "female" }));
+  expect(card.role).toBe("שרת החוץ");
+  expect(card.gender).toBe("female");
 });
 
 test("derived categorical color is always within the 1..8 slot range", () => {

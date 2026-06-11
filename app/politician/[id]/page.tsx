@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Politician } from "@/lib/types";
+import { appearsIn, voted } from "@/lib/gender";
 import {
   getAllPoliticians,
   getPoliticianActivity,
@@ -89,7 +90,7 @@ export default async function PoliticianPage({
                   פתחו את הקלף בדיוק
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  צדקו <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות שהוא מופיע בהן כדי לאסוף את הקלף.
+                  צדקו <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות {appearsIn({ gender: politician.gender ?? null })} כדי לאסוף את הקלף.
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
                   <div
@@ -209,8 +210,8 @@ export default async function PoliticianPage({
             <div className="grid gap-4 sm:grid-cols-2">
               {(
                 [
-                  { key: "for", title: "הצביע/ה בעד", votes: recentVotes.for },
-                  { key: "against", title: "הצביע/ה נגד", votes: recentVotes.against },
+                  { key: "for", title: `${voted({ gender: politician.gender ?? null })} בעד`, votes: recentVotes.for },
+                  { key: "against", title: `${voted({ gender: politician.gender ?? null })} נגד`, votes: recentVotes.against },
                 ] as const
               ).map((col) => (
                 <div key={col.key}>

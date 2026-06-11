@@ -169,6 +169,13 @@
       "when": 1781196298730,
       "tag": "0023_living_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0024_add_politician_gender",
+      "breakpoints": true
     }
   ]
 }
