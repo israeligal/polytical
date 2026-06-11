@@ -1,14 +1,32 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Ballot } from "@/components/icons";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { OrDivider } from "@/components/or-divider";
 import { signUp } from "@/lib/auth-client";
 
+/** Same-origin relative path only — anything else falls back to home. */
+function safeCallbackUrl(raw: string | null): string {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/";
+}
+
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // OAuth signups: existing accounts land back where they came from; brand-new
+  // users get funneled into onboarding by the proxy gate regardless.
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -104,7 +122,7 @@ export default function SignUpPage() {
 
         <OrDivider />
 
-        <GoogleSignInButton label="הרשמה עם Google" />
+        <GoogleSignInButton label="הרשמה עם Google" callbackUrl={callbackUrl} />
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           כבר יש לכם חשבון?{" "}

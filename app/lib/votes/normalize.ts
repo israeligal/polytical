@@ -39,9 +39,15 @@ const COUNTER_FIELD: Record<string, "totalFor" | "totalAgainst" | "totalAbstain"
   "נוכח ולא הצביע": "totalDidntVote",
 };
 
-/** Per-MK breakdowns exist only for these types (probe-verified). */
+/**
+ * Per-MK breakdowns exist only for these types (probe-verified). THE single
+ * source of truth for the scoreable set — SQL filters (stances repo, match
+ * service) import this array; never restate the literals.
+ */
+export const SCOREABLE_VOTE_TYPES = ["electronic", "roll_call"] as const satisfies readonly VoteTypeValue[];
+
 export function isScoreableType(t: VoteTypeValue): boolean {
-  return t === "electronic" || t === "roll_call";
+  return (SCOREABLE_VOTE_TYPES as readonly VoteTypeValue[]).includes(t);
 }
 
 export const VOTES_SOURCE_DATASET = "websiteapi:Votes/GetVoteDetails";

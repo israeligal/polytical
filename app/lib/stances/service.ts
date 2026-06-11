@@ -29,10 +29,14 @@ export interface StanceState {
   stance: StanceValue | null;
   /** Stances on scoreable votes — drives the match-unlock progress. */
   scoreableCount: number;
-  /** Scoreable count BEFORE this write — lets callers edge-detect the unlock. */
-  prevScoreableCount: number;
   /** k-gated community split; null until the viewer has a stance AND n ≥ k. */
   aggregate: { forPct: number; total: number } | null;
+}
+
+/** A write's before/after pair — only setStance can produce a true `prev`,
+ *  so it is NOT part of StanceState (read paths would carry a lying value). */
+export interface StanceWriteResult extends StanceState {
+  prevScoreableCount: number;
 }
 
 /**
@@ -52,7 +56,7 @@ export async function setStance({
   userId: string;
   voteId: number;
   stance: StanceValue;
-}): Promise<StanceState> {
+}): Promise<StanceWriteResult> {
   const [vote] = await db
     .select({ isDecisive: knessetVotes.isDecisive })
     .from(knessetVotes)
@@ -84,5 +88,5 @@ export async function getStanceState({
       aggregate = { forPct: Math.round((forCount / total) * 100), total };
     }
   }
-  return { stance, scoreableCount, prevScoreableCount: scoreableCount, aggregate };
+  return { stance, scoreableCount, aggregate };
 }

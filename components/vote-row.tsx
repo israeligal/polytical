@@ -7,7 +7,8 @@ import { StatusChip } from "@/components/status-chip";
 import { VoteTotalsBar } from "@/components/vote-totals-bar";
 import type { FeedVote } from "@/app/lib/votes/read-repo";
 
-const TYPE_HE: Record<FeedVote["voteType"], string> = {
+/** The one vote-type → Hebrew map (Record-typed so a new enum value is a compile error). */
+export const VOTE_TYPE_HE: Record<FeedVote["voteType"], string> = {
   electronic: "הצבעה אלקטרונית",
   roll_call: "הצבעה שמית",
   hand: "הצבעה בהרמת ידיים",
@@ -45,7 +46,7 @@ export function VoteRow({
         </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        <span className="nums">{dateHe}</span> · {TYPE_HE[vote.voteType]}
+        <span className="nums">{dateHe}</span> · {VOTE_TYPE_HE[vote.voteType]}
         {vote.siblingCount > 0 && (
           <>
             {" · "}

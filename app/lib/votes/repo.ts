@@ -173,11 +173,14 @@ export async function applyVoteDetails({
       const personId = ctx.mappings.get(raw.mkNameKey);
       if (personId == null) {
         if (!ctx.dismissedKeys.has(raw.mkNameKey)) {
-          await tx
+          // returning() exposes whether the row was actually inserted —
+          // `queued` counts NEW queue entries, not raw-row occurrences.
+          const inserted = await tx
             .insert(unmappedMkNames)
             .values({ nameKey: raw.mkNameKey, nameRaw: raw.mkNameRaw })
-            .onConflictDoNothing();
-          queued += 1;
+            .onConflictDoNothing()
+            .returning({ nameKey: unmappedMkNames.nameKey });
+          queued += inserted.length;
         }
         continue;
       }
@@ -205,23 +208,39 @@ export async function applyVoteDetails({
   return { attributed, queued };
 }
 
-/** Recomputes the decisive flag for every vote of the given items. */
+/**
+ * Recomputes the decisive flag for every vote of the given items. One SELECT
+ * batch + ONE set-based UPDATE per chunk — the per-item two-step (false then
+ * true) left a gap where concurrent feed reads saw an item with no decisive
+ * vote (dropping it from FEED_PRIMARY), and 3 serial round-trips per item made
+ * a 200-item sweep cost 600 RTTs.
+ */
 export async function recomputeDecisive({ db, itemIds }: { db: DB; itemIds: number[] }): Promise<void> {
   const ids = [...new Set(itemIds)].filter((i) => i != null);
-  for (const itemId of ids) {
+  if (!ids.length) return;
+  for (const idBatch of chunk(ids, 200)) {
     const votes = await db
       .select({
-        voteId: knessetVotes.voteId, voteType: knessetVotes.voteType,
+        itemId: knessetVotes.itemId, voteId: knessetVotes.voteId, voteType: knessetVotes.voteType,
         decisionHe: knessetVotes.decisionHe, isAccepted: knessetVotes.isAccepted,
         voteDate: knessetVotes.voteDate,
       })
       .from(knessetVotes)
-      .where(eq(knessetVotes.itemId, itemId));
-    const decisiveId = pickDecisiveVoteId(votes);
-    await db.update(knessetVotes).set({ isDecisive: false }).where(and(eq(knessetVotes.itemId, itemId), sql`${knessetVotes.voteId} <> ${decisiveId ?? -1}`));
-    if (decisiveId != null) {
-      await db.update(knessetVotes).set({ isDecisive: true }).where(eq(knessetVotes.voteId, decisiveId));
+      .where(inArray(knessetVotes.itemId, idBatch));
+    const byItem = new Map<number, typeof votes>();
+    for (const v of votes) {
+      if (v.itemId == null) continue;
+      byItem.set(v.itemId, [...(byItem.get(v.itemId) ?? []), v]);
     }
+    const decisiveIds = [...byItem.values()]
+      .map((group) => pickDecisiveVoteId(group))
+      .filter((id): id is number => id != null);
+    // Atomic per statement: every vote of the batch's items gets its flag in
+    // one UPDATE, so no reader ever observes an item without a decisive vote.
+    await db
+      .update(knessetVotes)
+      .set({ isDecisive: sql`${knessetVotes.voteId} in ${decisiveIds.length ? decisiveIds : [-1]}` })
+      .where(inArray(knessetVotes.itemId, idBatch));
   }
 }
 
@@ -287,7 +306,7 @@ export async function dismissUnmappedName({
   await db
     .update(unmappedMkNames)
     .set({ status: "dismissed", reviewedBy, reviewedAt: new Date() })
-    .where(and(eq(unmappedMkNames.nameKey, key), isNull(unmappedMkNames.reviewedAt)));
+    .where(and(eq(unmappedMkNames.nameKey, key), eq(unmappedMkNames.status, "pending")));
 }
 
 // --- admin writes (actions authorize/validate; the repo owns the DB) ---

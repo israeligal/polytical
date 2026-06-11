@@ -116,7 +116,10 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           אין לכם עדיין חשבון?{" "}
-          <Link href="/signup" className="font-semibold text-primary hover:underline">
+          <Link
+            href={callbackUrl === "/" ? "/signup" : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="font-semibold text-primary hover:underline"
+          >
             הרשמה
           </Link>
         </p>

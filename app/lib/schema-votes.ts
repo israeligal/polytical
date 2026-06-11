@@ -196,10 +196,10 @@ export const agendaItems = pgTable("agenda_items", {
   itemId: integer("itemId").unique(),                  // KNS item id; null for admin-added rows
   titleHe: text("titleHe").notNull(),
   expectedDate: date("expectedDate"),
-  billId: integer("billId"),                           // -> bills.billId (FK-by-value)
+  billId: integer("billId"),                           // -> bills.billId (FK-by-value); UNWIRED until P1 pre-voting (spec P1)
   status: agendaItemStatus("status").notNull().default("announced"),
   addedBy: agendaItemSource("addedBy").notNull(),
-  linkedVoteId: integer("linkedVoteId"),               // -> knesset_votes.voteId once the real vote lands
+  linkedVoteId: integer("linkedVoteId"),               // -> knesset_votes.voteId; UNWIRED until P1 pre-voting (spec P1)
   sourceDataset: text("sourceDataset").notNull(),
   sourceUrl: text("sourceUrl").notNull(),
   fetchedAt: timestamp("fetchedAt").notNull(),

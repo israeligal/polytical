@@ -20,14 +20,14 @@ export default async function VotesPage({
   searchParams: Promise<{ before?: string }>;
 }) {
   const { before } = await searchParams;
-  const [feed, featured, agenda, freshness] = await Promise.all([
+  const [feed, featured, agenda, freshness, session] = await Promise.all([
     getVotesFeed({ before }),
     before ? Promise.resolve([]) : getFeaturedVotes({}),
     before ? Promise.resolve([]) : getAnnouncedAgendaItems({}),
     getVotesFreshness(),
+    getSession(),
   ]);
   track("feed_viewed", { page: before ? "older" : "first" });
-  const session = await getSession();
   const allIds = [...feed.votes, ...featured].map((v) => v.voteId);
   const myStances = session?.user
     ? await getStancesForVotes({ userId: session.user.id, voteIds: allIds })

@@ -11,6 +11,7 @@ import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
 import { getStanceState, MATCH_UNLOCK_THRESHOLD } from "@/app/lib/stances/service";
 import { StanceWidget } from "@/components/stance-widget";
+import { VOTE_TYPE_HE } from "@/components/vote-row";
 
 const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: ChipTone }> = {
   for: { label: "בעד", tone: "positive" },
@@ -18,13 +19,6 @@ const RESULT_HE: Record<MkVoteWithPolitician["result"], { label: string; tone: C
   abstain: { label: "נמנע", tone: "abstain" },
   didnt_vote: { label: "נוכח ולא הצביע", tone: "neutral" },
 };
-
-const TYPE_HE = {
-  electronic: "הצבעה אלקטרונית",
-  roll_call: "הצבעה שמית",
-  hand: "הצבעה בהרמת ידיים",
-  secret: "הצבעה חשאית",
-} as const;
 
 interface FactionGroup {
   name: string;
@@ -49,18 +43,22 @@ function groupByFaction(breakdown: MkVoteWithPolitician[]): FactionGroup[] {
 export default async function VotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const voteId = Number(id);
-  const detail = Number.isInteger(voteId) ? await getVoteDetail({ voteId }) : null;
+  const [detail, session] = Number.isInteger(voteId)
+    ? await Promise.all([getVoteDetail({ voteId }), getSession()])
+    : [null, null];
   if (!detail) notFound();
   const { vote, breakdown, withheldCount, siblings } = detail;
   const groups = groupByFaction(breakdown);
   track("motion_viewed", { voteId: vote.voteId });
 
-  const session = await getSession();
   // Full stance state (incl. k-gated aggregate + match progress) so a
   // returning user sees their aggregate immediately, not only post-cast.
-  const stanceState = session?.user
-    ? await getStanceState({ userId: session.user.id, voteId: vote.voteId })
-    : null;
+  // Decisive votes only — the widget never renders elsewhere, so non-decisive
+  // pages (~2/3 of votes) skip the stance queries entirely.
+  const stanceState =
+    session?.user && vote.isDecisive
+      ? await getStanceState({ userId: session.user.id, voteId: vote.voteId })
+      : null;
 
   const isPending = vote.detailsStatus === "pending_details";
   const nonVoters = vote.totalDidntVote ?? 0;
@@ -86,7 +84,7 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
         )}
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
-        <span className="nums">{formatDateTime(vote.voteDate)}</span> · {TYPE_HE[vote.voteType]}
+        <span className="nums">{formatDateTime(vote.voteDate)}</span> · {VOTE_TYPE_HE[vote.voteType]}
         {vote.decisionHe && <> · {vote.decisionHe}</>}
       </p>
 
@@ -195,7 +193,7 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
                   href={`/vote/${s.voteId}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/60"
                 >
-                  <span className="min-w-0 flex-1 truncate">{s.decisionHe ?? TYPE_HE[s.voteType]}</span>
+                  <span className="min-w-0 flex-1 truncate">{s.decisionHe ?? VOTE_TYPE_HE[s.voteType]}</span>
                   {s.isAccepted != null && (
                     <StatusChip tone={s.isAccepted ? "positive" : "negative"}>
                       {s.isAccepted ? "התקבל" : "נדחה"}

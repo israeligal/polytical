@@ -194,7 +194,7 @@ export interface VotesFreshness {
   /** Last successful ingest RUN (heartbeat) — shown as "עודכן לאחרונה". */
   latest: Date | null;
   /** True when the pipeline looks broken: no successful run within the SLO
-   *  (6h on plenum days Sun–Wed in Asia/Jerusalem, 24h otherwise — spec P0-4).
+   *  (6h on plenum days Mon–Wed in Asia/Jerusalem, 24h otherwise — spec P0-4).
    *  Based on the heartbeat, NOT max(fetchedAt): a recess sweep re-stamps no
    *  rows but is perfectly healthy. */
   isStale: boolean;

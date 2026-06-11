@@ -48,6 +48,7 @@ export async function resolveUnmappedNameAction({
   const { backfilled } = await resolveUnmappedName({ db, nameKey, personId, reviewedBy: adminId, ctx });
   logger.info("admin.votes.name_resolved", { nameKey, personId, backfilled });
   revalidatePath("/admin");
+  revalidatePath("/votes"); // backfill changes withheldCount on public pages
   return { ok: true, message: `המיפוי נשמר — שויכו ${backfilled} הצבעות` };
 }
 

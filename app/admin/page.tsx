@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
 import { listManageableMarkets, getOutcomeCounts } from "@/app/lib/markets/repo";
 import { listSuggestions } from "@/app/lib/suggestions/service";
-import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { CreateMarketForm } from "@/components/admin/create-market-form";
 import { MarketAdminRow } from "@/components/admin/market-admin-row";
 import { SuggestionReviewRow } from "@/components/admin/suggestion-review-row";
@@ -32,9 +31,11 @@ export default async function AdminPage() {
     }),
   );
   const pendingSuggestions = await listSuggestions({ status: "pending" });
+  // Full roster incl. departed — a suggestion may reference a former MK, and
+  // the active-filtered gallery read would render it nameless.
   const nameByPersonId = new Map<number, string>();
   if (pendingSuggestions.some((s) => s.personId != null)) {
-    for (const p of await getAllPoliticians()) nameByPersonId.set(p.personId, p.nameHe);
+    for (const p of await listAllPoliticianNames()) nameByPersonId.set(p.personId, p.name);
   }
 
   // Votes domain: identity queue needs the FULL roster (a queued name may be a

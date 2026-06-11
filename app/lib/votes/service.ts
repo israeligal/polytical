@@ -20,7 +20,7 @@ type DB = VotesDb;
 const RESULT_BANNER = /נמצאו\s+([\d,]+)\s+תוצאות/;
 
 /** [from, to] date-string pairs, month-granular, inclusive. */
-export function monthlyWindows(fromDate: string, toDate: string): [string, string][] {
+function monthlyWindows(fromDate: string, toDate: string): [string, string][] {
   const out: [string, string][] = [];
   const from = new Date(`${fromDate}T00:00:00Z`);
   const to = new Date(`${toDate}T00:00:00Z`);

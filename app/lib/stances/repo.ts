@@ -10,6 +10,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { knessetVotes, userStances } from "@/app/lib/schema";
 import { MissingUserError } from "@/app/lib/errors";
+import { SCOREABLE_VOTE_TYPES } from "@/app/lib/votes/normalize";
 
 type DB = PgDatabase<
   PgQueryResultHKT,
@@ -121,7 +122,7 @@ export async function getScoreableStanceCount({
       and(
         eq(userStances.userId, reqUser(userId)),
         eq(knessetVotes.isDecisive, true),
-        inArray(knessetVotes.voteType, ["electronic", "roll_call"]),
+        inArray(knessetVotes.voteType, [...SCOREABLE_VOTE_TYPES]),
       ),
     );
   return Number(row?.n ?? 0);
