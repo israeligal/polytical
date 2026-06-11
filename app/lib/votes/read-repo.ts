@@ -43,22 +43,35 @@ function parseCursor(before: string | undefined): { date: Date; voteId: number }
   return { date, voteId };
 }
 
+/** Official facets only — the website API carries no topic taxonomy, so the
+ *  feed filters are outcome + has-per-MK-rows (see docs/decisions/votes-discovery.md).
+ *  `accepted` filters stored IsForAccepted (NULL = outcome unknown — excluded
+ *  by both directions); `withBreakdown` keeps electronic/roll-call only. */
+export interface VotesFeedFilter {
+  accepted?: boolean;
+  withBreakdown?: boolean;
+}
+
 /** Newest-first keyset pagination over primary votes. */
 export async function getVotesFeed({
   db = defaultDb,
   before,
   limit = 30,
-}: { db?: DB; before?: string; limit?: number } = {}): Promise<VotesFeedPage> {
+  filter,
+}: { db?: DB; before?: string; limit?: number; filter?: VotesFeedFilter } = {}): Promise<VotesFeedPage> {
   const cursor = parseCursor(before);
-  const where = cursor
-    ? and(
-        FEED_PRIMARY,
-        or(
-          lt(knessetVotes.voteDate, cursor.date),
-          and(eq(knessetVotes.voteDate, cursor.date), lt(knessetVotes.voteId, cursor.voteId)),
-        ),
-      )
-    : FEED_PRIMARY;
+  const conditions = [FEED_PRIMARY];
+  if (filter?.accepted !== undefined) conditions.push(eq(knessetVotes.isAccepted, filter.accepted));
+  if (filter?.withBreakdown)
+    conditions.push(inArray(knessetVotes.voteType, ["electronic", "roll_call"]));
+  if (cursor)
+    conditions.push(
+      or(
+        lt(knessetVotes.voteDate, cursor.date),
+        and(eq(knessetVotes.voteDate, cursor.date), lt(knessetVotes.voteId, cursor.voteId)),
+      ),
+    );
+  const where = and(...conditions);
   const rows = await db
     .select()
     .from(knessetVotes)

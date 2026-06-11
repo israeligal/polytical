@@ -253,6 +253,37 @@ test("feed pagination never drops same-timestamp votes across a page boundary (c
   expect(garbage.votes).toHaveLength(2);
 });
 
+test("feed filters: outcome + with-breakdown apply on first AND cursor pages; NULL outcomes excluded", async () => {
+  const { getVotesFeed } = await import("./read-repo");
+  const base = {
+    knessetNum: 25, isDecisive: true, detailsStatus: "complete" as const,
+    sourceDataset: "test", sourceUrl: "https://example.test",
+  };
+  const day = (d: number) => new Date(`2026-06-0${d}T12:00:00Z`);
+  await h.db.insert(knessetVotes).values([
+    { ...base, voteId: 9101, titleHe: "התקבלה", voteDate: day(5), fetchedAt: day(5), voteType: "electronic", isAccepted: true },
+    { ...base, voteId: 9102, titleHe: "נדחתה", voteDate: day(4), fetchedAt: day(4), voteType: "roll_call", isAccepted: false },
+    { ...base, voteId: 9103, titleHe: "ללא תוצאה", voteDate: day(3), fetchedAt: day(3), voteType: "electronic", isAccepted: null },
+    { ...base, voteId: 9104, titleHe: "הרמת ידיים", voteDate: day(2), fetchedAt: day(2), voteType: "hand", isAccepted: true },
+    { ...base, voteId: 9105, titleHe: "התקבלה ישנה", voteDate: day(1), fetchedAt: day(1), voteType: "electronic", isAccepted: true },
+  ]);
+
+  const acceptedPage = await getVotesFeed({ db: h.db, filter: { accepted: true } });
+  expect(acceptedPage.votes.map((v) => v.voteId)).toEqual([9101, 9104, 9105]); // NULL (9103) and rejected (9102) excluded
+
+  const rejected = await getVotesFeed({ db: h.db, filter: { accepted: false } });
+  expect(rejected.votes.map((v) => v.voteId)).toEqual([9102]);
+
+  const breakdown = await getVotesFeed({ db: h.db, filter: { withBreakdown: true } });
+  expect(breakdown.votes.map((v) => v.voteId)).toEqual([9101, 9102, 9103, 9105]); // hand vote (9104) excluded
+
+  // The filter must survive cursor pagination — a filtered page-2 stays filtered.
+  const page1 = await getVotesFeed({ db: h.db, limit: 2, filter: { accepted: true } });
+  expect(page1.votes.map((v) => v.voteId)).toEqual([9101, 9104]);
+  const page2 = await getVotesFeed({ db: h.db, limit: 2, before: page1.nextBefore!, filter: { accepted: true } });
+  expect(page2.votes.map((v) => v.voteId)).toEqual([9105]);
+});
+
 test("pickDecisiveVoteId: hand/secret-only items fall back to the latest vote (feed spine, never scored)", () => {
   expect(
     pickDecisiveVoteId([
