@@ -110,7 +110,9 @@ export default async function Home({
             <h1 className="sr-only">פוליטיקל — תחזיות על הפוליטיקה הישראלית</h1>
             {featured && (
               <div className="grid gap-4 lg:grid-cols-3">
-                <div className={hotItems.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}>
+                {/* min-w-0: grid items default to min-width:auto, letting the card's
+                    min-content blow past narrow viewports (the /market lesson). */}
+                <div className={hotItems.length > 0 ? "min-w-0 lg:col-span-2" : "min-w-0 lg:col-span-3"}>
                   <HeroSpotlight
                     market={featured.market}
                     featured={featured.featured}

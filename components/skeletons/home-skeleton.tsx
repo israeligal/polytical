@@ -15,7 +15,7 @@ export function HomeSkeleton() {
       <section className="border-b border-border bg-muted">
         <div className={HOME_SECTION_INNER}>
           <div className="grid items-center gap-8 lg:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <Skeleton className="h-4 w-44" />
               <Skeleton className="mt-3 h-12 w-full max-w-md" />
               <Skeleton className="mt-2 h-12 w-3/4" />
