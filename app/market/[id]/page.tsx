@@ -169,7 +169,7 @@ export default async function MarketPage({
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {bundle.market.descriptionHe ??
-                  "בוחרים תשובה אחת מהרשימה. כשהשוק יוכרע — ניחוש נכון נוסף לרקורד שלכם."}
+                  "בוחרים תשובה אחת מהרשימה. כשהתחזית תוכרע — ניחוש נכון נוסף לרקורד שלכם."}
               </p>
             </div>
           ) : (

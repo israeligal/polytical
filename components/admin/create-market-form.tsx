@@ -157,7 +157,7 @@ export function CreateMarketForm({
       </label>
 
       <fieldset>
-        <legend className={LABEL}>סוג השוק</legend>
+        <legend className={LABEL}>סוג התחזית</legend>
         <div className="flex gap-4 text-sm font-semibold text-foreground">
           <label className="flex items-center gap-1.5">
             <input
