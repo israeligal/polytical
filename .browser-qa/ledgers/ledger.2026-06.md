@@ -71,3 +71,5 @@
 | 2026-06-11 | 6ef8bec | /my-match unlock at 5 stances | 🔴 | worst-party tie contradiction → hidden when tied; basis lines honest |
 | 2026-06-11 | 6ef8bec | politician record + home module + mobile | ✅ | 16 vote links on /politician/427; no h-scroll 380px |
 | 2026-06-11 | 6ef8bec | admin votes: queue/featured/agenda round-trips | ✅ | featured→rail→untoggle; agenda add→drop; left prod clean |
+| 2026-06-11 | 127c976 | review-fix re-verify: composite cursor + garbage ?before= | ✅ | literal trigger re-run: page2 200, garbage→first page no boundary |
+| 2026-06-11 | 127c976 | review-fix re-verify: returning-user stance seeding /vote/46076 | ✅ | server-rendered בעד✓ + match link w/o casting |
