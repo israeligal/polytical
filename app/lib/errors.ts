@@ -22,6 +22,7 @@ export class ClosePastError extends Error { constructor() { super("Close date mu
 export class CloseRequiredError extends Error { constructor() { super("Proposed close date is required"); this.name = "CloseRequiredError"; } }
 export class CloseTooFarError extends Error { constructor() { super("Proposed close date is too far in the future"); this.name = "CloseTooFarError"; } }
 export class SourceNoteTooLongError extends Error { constructor() { super("Resolution source note too long"); this.name = "SourceNoteTooLongError"; } }
+export class DailySuggestionLimitError extends Error { constructor() { super("Daily suggestion limit reached"); this.name = "DailySuggestionLimitError"; } }
 export class NotificationNotFoundError extends Error { constructor() { super("Notification not found"); this.name = "NotificationNotFoundError"; } }
 // --- Push notifications ---
 export class PushSubscriptionNotFoundError extends Error { constructor() { super("Push subscription not found"); this.name = "PushSubscriptionNotFoundError"; } }
