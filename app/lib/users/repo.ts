@@ -1,14 +1,9 @@
 import { eq } from "drizzle-orm";
 import { users } from "@/app/lib/schema";
-import { MissingUserError } from "@/app/lib/errors";
+import { MissingUserError, requireUserId } from "@/app/lib/errors";
 import type { Tx } from "@/app/lib/db";
 
 // User-row access primitives shared across services. Scope guard first.
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /**
  * Locks the user row FOR UPDATE and returns it. Take this BEFORE a
@@ -19,7 +14,7 @@ export async function lockUser({ tx, userId }: { tx: Tx; userId: string }) {
   const [row] = await tx
     .select()
     .from(users)
-    .where(eq(users.id, reqUser(userId)))
+    .where(eq(users.id, requireUserId(userId)))
     .for("update");
   if (!row) throw new MissingUserError();
   return row;

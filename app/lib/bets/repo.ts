@@ -4,7 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bets, markets, outcomes } from "@/app/lib/schema";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 // Prediction read/seen helpers — a small module so markets/repo.ts stays under
 // 500 lines. Drives the one-time right/wrong reveal via the bets.seenAt flag.
@@ -23,11 +23,6 @@ export interface UnseenResolvedPrediction {
   correct: boolean; // the picked outcome was the market's winning outcome
 }
 
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
-
 /**
  * A user's resolved-but-unseen predictions, optionally scoped to one market.
  * `seenAt IS NULL` on a RESOLVED market is the one-time reveal trigger; `correct`
@@ -44,7 +39,7 @@ export async function listUnseenResolvedPredictions({
   marketId?: string;
 }): Promise<UnseenResolvedPrediction[]> {
   const where = [
-    eq(bets.userId, reqUser(userId)),
+    eq(bets.userId, requireUserId(userId)),
     isNull(bets.seenAt),
     eq(markets.status, "resolved"),
   ];
@@ -88,7 +83,7 @@ export async function markPredictionsSeen({
   const rows = await db
     .update(bets)
     .set({ seenAt: sql`now()` })
-    .where(and(eq(bets.userId, reqUser(userId)), inArray(bets.id, predictionIds), isNull(bets.seenAt)))
+    .where(and(eq(bets.userId, requireUserId(userId)), inArray(bets.id, predictionIds), isNull(bets.seenAt)))
     .returning({ id: bets.id });
   return { updated: rows.length };
 }

@@ -19,8 +19,7 @@ import {
   SuggestionTooShortError,
   UnknownPoliticianError,
 } from "@/app/lib/errors";
-
-type ActionResult = { ok: boolean; message?: string };
+import type { ActionResult } from "./types";
 
 // Community suggestion actions. The proposer endpoint is session-gated AND
 // rate-limited (Better Auth's limiter can't see a Server Action). The review

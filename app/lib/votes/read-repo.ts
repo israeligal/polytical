@@ -158,6 +158,27 @@ export async function getVoteDetail({
   };
 }
 
+export interface FactionGroup {
+  name: string;
+  members: MkVoteWithPolitician[];
+}
+
+/** Group a breakdown by faction-at-vote-time, largest faction first; members
+ *  sorted by result so בעד/נגד/נמנע cluster. Pure — unit-tested. */
+export function groupByFaction(breakdown: MkVoteWithPolitician[]): FactionGroup[] {
+  const groups = new Map<string, MkVoteWithPolitician[]>();
+  for (const row of breakdown) {
+    const name = row.factionNameHe ?? "ללא שיוך סיעתי";
+    groups.set(name, [...(groups.get(name) ?? []), row]);
+  }
+  return [...groups.entries()]
+    .map(([name, members]) => ({
+      name,
+      members: members.sort((a, b) => a.result.localeCompare(b.result)),
+    }))
+    .sort((a, b) => b.members.length - a.members.length);
+}
+
 export interface RecentMkVote {
   voteId: number;
   titleHe: string;

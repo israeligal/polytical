@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "./types";
 import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import {
@@ -17,7 +18,6 @@ import {
   InvalidHandleError,
 } from "@/app/lib/errors";
 
-type ActionResult = { ok: boolean; message?: string };
 type GenerateHandleResult = ActionResult & { handle?: string };
 
 // Onboarding is session-gated AND rate-limited — Better Auth's limiter can't

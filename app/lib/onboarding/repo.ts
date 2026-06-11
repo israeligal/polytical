@@ -5,16 +5,11 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
 import type { Tx } from "@/app/lib/db";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 // Driver-agnostic handles (postgres-js in prod, PGlite in tests). Mirrors the
 // markets repo so identity reads/writes are injectable without an `as any`.
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /** The onboarding-relevant slice of a user row (read authoritatively by the page). */
 export type OnboardingState = {
@@ -35,7 +30,7 @@ export async function readOnboardingState({
   const [row] = await db
     .select({ handle: users.handle, arena: users.arena, onboardedAt: users.onboardedAt })
     .from(users)
-    .where(eq(users.id, reqUser(userId)))
+    .where(eq(users.id, requireUserId(userId)))
     .limit(1);
   return row ?? null;
 }
@@ -56,7 +51,7 @@ export async function isHandleTaken({
   const [row] = await conn
     .select({ n: sql<number>`1` })
     .from(users)
-    .where(and(eq(users.handle, handle), ne(users.id, reqUser(excludeUserId))))
+    .where(and(eq(users.handle, handle), ne(users.id, requireUserId(excludeUserId))))
     .limit(1);
   return !!row;
 }
@@ -75,7 +70,7 @@ export async function setHandle({
   await tx
     .update(users)
     .set({ handle, updatedAt: new Date() })
-    .where(eq(users.id, reqUser(userId)));
+    .where(eq(users.id, requireUserId(userId)));
 }
 
 /** Sets the chosen arena and stamps onboardedAt — the gate-clearing write. */
@@ -93,5 +88,5 @@ export async function completeOnboarding({
   await tx
     .update(users)
     .set({ arena, onboardedAt: at, updatedAt: new Date() })
-    .where(eq(users.id, reqUser(userId)));
+    .where(eq(users.id, requireUserId(userId)));
 }

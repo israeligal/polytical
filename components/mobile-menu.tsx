@@ -70,7 +70,7 @@ export function MobileMenu({
         aria-label="פתיחת התפריט"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+        className="grid h-10 w-10 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -93,7 +93,7 @@ export function MobileMenu({
                 type="button"
                 onClick={close}
                 aria-label="סגירה"
-                className="grid h-9 w-9 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+                className="grid h-10 w-10 place-items-center rounded-[12px] border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Close className="h-5 w-5" />
               </button>

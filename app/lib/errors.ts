@@ -45,3 +45,9 @@ export class InvalidSeasonError extends Error { constructor() { super("Invalid s
 export class UnverifiedMappingsError extends Error { constructor(count: number) { super(`${count} MK name mappings are unverified — sign off before attribution`); this.name = "UnverifiedMappingsError"; } }
 export class VoteNotFoundError extends Error { constructor() { super("Vote not found"); this.name = "VoteNotFoundError"; } }
 export class VoteNotStanceableError extends Error { constructor() { super("Stances attach only to an item's decisive vote"); this.name = "VoteNotStanceableError"; } }
+/** Scope guard for user-owned reads/writes — call as the FIRST thing inside a
+ *  repo function's where-clause: `eq(t.userId, requireUserId(userId))`. */
+export function requireUserId(userId: string): string {
+  if (!userId) throw new MissingUserError();
+  return userId;
+}

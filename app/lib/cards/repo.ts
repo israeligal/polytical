@@ -5,14 +5,9 @@ import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { cardCollections, cardProgress } from "@/app/lib/schema";
 import type { Tx } from "@/app/lib/db";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /** True if the user already owns this MK's card. */
 export async function isOwned({
@@ -30,7 +25,7 @@ export async function isOwned({
   const [row] = await conn
     .select({ id: cardCollections.id })
     .from(cardCollections)
-    .where(and(eq(cardCollections.userId, reqUser(userId)), eq(cardCollections.personId, personId)))
+    .where(and(eq(cardCollections.userId, requireUserId(userId)), eq(cardCollections.personId, personId)))
     .limit(1);
   return !!row;
 }
@@ -49,7 +44,7 @@ export async function insertOwnership({
 }): Promise<boolean> {
   const inserted = await tx
     .insert(cardCollections)
-    .values({ userId: reqUser(userId), personId })
+    .values({ userId: requireUserId(userId), personId })
     .onConflictDoNothing({ target: [cardCollections.userId, cardCollections.personId] })
     .returning({ id: cardCollections.id });
   return inserted.length > 0;
@@ -66,7 +61,7 @@ export async function ownedPersonIds({
   const rows = await db
     .select({ personId: cardCollections.personId })
     .from(cardCollections)
-    .where(eq(cardCollections.userId, reqUser(userId)));
+    .where(eq(cardCollections.userId, requireUserId(userId)));
   return rows.map((r) => r.personId);
 }
 
@@ -81,7 +76,7 @@ export async function listCollection({
   return db
     .select({ personId: cardCollections.personId, collectedAt: cardCollections.collectedAt })
     .from(cardCollections)
-    .where(eq(cardCollections.userId, reqUser(userId)))
+    .where(eq(cardCollections.userId, requireUserId(userId)))
     .orderBy(desc(cardCollections.collectedAt));
 }
 
@@ -101,7 +96,7 @@ export async function bumpCardProgress({
 }): Promise<number> {
   const [row] = await tx
     .insert(cardProgress)
-    .values({ userId: reqUser(userId), personId, correctCount: 1 })
+    .values({ userId: requireUserId(userId), personId, correctCount: 1 })
     .onConflictDoUpdate({
       target: [cardProgress.userId, cardProgress.personId],
       set: { correctCount: sql`${cardProgress.correctCount} + 1` },
@@ -122,6 +117,6 @@ export async function progressByPerson({
   const rows = await db
     .select({ personId: cardProgress.personId, correctCount: cardProgress.correctCount })
     .from(cardProgress)
-    .where(eq(cardProgress.userId, reqUser(userId)));
+    .where(eq(cardProgress.userId, requireUserId(userId)));
   return new Map(rows.map((r) => [r.personId, r.correctCount]));
 }

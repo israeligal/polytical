@@ -3,12 +3,13 @@
 // attribution + queue) → decisive recompute. Idempotent end-to-end; a vote
 // whose detail fetch fails stays `pending_details` and is retried next run.
 
+import { eq } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import { UnverifiedMappingsError } from "@/app/lib/errors";
 import {
-  applyVoteDetails, listPendingDetailVoteIds, loadAttributionContext,
+  applyVoteDetails, listAllPendingDetailVoteIds, listPendingDetailVoteIds, loadAttributionContext,
   recomputeDecisive, upsertVoteHeaders, type VotesDb,
 } from "./repo";
 import { normalizeVoteDetails, normalizeVoteHeader } from "./normalize";
@@ -92,9 +93,13 @@ export async function ingestVotes({
   const headerRows = uniqueHeaders.map((h) => normalizeVoteHeader(h, prov));
   await upsertVoteHeaders({ db, rows: headerRows });
 
-  // 2) details for pending (or all, when refetching)
+  // 2) details for pending (or all, when refetching). Also self-heal: pick up
+  // votes stuck pending OUTSIDE this sweep's window (failed normalize, old
+  // window) so nothing stays half-written forever.
   const sweptIds = uniqueHeaders.map((h) => h.VoteId);
-  const targetIds = refetchDetails ? sweptIds : await listPendingDetailVoteIds({ db, voteIds: sweptIds });
+  const sweptPending = refetchDetails ? sweptIds : await listPendingDetailVoteIds({ db, voteIds: sweptIds });
+  const stuckPending = refetchDetails ? [] : await listAllPendingDetailVoteIds({ db });
+  const targetIds = [...new Set([...sweptPending, ...stuckPending])];
   const voteDateById = new Map(headerRows.map((r) => [r.voteId, r.voteDate as Date]));
 
   let detailsFetched = 0;
@@ -110,9 +115,17 @@ export async function ingestVotes({
         continue;
       }
       const { patch, rawRows } = normalizeVoteDetails(voteId, details, prov);
-      const res = await applyVoteDetails({
-        db, voteId, voteDate: voteDateById.get(voteId) ?? fetchedAt, patch, rawRows, ctx,
-      });
+      // Stuck votes aren't in this sweep's headers — read their stored date.
+      let voteDate: Date | undefined = voteDateById.get(voteId);
+      if (!voteDate) {
+        const [stored] = await db
+          .select({ d: schema.knessetVotes.voteDate })
+          .from(schema.knessetVotes)
+          .where(eq(schema.knessetVotes.voteId, voteId))
+          .limit(1);
+        voteDate = stored?.d ?? fetchedAt;
+      }
+      const res = await applyVoteDetails({ db, voteId, voteDate, patch, rawRows, ctx });
       attributed += res.attributed;
       queued += res.queued;
       if (patch.itemId != null) touchedItemIds.push(patch.itemId);

@@ -4,7 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { pushSubscriptions } from "@/app/lib/schema";
-import { MissingUserError } from "@/app/lib/errors";
+import { requireUserId } from "@/app/lib/errors";
 
 // Repository for web-push subscriptions — one row per browser push endpoint a
 // user has granted. `endpoint` is the natural key (UNIQUE), so re-subscribe is
@@ -20,11 +20,6 @@ type DB = PgDatabase<
 >;
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
-
-function reqUser(userId: string): string {
-  if (!userId) throw new MissingUserError();
-  return userId;
-}
 
 /** Inserts a subscription, or rebinds an existing endpoint to the latest
  *  user + keys. UNIQUE(endpoint) makes this idempotent across re-subscribes. */
@@ -43,10 +38,10 @@ export async function upsertSubscription({
 }): Promise<void> {
   await db
     .insert(pushSubscriptions)
-    .values({ userId: reqUser(userId), endpoint, p256dh, auth })
+    .values({ userId: requireUserId(userId), endpoint, p256dh, auth })
     .onConflictDoUpdate({
       target: pushSubscriptions.endpoint,
-      set: { userId: reqUser(userId), p256dh, auth },
+      set: { userId: requireUserId(userId), p256dh, auth },
     });
 }
 
@@ -61,7 +56,7 @@ export async function listByUser({
   return db
     .select()
     .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.userId, reqUser(userId)));
+    .where(eq(pushSubscriptions.userId, requireUserId(userId)));
 }
 
 /** Prunes a dead endpoint (410/404 from the push service). No userId: an
@@ -91,7 +86,7 @@ export async function deleteByUserAndEndpoint({
     .delete(pushSubscriptions)
     .where(
       and(
-        eq(pushSubscriptions.userId, reqUser(userId)),
+        eq(pushSubscriptions.userId, requireUserId(userId)),
         eq(pushSubscriptions.endpoint, endpoint),
       ),
     )

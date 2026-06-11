@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "./types";
 import { getSession } from "@/lib/auth";
 import type { MarketKind, OutcomeInput, PoliticianOption } from "@/lib/types";
 import * as repo from "@/app/lib/markets/repo";
@@ -24,8 +25,6 @@ import {
 // The right/wrong tally on resolve happens inside the service (resolveMarket /
 // voidMarket); these wrappers only authorize, parse the form input, and
 // revalidate the affected pages.
-
-type ActionResult = { ok: boolean; message?: string };
 
 /** Throws for non-admins; returns the session so callers don't re-fetch it. */
 async function requireAdmin(): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
