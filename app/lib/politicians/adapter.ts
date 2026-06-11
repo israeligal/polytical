@@ -5,7 +5,6 @@ import type { PoliticianRow } from "./repo";
 // WITHOUT changing lib/types or components/caricature-card.tsx. This keeps the
 // mock-driven market detail stable while the cards themselves run on real data.
 
-const NO_PARTY = "ללא סיעה";
 const DEFAULT_ROLE = "חבר/ת הכנסת";
 
 const CAT_SLOTS = 8;
@@ -42,12 +41,15 @@ function knessetSinceYear(value: string | null): string | undefined {
 }
 
 export function dbToCard(row: PoliticianRow): Politician {
-  const party = row.party?.trim() || NO_PARTY;
+  const hasParty = !!row.party?.trim();
+  const party = hasParty ? row.party!.trim() : ""; // empty (no faction) — NOT "ללא סיעה"
   const role = row.roleHe?.trim() || DEFAULT_ROLE;
   const sinceYear = knessetSinceYear(row.inKnessetSince);
+  const isNorwegianMinister =
+    (row.facts as { isNorwegianMinister?: boolean })?.isNorwegianMinister === true;
 
   const facts: PoliticianFact[] = [
-    { label: "סיעה", value: party },
+    ...(hasParty ? [{ label: "סיעה", value: party }] : []),
     { label: "תפקיד", value: role },
     ...(sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
   ];
@@ -61,5 +63,6 @@ export function dbToCard(row: PoliticianRow): Politician {
     tagline: row.roleHe?.trim() ?? "",
     facts,
     imageUrl: row.imageUrl ?? undefined,
+    isNorwegianMinister,
   };
 }

@@ -116,8 +116,25 @@ export default async function PoliticianPage({
           <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">
             {politician.name}
           </h1>
-          <p className="mt-1 text-muted-foreground">
-            {politician.role} · {politician.party}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+            <span>
+              {politician.role}
+              {politician.party ? ` · ${politician.party}` : ""}
+            </span>
+            {politician.isNorwegianMinister && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-bold text-foreground"
+                title="שר נורבגי — שר שאינו חבר הכנסת: לפי החוק הנורבגי הוא התפטר ממושבו, ח״כ מסיעתו נכנס במקומו, והוא ממשיך לכהן כשר."
+              >
+                נורבגי
+                <span
+                  aria-hidden
+                  className="grid h-4 w-4 place-items-center rounded-full border border-border text-[10px] text-muted-foreground"
+                >
+                  i
+                </span>
+              </span>
+            )}
           </p>
 
           <dl className="mt-6 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">

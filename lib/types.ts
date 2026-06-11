@@ -27,6 +27,8 @@ export interface Politician {
   facts: PoliticianFact[];
   /** AI caricature; absent in v1 → styled fallback frame is rendered. */
   imageUrl?: string;
+  /** Minister serving without a Knesset seat (Norwegian Law) — drives the נורבגי chip. */
+  isNorwegianMinister?: boolean;
 }
 
 export interface Outcome {

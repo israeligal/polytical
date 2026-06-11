@@ -54,19 +54,16 @@ test("dbToCard maps a fully-populated row to the front-end Politician shape", ()
   expect(card.imageUrl).toBeUndefined();
 });
 
-test("null party/role/inKnessetSince fall back; the 'since' fact is dropped", () => {
+test("null party/role/inKnessetSince → empty party, role default, 'סיעה' fact dropped", () => {
   const card = dbToCard(
     row({ party: null, roleHe: null, inKnessetSince: null, factionId: null }),
   );
-  expect(card.party).toBe("ללא סיעה");
+  expect(card.party).toBe(""); // empty, not the "ללא סיעה" placeholder
   expect(card.role).toBe("חבר/ת הכנסת");
   expect(card.cat).toBeGreaterThanOrEqual(1);
   expect(card.cat).toBeLessThanOrEqual(8);
-  // Only the two always-present facts; no "בסיעה מאז" row.
-  expect(card.facts).toEqual([
-    { label: "סיעה", value: "ללא סיעה" },
-    { label: "תפקיד", value: "חבר/ת הכנסת" },
-  ]);
+  // No party → no "סיעה" fact, and no "בסיעה מאז" row.
+  expect(card.facts).toEqual([{ label: "תפקיד", value: "חבר/ת הכנסת" }]);
 });
 
 test("color slot is stable & deterministic per distinct factionId", () => {
@@ -80,10 +77,27 @@ test("color slot is stable & deterministic per distinct factionId", () => {
   expect(c.cat).not.toBe(a.cat);
 });
 
-test("blank/whitespace party and role are treated as empty → fallbacks", () => {
+test("blank/whitespace party and role are treated as empty → empty party, default role", () => {
   const card = dbToCard(row({ party: "   ", roleHe: "  " }));
-  expect(card.party).toBe("ללא סיעה");
+  expect(card.party).toBe("");
   expect(card.role).toBe("חבר/ת הכנסת");
+});
+
+test("dbToCard surfaces the Norwegian-minister flag and drops an empty party", () => {
+  const card = dbToCard(row({
+    party: null, roleHe: "שר החוץ",
+    facts: { isNorwegianMinister: true },
+  }));
+  expect(card.isNorwegianMinister).toBe(true);
+  expect(card.role).toBe("שר החוץ");
+  expect(card.party).toBe("");
+  expect(card.facts.find((f) => f.label === "סיעה")).toBeUndefined();
+});
+
+test("dbToCard: a normal MK keeps party and is not flagged", () => {
+  const card = dbToCard(row({ party: "מפלגה" }));
+  expect(card.isNorwegianMinister).toBe(false);
+  expect(card.party).toBe("מפלגה");
 });
 
 test("derived categorical color is always within the 1..8 slot range", () => {
