@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "פוליטיקל — זירת התחזיות של הפוליטיקה הישראלית",
     short_name: "פוליטיקל",
-    description: "נחשו את הפוליטיקה הישראלית. בלי כסף אמיתי — רק על הכבוד.",
+    description: "תנו מנדט על הפוליטיקה הישראלית. בלי כסף אמיתי — רק על הכבוד.",
     start_url: "/",
     scope: "/",
     id: "/?source=pwa",

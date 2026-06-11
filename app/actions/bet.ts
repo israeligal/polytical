@@ -17,7 +17,7 @@ export async function makePredictionAction({
   outcomeId: string;
 }): Promise<{ ok: boolean; message?: string }> {
   const session = await getSession();
-  if (!session?.user) return { ok: false, message: "התחברו כדי לנחש" };
+  if (!session?.user) return { ok: false, message: "התחברו כדי לתת מנדט" };
   // Anti-abuse throttle (generous — active predictors won't hit it).
   const limit = checkRateLimit({ key: `predict:${session.user.id}`, max: 30, windowMs: 60_000 });
   if (!limit.allowed) return { ok: false, message: "יותר מדי תחזיות — האטו לרגע" };

@@ -42,7 +42,7 @@ export default async function CollectionPage() {
         <p className="font-accent text-sm font-bold text-accent">האוסף</p>
         <h1 className="font-display text-4xl text-foreground">הקלפים שלי</h1>
         <p className="mt-2 text-lg text-muted-foreground">
-          פתחו קלף של כל חבר וחברת כנסת בכך שתנחשו נכון בתחזיות שהם מופיעים בהן — ככל שהדרגה בכירה יותר, צריך יותר ניחושים נכונים. קלף שפתחתם מואר; היתר נעולים עד שתפתחו אותם.
+          פתחו קלף של כל חבר וחברת כנסת בכך שתצדקו בתחזיות שהם מופיעים בהן — ככל שהדרגה בכירה יותר, צריך יותר מנדטים מדויקים. קלף שפתחתם מואר; היתר נעולים עד שתפתחו אותם.
         </p>
       </div>
 

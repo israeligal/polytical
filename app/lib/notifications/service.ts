@@ -34,7 +34,7 @@ export function composeNotification(e: NotificationEvent): NewNotification {
       return {
         userId: e.userId, type: "bet_won",
         titleHe: "ניחשת נכון! 🎯",
-        bodyHe: `צדקת בניחוש · ${e.questionHe}`,
+        bodyHe: `המנדט נפדה — צדקת · ${e.questionHe}`,
         refMarketId: e.marketId, refBetId: e.betId,
       };
     case "market_resolved":
@@ -62,14 +62,14 @@ export function composeNotification(e: NotificationEvent): NewNotification {
       return {
         userId: e.userId, type: "market_voided",
         titleHe: "התחזית בוטלה",
-        bodyHe: `הניחוש שלך בוטל · ${e.questionHe}`,
+        bodyHe: `המנדט שלך בוטל · ${e.questionHe}`,
         refMarketId: e.marketId,
       };
     case "market_closing_soon":
       return {
         userId: e.userId, type: "market_closing_soon",
         titleHe: "תחזית נסגרת בקרוב ⏰",
-        bodyHe: `הספיקו לנחש לפני הסגירה · ${e.questionHe}`,
+        bodyHe: `הספיקו לתת מנדט לפני הסגירה · ${e.questionHe}`,
         refMarketId: e.marketId,
       };
   }

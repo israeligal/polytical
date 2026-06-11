@@ -66,7 +66,7 @@ export function MarketAdminRow({
   }
 
   function onDelete() {
-    if (!window.confirm("למחוק את התחזית לצמיתות? כל הניחושים והתגובות יימחקו ולא ניתן לשחזר."))
+    if (!window.confirm("למחוק את התחזית לצמיתות? כל המנדטים והתגובות יימחקו ולא ניתן לשחזר."))
       return;
     run(() => deleteMarketAction({ marketId }));
   }
@@ -87,7 +87,7 @@ export function MarketAdminRow({
           <li key={o.id} className="flex items-center justify-between">
             <span className="text-foreground">{o.labelHe}</span>
             <span className="nums text-muted-foreground">
-              {o.predictors} ניחושים ({total > 0 ? Math.round((o.predictors / total) * 100) : 0}%)
+              {o.predictors} מנדטים ({total > 0 ? Math.round((o.predictors / total) * 100) : 0}%)
             </span>
           </li>
         ))}

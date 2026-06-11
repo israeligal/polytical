@@ -38,7 +38,7 @@ export function SeasonTierRow({
           {nameHe}
         </p>
         <p className="text-sm text-muted-foreground">
-          <span className="nums">{formatCount(goalCorrect)}</span> ניחושים נכונים בעונה
+          <span className="nums">{formatCount(goalCorrect)}</span> מנדטים מדויקים בעונה
         </p>
       </div>
 

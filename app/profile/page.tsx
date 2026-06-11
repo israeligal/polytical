@@ -94,13 +94,13 @@ export default async function ProfilePage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="ניחושים נכונים">
+          <StatCard label="מנדטים מדויקים">
             <span className="inline-flex items-center gap-1.5">
               <Trophy className="h-5 w-5 text-accent" />
               <span className="nums text-2xl font-black text-gold">{formatCount(stats?.totalWins ?? 0)}</span>
             </span>
           </StatCard>
-          <StatCard label="ניחושים שגויים">
+          <StatCard label="מנדטים שגויים">
             <span className="nums text-2xl font-black text-foreground">
               {formatCount(stats?.totalWrong ?? 0)}
             </span>
@@ -152,7 +152,7 @@ export default async function ProfilePage() {
       {/* OPEN PREDICTIONS */}
       <section className="mb-10">
         <h2 className="mb-3 font-display text-2xl font-bold text-foreground">
-          ניחושים פתוחים
+          מנדטים פתוחים
         </h2>
         {openPred.length > 0 ? (
           // Unbounded source (grows with the market count) → scroll past ~4 rows.
@@ -170,7 +170,7 @@ export default async function ProfilePage() {
                     {p.questionHe}
                   </Link>
                   <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-bold text-foreground">
-                    הניחוש שלך: {p.outcomeLabelHe}
+                    המנדט שלך: {p.outcomeLabelHe}
                   </span>
                 </div>
                 {marketById.get(p.marketId) && (
@@ -183,9 +183,9 @@ export default async function ProfilePage() {
           </ul>
         ) : (
           <EmptyState>
-            אין לך ניחושים פתוחים.{" "}
+            אין לך מנדטים פתוחים.{" "}
             <Link href="/#markets" className="font-semibold text-primary hover:underline">
-              בחרו תחזית לנחש עליה
+              בחרו תחזית לתת עליה מנדט
             </Link>
             .
           </EmptyState>
@@ -195,7 +195,7 @@ export default async function ProfilePage() {
       {/* HISTORY */}
       <section>
         <h2 className="mb-3 font-display text-2xl font-bold text-foreground">
-          היסטוריית ניחושים
+          היסטוריית מנדטים
         </h2>
         {history.length > 0 ? (
           // Grows forever (every resolved prediction) → scroll past ~7 rows.
@@ -213,7 +213,7 @@ export default async function ProfilePage() {
                     {p.questionHe}
                   </Link>
                   <p className="text-xs text-muted-foreground">
-                    הניחוש שלך: {p.outcomeLabelHe}
+                    המנדט שלך: {p.outcomeLabelHe}
                   </p>
                 </div>
                 <HistoryResult prediction={p} />
@@ -221,7 +221,7 @@ export default async function ProfilePage() {
             ))}
           </ul>
         ) : (
-          <EmptyState>עוד לא הוכרעו אצלך ניחושים.</EmptyState>
+          <EmptyState>עוד לא הוכרעו אצלך מנדטים.</EmptyState>
         )}
       </section>
 
@@ -318,7 +318,7 @@ function SeasonCard({ board }: { board: Awaited<ReturnType<typeof getSeasonBoard
 
       <div className="mt-3">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="font-accent text-xs font-bold text-muted-foreground">ניחושים נכונים העונה</span>
+          <span className="font-accent text-xs font-bold text-muted-foreground">מנדטים מדויקים העונה</span>
           <span className="nums font-display text-xl text-gold">{formatCount(progress)}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-sunken">
@@ -374,7 +374,7 @@ function CollectionCard({
         </div>
       ) : (
         <p className="mt-3 text-xs text-muted-foreground">
-          נחשו נכון בתחזיות כדי לאסוף את הקלף הראשון שלכם.
+          צדקו בתחזיות כדי לאסוף את הקלף הראשון שלכם.
         </p>
       )}
     </Link>

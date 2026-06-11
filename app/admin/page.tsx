@@ -54,7 +54,7 @@ export default async function AdminPage() {
         <h1 className="font-display text-3xl font-black text-foreground">ניהול תחזיות</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           יצירת תחזיות, הכרעה (סיכום מי ניחש נכון) וביטול תחזית. ההכרעה מעדכנת את
-          רשומת הניחושים של כל מי שניחש.
+          רשומת המנדטים של כל מי שנתן מנדט.
         </p>
       </header>
 
