@@ -3,12 +3,9 @@
        star reads on light and dark browser chrome alike. Star fills ~95% of the
        canvas (vertices on a 210px circle), strokes thickened to 62 so the
        triangles survive downscaling; weave covers scaled to match. -->
-  <!-- Darkened brand colors (#00B886/#E83A5C vs #00E0A4/#FF4D6D) — the raster set is
-       the no-media-query fallback, so it carries the light-chrome-safe palette;
-       favicon.svg swaps back to the bright pair on dark chrome. -->
-  <path d="M256 46 L74.1 361 L437.9 361 Z" fill="none" stroke="#00B886" stroke-width="62" stroke-linejoin="round"/>
-  <path d="M256 466 L437.9 151 L74.1 151 Z" fill="none" stroke="#E83A5C" stroke-width="62" stroke-linejoin="round"/>
-  <line x1="222.0" y1="104.8" x2="168.8" y2="197.2" stroke="#00B886" stroke-width="62"/>
-  <line x1="350.6" y1="209.8" x2="403.8" y2="302.2" stroke="#00B886" stroke-width="62"/>
-  <line x1="145.0" y1="361" x2="245.8" y2="361" stroke="#00B886" stroke-width="62"/>
+  <path d="M256 46 L74.1 361 L437.9 361 Z" fill="none" stroke="#00E0A4" stroke-width="62" stroke-linejoin="round"/>
+  <path d="M256 466 L437.9 151 L74.1 151 Z" fill="none" stroke="#FF4D6D" stroke-width="62" stroke-linejoin="round"/>
+  <line x1="222.0" y1="104.8" x2="168.8" y2="197.2" stroke="#00E0A4" stroke-width="62"/>
+  <line x1="350.6" y1="209.8" x2="403.8" y2="302.2" stroke="#00E0A4" stroke-width="62"/>
+  <line x1="145.0" y1="361" x2="245.8" y2="361" stroke="#00E0A4" stroke-width="62"/>
 </svg>
