@@ -123,18 +123,6 @@ export default async function ProfilePage() {
           </StatCard>
         </div>
 
-        <Link
-          href="/my-match"
-          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <span>
-            <span className="block text-sm font-bold text-foreground">מי מצביע כמוכם?</span>
-            <span className="block text-xs text-muted-foreground">
-              ההתאמה בין העמדות שלכם להצבעות האמיתיות במליאה
-            </span>
-          </span>
-          <span className="shrink-0 text-sm font-bold text-primary">לצפייה ←</span>
-        </Link>
       </section>
 
       {/* Two columns on desktop: activity feed (1fr) + personal-progress sidebar
@@ -145,6 +133,18 @@ export default async function ProfilePage() {
         <aside className="space-y-5 lg:col-start-2 lg:row-start-1 lg:self-start xl:sticky xl:top-24">
           <SeasonCard board={seasonBoard} />
           <CollectionCard ownedCount={ownedIds.size} total={politicians.length} preview={ownedCards} />
+          <Link
+            href="/my-match"
+            className="group flex items-center justify-between gap-3 rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary"
+          >
+            <span>
+              <span className="block font-accent text-sm font-bold text-primary">מי מצביע כמוכם?</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                ההתאמה בין העמדות שלכם להצבעות האמיתיות במליאה
+              </span>
+            </span>
+            <ChevronForward className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:-translate-x-0.5" />
+          </Link>
         </aside>
 
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">
