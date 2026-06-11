@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "check:caricatures": "tsx --env-file=.env scripts/check-caricatures.ts",
     "ingest:knesset": "tsx --env-file=.env scripts/ingest-knesset.ts",
     "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full",
     "ingest:votes": "tsx --env-file=.env scripts/ingest-votes.ts",
