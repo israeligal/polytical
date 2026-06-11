@@ -135,7 +135,7 @@ export default async function MarketPage({
               </h3>
               {status === "voided" ? (
                 <p className="text-sm text-muted-foreground">
-                  התחזית בוטלה — הניחושים לא נספרים.
+                  התחזית בוטלה — המנדטים לא נספרים.
                 </p>
               ) : (
                 <>
@@ -170,7 +170,7 @@ export default async function MarketPage({
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {bundle.market.descriptionHe ??
-                  "בוחרים תשובה אחת מהרשימה. כשהתחזית תוכרע — ניחוש נכון נוסף לרקורד שלכם."}
+                  "בוחרים תשובה אחת מהרשימה. כשהתחזית תוכרע — מנדט מדויק נוסף לרקורד שלכם."}
               </p>
             </div>
           ) : (

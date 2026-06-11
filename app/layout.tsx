@@ -29,7 +29,7 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: "פוליטיקל — זירת התחזיות של הפוליטיקה הישראלית",
   description:
-    "נחשו מה יקרה בפוליטיקה הישראלית — בחרו תוצאה בכל תחזית, עקבו אחרי כמה צדקתם, ואספו קלפי קריקטורה לפי דיוק הניחושים. בלי כסף — רק על הכבוד.",
+    "תנו מנדט על הפוליטיקה הישראלית — בחרו תוצאה בכל תחזית, עקבו אחרי כמה צדקתם, ואספו קלפי קריקטורה לפי דיוק המנדטים. בלי כסף — רק על הכבוד.",
   // Installed-app look on iOS (without this, Add-to-Home-Screen renders in Safari chrome).
   appleWebApp: {
     capable: true,

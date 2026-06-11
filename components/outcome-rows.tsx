@@ -46,7 +46,7 @@ export function OutcomeRows({
       try {
         const res = await makePredictionAction({ marketId: market.id, outcomeId: outcome.id });
         setOk(res.ok);
-        setMessage(res.ok ? "הניחוש נרשם!" : (res.message ?? "שגיאה"));
+        setMessage(res.ok ? "המנדט נרשם!" : (res.message ?? "שגיאה"));
         if (!res.ok) setPickedId(previous);
       } catch {
         setOk(false);
@@ -92,7 +92,7 @@ export function OutcomeRows({
                     {pctLabel(o.predictors, total)}
                   </span>
                   <span className="nums block text-xs text-muted-foreground">
-                    {o.predictors} ניחושים
+                    {o.predictors} מנדטים
                   </span>
                 </span>
                 {isLoggedIn ? (
@@ -107,7 +107,7 @@ export function OutcomeRows({
                         : "border-border bg-sunken text-foreground hover:border-primary hover:text-primary"
                     }`}
                   >
-                    {active ? "הניחוש שלך ✓" : "בחר"}
+                    {active ? "המנדט שלך ✓" : "בחר"}
                   </button>
                 ) : (
                   <Link

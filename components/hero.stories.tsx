@@ -72,24 +72,10 @@ const railItems = [
   },
 ];
 
-function TitleBlock() {
-  return (
-    <div className="mb-6">
-      <h1 className="font-display text-2xl font-black text-foreground sm:text-3xl">
-        נחשו את הפוליטיקה הישראלית
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-        צפו לאן הקהל נוטה ואספו קלפי קריקטורה לפי הדיוק שלכם.
-      </p>
-    </div>
-  );
-}
-
 function SectionFrame({ children }: { children: React.ReactNode }) {
   return (
     <section className="border-b border-border bg-muted">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <TitleBlock />
         {children}
       </div>
     </section>

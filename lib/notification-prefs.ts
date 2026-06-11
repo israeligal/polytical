@@ -17,13 +17,13 @@ export const PUSH_PREF_CATEGORIES: PushPrefCategory[] = [
   {
     key: "outcomes",
     labelHe: "תוצאות תחזיות",
-    descHe: "ניחוש נכון, הכרעה או ביטול של תחזית שניחשתם בה",
+    descHe: "מנדט מדויק, הכרעה או ביטול של תחזית שנתתם בה מנדט",
     types: ["bet_won", "market_resolved", "market_voided"],
   },
   {
     key: "closing",
     labelHe: "תחזיות שנסגרות",
-    descHe: "תזכורת כשתחזית שניחשתם בה עומדת להיסגר",
+    descHe: "תזכורת כשתחזית שנתתם בה מנדט עומדת להיסגר",
     types: ["market_closing_soon"],
   },
   {

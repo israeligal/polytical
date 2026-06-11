@@ -61,7 +61,7 @@ function SignUpForm() {
             <Ballot className="h-6 w-6" />
           </span>
           <h1 className="font-display text-2xl font-black text-foreground">הרשמה לפוליטיקל</h1>
-          <p className="text-sm text-muted-foreground">פתחו חשבון והתחילו לנחש</p>
+          <p className="text-sm text-muted-foreground">פתחו חשבון ותנו מנדט ראשון</p>
         </div>
 
         <GoogleSignInButton label="הרשמה עם Google" callbackURL={callbackUrl} />

@@ -252,7 +252,7 @@ export function OnboardingWizard({
           </div>
           <h2 className="font-display text-2xl text-foreground">הכול מוכן, <bdi>@{normalized}</bdi></h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            הגיע הזמן <span className="font-bold text-gold">לנחש</span>. בחרו תוצאה בכל תחזית,
+            הגיע הזמן <span className="font-bold text-gold">לתת מנדט</span>. בחרו תוצאה בכל תחזית,
             אספו קלפים לפי הדיוק שלכם, וטפסו בטבלת המובילים.
           </p>
           {error && <p className="mt-3 text-sm font-semibold text-negative">{error}</p>}

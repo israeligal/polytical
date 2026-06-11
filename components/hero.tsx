@@ -94,11 +94,11 @@ export function HeroSpotlight({
           <span className="inline-flex items-center gap-1.5">
             <Users className="h-[18px] w-[18px]" />
             <span className="nums font-extrabold text-gold">{formatCount(total)}</span>
-            מנחשים
+            מנדטים
           </span>
         </div>
         <span className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary-hover">
-          לנחש עכשיו
+          תנו מנדט
         </span>
       </div>
     </Link>
@@ -132,7 +132,7 @@ export function HotRail({
                   {market.question}
                 </span>
                 <span className="nums block text-xs text-muted-foreground">
-                  {formatCount(predictors)} מנחשים
+                  {formatCount(predictors)} מנדטים
                 </span>
               </span>
               <span className="nums shrink-0 text-sm font-extrabold text-foreground">

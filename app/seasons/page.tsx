@@ -8,7 +8,7 @@ import { SeasonTierRow } from "@/components/seasons/season-tier-row";
 
 export const metadata = {
   title: "העונה · פוליטיקל",
-  description: "צברו ניחושים נכונים בעונה הנוכחית ועלו בדרגות הדיוק.",
+  description: "צברו מנדטים מדויקים בעונה הנוכחית ועלו בדרגות הדיוק.",
 };
 
 // Public season board — anonymous visitors see the tiers + countdown (progress 0
@@ -70,7 +70,7 @@ export default async function SeasonsPage() {
         {/* progress */}
         <div className="mt-4">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="font-accent text-xs font-bold text-muted-foreground">ניחושים נכונים העונה</span>
+            <span className="font-accent text-xs font-bold text-muted-foreground">מנדטים מדויקים העונה</span>
             <span className="nums font-display text-2xl text-gold">{formatCount(progress)}</span>
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-background">
@@ -78,7 +78,7 @@ export default async function SeasonsPage() {
           </div>
           {nextGoal !== null && !ended && (
             <p className="mt-1.5 text-xs text-muted-foreground">
-              עוד <span className="nums font-bold text-foreground">{formatCount(Math.max(0, nextGoal - progress))}</span> ניחושים נכונים עד הדרגה הבאה
+              עוד <span className="nums font-bold text-foreground">{formatCount(Math.max(0, nextGoal - progress))}</span> מנדטים מדויקים עד הדרגה הבאה
             </p>
           )}
         </div>
@@ -107,7 +107,7 @@ export default async function SeasonsPage() {
         ))}
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        ההתקדמות נמדדת לפי מספר הניחושים הנכונים שלכם בחלון העונה. דרגה שהושגה נשארת שלכם.
+        ההתקדמות נמדדת לפי מספר המנדטים המדויקים שלכם בחלון העונה. דרגה שהושגה נשארת שלכם.
       </p>
     </main>
   );
