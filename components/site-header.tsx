@@ -9,11 +9,11 @@ import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 
-// האוסף + עונה are personal progress — they live on /profile now, not the nav.
+// Deliberately minimal: תחזיות + טבלת מובילים only. האוסף + עונה live on
+// /profile; פוליטיקאים is reachable from every card and the homepage section.
 const NAV = [
   { href: "/#markets", label: "תחזיות" },
   { href: "/votes", label: "הצבעות" },
-  { href: "/#politicians", label: "פוליטיקאים" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];
 

@@ -20,10 +20,11 @@ import { HOME_SECTION_INNER } from "@/components/skeletons/containers";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string }>;
+  searchParams: Promise<{ cat?: string; all?: string }>;
 }) {
-  const { cat } = await searchParams;
+  const { cat, all } = await searchParams;
   const active = (cat as Category) || undefined;
+  const showAll = all === "1";
 
   // Real markets from the DB. Each card needs its featured MK portraits, so we
   // pull each market's bundle (outcomes + personIds), build view models, and
@@ -59,6 +60,13 @@ export default async function Home({
   const featured = !active ? hotCard ?? motdCard ?? cards[0] ?? null : null;
   const featuredIsHot = !!featured && featured === hotCard;
   const grid = active ? cards : cards.filter((c) => c.market.id !== featured?.market.id);
+
+  // Cap the homepage grid at 3 full rows (Polymarket-density 3-col) so a
+  // growing market count can't make the page endless; `?all=1` (URL-derived,
+  // no client state) expands in place until the dedicated /markets page lands.
+  const MARKETS_CAP = 9;
+  const visibleGrid = showAll ? grid : grid.slice(0, MARKETS_CAP);
+  const hiddenCount = grid.length - visibleGrid.length;
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
   const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
@@ -153,12 +161,24 @@ export default async function Home({
           <div className="mb-6">
             <CategoryRail active={active} />
           </div>
-          {grid.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {grid.map((c) => (
-                <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
-              ))}
-            </div>
+          {visibleGrid.length > 0 ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleGrid.map((c) => (
+                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+                ))}
+              </div>
+              {hiddenCount > 0 && (
+                <div className="mt-6 text-center">
+                  <Link
+                    href={`/?${active ? `cat=${active}&` : ""}all=1#markets`}
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    הצגת כל <span className="nums">{grid.length}</span> התחזיות
+                  </Link>
+                </div>
+              )}
+            </>
           ) : (
             <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
           )}
