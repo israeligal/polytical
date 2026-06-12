@@ -31,7 +31,6 @@ const CAST_PX = 110;
 const LOCK_PX = 12;
 const EDGE_PX = 36;
 const FLY_MS = 280;
-const SUBTLE_MS = 180; // tap / arrow nav / undo exit duration
 const TAP_BEAT_MS = 800;
 const UNDO_MS = 5000;
 
@@ -188,21 +187,16 @@ export function QuestionDeck({
           (cardRef.current?.querySelector("h3") as HTMLElement | null)?.focus();
         });
       };
-      if (prefersReducedMotion()) {
-        advance();
-        return;
-      }
-      // When navigating back from the end card there is no outgoing QuestionDeckCard
-      // to animate — the EndCard doesn't participate in the fly-off.  Skip the
-      // fly-out delay and swap immediately so the card just fades in cleanly.
-      const fromEndCard = atEnd && dir !== 0;
-      if (fromEndCard) {
+      // Only a physical swipe earns an exit animation; taps, arrows and undo
+      // swap instantly (the lingering exit fade read as a "weird fade" after
+      // you'd already arrived at the next card). Reduced motion: also instant.
+      if (kind !== "swipe" || prefersReducedMotion() || (atEnd && dir !== 0)) {
         advance();
         return;
       }
       setTransitionKind(kind);
       setFlyDir(dir);
-      window.setTimeout(advance, kind === "swipe" ? FLY_MS : SUBTLE_MS);
+      window.setTimeout(advance, FLY_MS);
     },
     [cardStates, questions, atEnd],
   );
