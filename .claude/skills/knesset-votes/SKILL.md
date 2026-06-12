@@ -11,10 +11,11 @@ Real K25 plenum roll-calls (who voted בעד/נגד/נמנע) + free user stance
 
 | Layer | Path | Purpose |
 |---|---|---|
-| Schema | `app/lib/schema-votes.ts` | 9 tables + 7 enums (re-exported from `schema.ts`; FK thunks make the cycle safe) |
+| Schema | `app/lib/schema-votes.ts` | 10 tables + 8 enums (re-exported from `schema.ts`; FK thunks make the cycle safe) |
 | API client | `app/lib/votes/website-api.ts` + `website-types.ts` | Knesset website API fetchers (retry/throttle), raw shapes |
-| Captures | `app/lib/votes/test-payloads.ts` | VERBATIM live responses (one per vote type) — test builders derive from these |
-| Normalize | `app/lib/votes/normalize.ts` | Closed maps (throw on unknown), `pickDecisiveVoteId` |
+| Captures | `app/lib/votes/test-payloads.ts` + `test-payloads-items.ts` + `fixtures/*.docx` | VERBATIM live responses (votes + OData items + real DOCX) — test builders derive from these |
+| Normalize | `app/lib/votes/normalize.ts` | Closed maps (throw on unknown), `pickDecisiveVoteId`, `ITEM_TYPE_BILL`/`ITEM_TYPE_AGENDA` constants (LU_ItemType is an OPEN domain — raw int, never a closed map) |
+| Enrichment | `app/lib/votes/{enrich,docx,files-api}.ts` | `vote_items`: official description (SummaryLaw → verbatim דברי הסבר DOCX → motion text) + legislation-page/PDF links + agenda initiator; ingest step 2.5, failure-isolated, terminal-state-by-existence (row absent = retry; links-only row = legitimate terminal). `docs/decisions/vote-descriptions.md` |
 | Name key | `app/lib/votes/name-key.ts` | Token-SORTED `normalizeSearchName` — BOTH sides of every mapping lookup |
 | Write repo | `app/lib/votes/repo.ts` | Upserts, transactional attribution, queue resolve/dismiss, admin writes |
 | Read repo | `app/lib/votes/read-repo.ts` | Feed (keyset cursor), detail bundle, MK record, freshness, admin lists |
@@ -24,7 +25,7 @@ Real K25 plenum roll-calls (who voted בעד/נגד/נמנע) + free user stance
 | Actions | `app/actions/{stances,admin-votes}.ts` | Rate-limited stance action; admin featured/queue/agenda |
 | Pages | `app/votes/`, `app/vote/[id]/`, `app/my-match/` | Feed, detail (+StanceWidget), match |
 | Components | `components/{vote-row,vote-totals-bar,stance-widget}.tsx`, `components/admin/votes-admin.tsx` | Shared UI |
-| Entry points | `scripts/ingest-votes.ts` (backfill/manual), `app/api/cron/ingest-votes/route.ts` (2h cron), `scripts/bootstrap-mk-mapping.ts` (one-time mapping) | |
+| Entry points | `scripts/ingest-votes.ts` (backfill/manual), `scripts/enrich-vote-items.ts` (vote_items classify+drain), `app/api/cron/ingest-votes/route.ts` (2h cron), `scripts/bootstrap-mk-mapping.ts` (one-time mapping) | |
 | Analytics | `app/lib/track.ts` | Logger shim; `stance_cast` carries voteId ONLY |
 
 ## The website API (the only live K25 vote source)
@@ -34,7 +35,7 @@ Base `https://knesset.gov.il/WebSiteApi/knessetapi/` — the site's own backend;
 | Call | Shape |
 |---|---|
 | `POST Votes/GetVotesHeaders` body `{"SearchType":2,"FromDate":"YYYY-MM-DD","ToDate":"YYYY-MM-DD"}` | `{Table:[{VoteId,VoteDate,VoteType,ItemTitle,KnessetId,…}]}` — full window in one response, never truncates (banner `נמצאו N תוצאות` == rows, verified over 44 windows); sweep monthly windows |
-| `GET Votes/GetVoteDetails/{voteId}` | `VoteHeader[0]` (`FK_ItemID` == `KNS_Bill.BillID` for bill votes, `Decision`, `IsForAccepted`) + `VoteCounters` + `VoteDetails[{MkName,FactionName,VoteResultId,Title}]` |
+| `GET Votes/GetVoteDetails/{voteId}` | `VoteHeader[0]` (`FK_ItemID` == `KNS_Bill.BillID` for bill votes; `LU_ItemType` = KNS_ItemType id, 2=bill 4=agenda-motion 3=no-confidence, OPEN domain — 9 seen on a secret vote; `Decision`, `IsForAccepted`) + `VoteCounters` + `VoteDetails[{MkName,FactionName,VoteResultId,Title}]` |
 | `GET MKs/GetMksDropDown?languagekey=he` | every MK ever `{ID,Name,IsCurrent}` — website id space ≠ OData PersonID |
 
 **Verified domains** (probe 2026-06-10, full corpus): `VoteResultId` `6=נוכח(didn't vote) 7=בעד 8=נגד 9=נמנע`; header `VoteType` אלקטרונית/שמית(roll-call, HAS per-MK rows)/הרמת יד(counters only)/חשאית(never scoreable); counter title `נוכח ולא הצביע` → `totalDidntVote`. `VoteDate` is **naive Jerusalem wall-clock** → `jerusalemWallToUtc` (`lib/time.ts`). Unknown id/type/title **throws** — never guessed.
