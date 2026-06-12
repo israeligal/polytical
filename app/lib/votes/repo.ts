@@ -5,7 +5,7 @@
 // detailsStatus) are EXCLUDED from the header upsert SET — the dob carve-out
 // pattern: re-ingest must never clobber them.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";
@@ -14,8 +14,10 @@ import {
   factionStints, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, unmappedMkNames,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
+import { upsertBills } from "@/app/lib/knesset/repo";
+import type { BillRow } from "@/app/lib/knesset/normalize";
 import type { KnessetVoteInsert, MkVoteRawInsert, MkVoteResultValue, VoteDetailsPatch } from "./normalize";
-import { ITEM_TYPE_BILL, WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
+import { ITEM_TYPE_AGENDA, ITEM_TYPE_BILL, WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
 
 export type VotesDb = AppDb;
 type DB = VotesDb;
@@ -346,4 +348,55 @@ export async function setAgendaItemStatus({
   db, id, status,
 }: { db: DB; id: string; status: "announced" | "voted" | "dropped" }): Promise<void> {
   await db.update(schema.agendaItems).set({ status }).where(eq(schema.agendaItems.id, id));
+}
+
+// --- vote-item enrichment (official description + law links) ---
+
+export type VoteItemInsert = typeof schema.voteItems.$inferInsert;
+
+/**
+ * Items (bills/agenda motions) seen on votes but not yet enriched — newest
+ * vote first. Row-ABSENCE in vote_items IS the pending state (terminal-state-
+ * by-existence): fetch failures leave no row and retry next run; a written
+ * row (even links-only) is terminal and never re-fetched.
+ */
+export async function listEnrichmentCandidates({
+  db, limit,
+}: { db: DB; limit: number }): Promise<{ itemId: number; itemTypeId: number }[]> {
+  const rows = await db
+    .select({ itemId: knessetVotes.itemId, itemTypeId: knessetVotes.itemTypeId })
+    .from(knessetVotes)
+    .leftJoin(schema.voteItems, eq(schema.voteItems.itemId, knessetVotes.itemId))
+    .where(and(
+      inArray(knessetVotes.itemTypeId, [ITEM_TYPE_BILL, ITEM_TYPE_AGENDA]),
+      isNull(schema.voteItems.itemId),
+    ))
+    .groupBy(knessetVotes.itemId, knessetVotes.itemTypeId)
+    .orderBy(sql`max(${knessetVotes.voteDate}) desc`)
+    .limit(limit);
+  return rows
+    .filter((r): r is { itemId: number; itemTypeId: number } => r.itemId != null && r.itemTypeId != null);
+}
+
+/**
+ * Terminal write of one enriched item. The bills row (when given) lands FIRST
+ * via the existing upsertBills helper — idempotent and harmless alone, and it
+ * keeps billId FK-by-value resolvable for bills newer than the manual knesset
+ * ingest. Then the vote_items row (upsert: re-running a backfill refreshes).
+ */
+export async function upsertVoteItem({
+  db, row, bill,
+}: { db: DB; row: VoteItemInsert; bill?: BillRow }): Promise<void> {
+  if (bill) await upsertBills({ db, rows: [bill] });
+  await db.insert(schema.voteItems).values(row).onConflictDoUpdate({
+    target: schema.voteItems.itemId,
+    set: {
+      itemTypeId: sqlExcluded("itemTypeId"),
+      descriptionHe: sqlExcluded("descriptionHe"), descriptionSource: sqlExcluded("descriptionSource"),
+      legislationUrl: sqlExcluded("legislationUrl"), docUrl: sqlExcluded("docUrl"),
+      docTypeDescHe: sqlExcluded("docTypeDescHe"), initiatorPersonId: sqlExcluded("initiatorPersonId"),
+      sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"),
+      fetchedAt: sqlExcluded("fetchedAt"),
+    },
+  });
 }
