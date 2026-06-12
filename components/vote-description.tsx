@@ -27,7 +27,7 @@ export function VoteDescription({ item }: { item: VoteItemDetail }) {
             על מה ההצבעה?
             <ChevronForward
               aria-hidden
-              className="h-4 w-4 shrink-0 rotate-90 text-muted-foreground transition-transform group-open:-rotate-90"
+              className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground transition-transform group-open:rotate-90"
             />
           </summary>
           <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
