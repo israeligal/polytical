@@ -143,6 +143,15 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
     setDx(ddx);
   }
 
+  /** pointercancel = the OS/browser stole the gesture (back-swipe, scroll,
+   *  notification shade). It must ALWAYS abort — committing here would record
+   *  an answer the user never released (review finding: blocker). */
+  function onPointerAbort() {
+    axis.current = null;
+    setDx(0);
+    setDragging(false);
+  }
+
   function onPointerUp() {
     if (axis.current !== "h" || flyDir !== 0) {
       setDragging(false);
@@ -202,7 +211,7 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            onPointerCancel={onPointerAbort}
             style={{ transform: cardTransform, touchAction: "pan-y" }}
             className={`relative select-none overflow-hidden rounded-card border border-border bg-card p-4 shadow-2 ${
               dragging ? "cursor-grabbing" : "transition-[transform,opacity] duration-300 ease-out"
