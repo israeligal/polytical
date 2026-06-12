@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-06-12 — MK attendance: plenum presence unavailable; ship a vote-participation proxy
+
+**Decision.** Politician cards show **vote participation** ("השתתפות בהצבעות") derived from our own
+`mk_votes` — votes attended vs missed + plenum vote-days present, tenure-scoped via `faction_stints`
+(`app/lib/votes/participation.ts`, `getMkParticipation`). It is a roll-call-presence **proxy**, labelled
+as such (disclaimer: "מבוסס על הצבעות שמיות במליאה … לא כולל הצבעות חשאיות והצבעות בהרמת יד"),
+**never "ימי נוכחות"** — the sourcing rule forbids dressing a proxy as official attendance.
+
+**Why not real attendance.** Live-verified 2026-06-12 (three independent probes): there is **no usable
+current per-MK plenum-attendance source**. OData has no person↔session entity; the Knesset website API
+has no presence endpoint (exhaustive 404/empty-204); the official `presence/` page is 500/JS-SPA; Open
+Knesset `members/presence` CSV is 0-bytes and its raw log ends 2024-02-18. Full probe table:
+`.claude/skills/knesset-odata/references/api-catalog.md` → "Attendance / presence — availability".
+
+**Deferred (not built).** Open Knesset `people/committees/meeting-attendees/kns_committeesession.csv`
+(`attended_mk_individual_ids`, live, K25) is the only usable presence source but is **committee-only**,
+NLP-parsed from protocols (incomplete), ~160 MB. Revisit if committee-attendance becomes a priority.
+
+---
+
 ## 2026-06-11 — Politician roles come from `DutyDesc`; non-MK ministers are admitted
 
 **Decision.** The card "tafkid" (role) and the gallery roster are derived **entirely inside `normalizeK25Members`** (`app/lib/knesset/normalize.ts`), refreshed by the **canonical** `pnpm ingest:knesset --only=members`. Do NOT write a parallel minister/role script — extend the normalizer so every consumer benefits. (Spec: `docs/superpowers/specs/2026-06-11-politician-roles-and-ministers.md`.)

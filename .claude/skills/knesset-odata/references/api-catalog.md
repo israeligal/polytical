@@ -751,6 +751,26 @@ All items below were **verified live on ParliamentInfo.svc, 2026-06-11**, unless
 
 ---
 
+## Attendance / presence — availability (verified 2026-06-12)
+
+> Question probed: can we get **per-MK plenum attendance** ("present X days of the Y days the
+> Knesset sat") for K25, attributable by stable id? **Answer: NO usable current source exists.**
+> Three independent probes agreed. Don't re-litigate without new signal.
+
+| Source | Result | Status |
+|---|---|---|
+| OData `ParliamentInfo.svc` — any per-MK attendance entity | All 38 entities checked; `KNS_PlenumSession`/`KNS_PlmSessionItem`/`KNS_CommitteeSession`/`KNS_CmtSessionItem` describe **sessions only — no PersonID**; no Presence/Attend/נוכח entity | **NOT FOUND** |
+| Knesset website API `WebSiteApi/knessetapi/` — presence endpoint | Exhaustive probing under `MKs/`,`Presence/`,`Attendance/`,`PlenumSession/`,`MKActivities/` → all **404**, a couple of `POST` routes return empty **204** (no data) | **NOT FOUND** |
+| Official `knesset.gov.il/presence/...` page + `main.knesset.gov.il/apps/mklobby/...mks-attendance` | HTTP **500** / JS-only SPA (data via post-load XHR, not server-side fetchable); usher-button building-entry basis | **NOT USABLE** |
+| Open Knesset `members/presence/presence.csv` (schema: `mk_id,date,total_attended_hours`) | datapackage claims 144k rows but the **CSV is 0 bytes**; raw `presence.txt` scan log **stops 2024-02-18** (mid-K25) | **BROKEN / STALE** |
+| Open Knesset `people/committees/meeting-attendees/kns_committeesession.csv` | **LIVE** (updated daily), `attended_mk_individual_ids` (int array) per committee session, K25 included; join `mk_individual_id`→`PersonID` | **USABLE but DEFERRED** — committee-only (NOT plenum), NLP-parsed from protocols (incomplete coverage), ~160 MB |
+| Votes OData `Votes.svc` `vote_result_type` (`4=לא הצביע`) | per-**vote** participation code, not per-session presence; frozen at K24 anyway | not attendance |
+
+**What we ship instead (decision 2026-06-12):** a **vote-participation** metric derived entirely from our
+own `mk_votes` (no external dependency) — "voted in N of M roll-calls · present on K of L plenum
+vote-days", tenure-scoped via `faction_stints`. It is a roll-call-presence PROXY, labelled
+**"השתתפות בהצבעות"**, never "ימי נוכחות". See `app/lib/votes/participation.ts` + the decision-log entry.
+
 ## Official sources & documentation
 
 - **Service root / the only first-party "docs":** `https://knesset.gov.il/Odata/ParliamentInfo.svc/`
