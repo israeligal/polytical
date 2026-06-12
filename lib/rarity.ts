@@ -32,7 +32,7 @@ const FORMER_PM_PERSON_IDS = new Set<number>([
  * a seat), so leaders who resigned their seats (Smotrich, Sa'ar) are listed too.
  * Source: Knesset factions list (25th Knesset) + party records.
  */
-const PARTY_LEADER_PERSON_IDS = new Set<number>([
+export const PARTY_LEADER_PERSON_IDS = new Set<number>([
   965, // Netanyahu — Likud (also sitting PM → gold by precedence)
   23594, // Lapid — Yesh Atid (also former PM → silver by precedence)
   30657, // Benny Gantz — National Unity
@@ -46,6 +46,7 @@ const PARTY_LEADER_PERSON_IDS = new Set<number>([
   30814, // Avi Maoz — Noam
   30055, // Bezalel Smotrich — Religious Zionism (Norwegian-Law minister)
   1027, // Gideon Sa'ar — New Hope (Norwegian-Law minister)
+  30846, // Yitzhak Goldknopf — UTJ/Agudat Yisrael (returned to his seat 2025-06)
 ]);
 
 /** The SITTING PM (not deputy / acting / alternate). */
