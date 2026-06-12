@@ -144,7 +144,7 @@ export function HotRail({
       </ul>
       <Link
         href="/markets"
-        className="border-t border-border px-4 py-3 text-center text-sm font-bold text-primary transition-colors hover:bg-raised"
+        className="rounded-b-card border-t border-border px-4 py-3 text-center text-sm font-bold text-primary transition-colors hover:bg-raised"
       >
         כל התחזיות
       </Link>
