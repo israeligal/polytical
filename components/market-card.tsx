@@ -3,6 +3,7 @@ import type { Market, Politician } from "@/lib/types";
 import { marketPoliticians } from "@/lib/mock-data";
 import { formatCount } from "@/lib/format";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
+import { StatusChip } from "@/components/status-chip";
 import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { Users } from "@/components/icons";
@@ -16,9 +17,12 @@ import { Users } from "@/components/icons";
 export function MarketCard({
   market,
   featured,
+  myPickLabel,
 }: {
   market: Market;
   featured?: Politician[];
+  /** The viewer's picked-outcome label — renders the המנדט-שלי chip when set. */
+  myPickLabel?: string;
 }) {
   const pols = featured ?? marketPoliticians(market);
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
@@ -30,7 +34,14 @@ export function MarketCard({
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <CategoryBadge category={market.category} />
-        {market.hot && <HotBadge />}
+        <span className="flex min-w-0 items-center gap-1.5">
+          {myPickLabel && (
+            <StatusChip tone="positive" className="min-w-0">
+              <span className="truncate">המנדט שלי: {myPickLabel}</span>
+            </StatusChip>
+          )}
+          {market.hot && <HotBadge />}
+        </span>
       </div>
 
       <h3 className="mb-4 font-sans text-[17px] font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary">

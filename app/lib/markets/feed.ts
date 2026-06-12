@@ -1,8 +1,14 @@
 import type { Category, Market, Politician } from "@/lib/types";
 import { getAllPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, listOpenMarkets, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
+import { getMarketBundle, listOpenMarkets, getOutcomeCountsForMarkets, getUserPredictions } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
+
+/** marketId → the viewer's picked-outcome label, for the המנדט-שלי chip on feed cards. */
+export async function getMyPickLabels({ userId }: { userId: string }): Promise<Map<string, string>> {
+  const predictions = await getUserPredictions({ userId });
+  return new Map(predictions.map((p) => [p.marketId, p.outcomeLabelHe]));
+}
 
 export type MarketCardData = { market: Market; featured: Politician[] };
 

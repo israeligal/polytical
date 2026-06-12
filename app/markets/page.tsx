@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Category } from "@/lib/types";
-import { getMarketCards } from "@/app/lib/markets/feed";
+import { getSession } from "@/lib/auth";
+import { getMarketCards, getMyPickLabels } from "@/app/lib/markets/feed";
 import { CategoryRail } from "@/components/category-rail";
 import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
@@ -19,7 +20,10 @@ export default async function MarketsPage({
   const { cat } = await searchParams;
   const active = (cat as Category) || undefined;
 
-  const cards = await getMarketCards({ category: active });
+  const [cards, session] = await Promise.all([getMarketCards({ category: active }), getSession()]);
+  const myPicks = session?.user
+    ? await getMyPickLabels({ userId: session.user.id })
+    : new Map<string, string>();
 
   return (
     <main className={MARKETS_PAGE_CONTAINER}>
@@ -31,7 +35,7 @@ export default async function MarketsPage({
         {cards.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cards.map((c) => (
-              <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+              <MarketCard key={c.market.id} market={c.market} featured={c.featured} myPickLabel={myPicks.get(c.market.id)} />
             ))}
           </div>
         ) : (

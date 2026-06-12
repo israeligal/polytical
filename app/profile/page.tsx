@@ -412,7 +412,7 @@ function HistoryResult({ prediction }: { prediction: PortfolioPrediction }) {
   if (isCorrect(prediction)) {
     return (
       <StatusChip tone="positive" className="text-sm">
-        ניחשת נכון
+        צדקת
       </StatusChip>
     );
   }

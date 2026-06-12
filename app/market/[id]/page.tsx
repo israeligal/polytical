@@ -14,6 +14,7 @@ import { OutcomeRows } from "@/components/outcome-rows";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
+import { StatusChip } from "@/components/status-chip";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { ChatBubble, ChevronForward, Users } from "@/components/icons";
 import { MARKET_CONTAINER , MARKET_GRID } from "@/components/skeletons/containers";
@@ -45,16 +46,20 @@ export default async function MarketPage({
   // authoritative closeAt guard (render-time Date.now is impure in RSCs).
   const multiOpen = market.type === "multi" && bundle.market.status === "open";
 
-  // Featured MK cards + the viewer's current pick (the highlighted row) are
+  // Featured MK cards + the viewer's current pick (highlighted row + the
+  // המנדט-שלי header chip, so it's fetched for every market type/status) are
   // independent reads — overlap them instead of paying serial roundtrips.
   const [polRows, positions] = await Promise.all([
     Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId }))),
-    multiOpen && session?.user
+    session?.user
       ? getUserPositions({ userId: session.user.id, marketId: id })
       : Promise.resolve([]),
   ]);
   const pols = polRows.filter((row): row is NonNullable<typeof row> => row !== null).map(dbToCard);
   const initialPickId = positions[0]?.outcomeId ?? null;
+  const myPickLabel = initialPickId
+    ? (bundle.outcomes.find((o) => o.id === initialPickId)?.labelHe ?? null)
+    : null;
   // The politician a winning outcome IS (multi) — for the resolution panel portrait.
   const winnerPol =
     winningOutcome?.personId != null
@@ -103,8 +108,11 @@ export default async function MarketPage({
               <span className="nums font-bold text-foreground">
                 {formatCount(predictors)}
               </span>
-              ניחשו
+              נתנו מנדט
             </span>
+            {myPickLabel && (
+              <StatusChip tone="positive">המנדט שלי: {myPickLabel}</StatusChip>
+            )}
             <span className="text-border">•</span>
             <Countdown closeAt={market.closeAt} />
           </div>

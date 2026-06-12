@@ -53,7 +53,7 @@ export default async function AdminPage() {
         <p className="text-sm font-bold text-primary">קונסולת ניהול</p>
         <h1 className="font-display text-3xl font-black text-foreground">ניהול תחזיות</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          יצירת תחזיות, הכרעה (סיכום מי ניחש נכון) וביטול תחזית. ההכרעה מעדכנת את
+          יצירת תחזיות, הכרעה (סיכום מי צדק) וביטול תחזית. ההכרעה מעדכנת את
           רשומת המנדטים של כל מי שנתן מנדט.
         </p>
       </header>
