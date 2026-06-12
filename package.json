@@ -21,6 +21,7 @@
     "ingest:knesset:full": "tsx --env-file=.env scripts/ingest-knesset.ts --full",
     "ingest:votes": "tsx --env-file=.env scripts/ingest-votes.ts",
     "ingest:votes:backfill": "tsx --env-file=.env scripts/ingest-votes.ts --backfill",
+    "enrich:vote-items": "tsx --env-file=.env scripts/enrich-vote-items.ts",
     "user:create": "tsx --env-file=.env scripts/create-user.ts",
     "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts",
     "seed:season": "tsx --env-file=.env scripts/seed-season.ts",

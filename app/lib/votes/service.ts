@@ -14,6 +14,7 @@ import {
 } from "./repo";
 import { normalizeVoteDetails, normalizeVoteHeader } from "./normalize";
 import { fetchVoteDetails, fetchVoteHeaders } from "./website-api";
+import { enrichVoteItems } from "./enrich";
 import type { WsVoteHeader } from "./website-types";
 
 type DB = VotesDb;
@@ -52,6 +53,8 @@ export interface IngestVotesResult {
   detailsFailed: number;
   attributed: number;
   queued: number;
+  itemsEnriched: number;
+  itemsFailed: number;
 }
 
 /**
@@ -136,6 +139,19 @@ export async function ingestVotes({
     }
   }
 
+  // 2.5) enrich the items behind the swept votes (official description + law
+  // links → vote_items). Failure-isolated: enrichment must NEVER fail the vote
+  // ingest or block the heartbeat — vote-row completeness outranks context.
+  let itemsEnriched = 0;
+  let itemsFailed = 0;
+  try {
+    const er = await enrichVoteItems({ db });
+    itemsEnriched = er.enriched;
+    itemsFailed = er.failed;
+  } catch (err) {
+    logger.error("votes.enrich.run_failed", { err: String(err) });
+  }
+
   // 3) decisive recompute for every touched item
   await recomputeDecisive({ db, itemIds: touchedItemIds });
 
@@ -146,7 +162,7 @@ export async function ingestVotes({
     .values({ job: "votes", lastSuccessAt: new Date() })
     .onConflictDoUpdate({ target: schema.ingestHeartbeats.job, set: { lastSuccessAt: new Date() } });
 
-  const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued };
+  const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued, itemsEnriched, itemsFailed };
   logger.info("votes.ingest.done", { fromDate, toDate, refetchDetails, ...result });
   return result;
 }
