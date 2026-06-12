@@ -16,7 +16,7 @@ describe("eventToPush", () => {
       questionHe: "מי ינצח בבחירות?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "ניחשת נכון! 🎯",
+      title: "המנדט נפדה! 🎯",
       body: "המנדט נפדה — צדקת · מי ינצח בבחירות?",
       url: "/market/m1",
     });
@@ -30,7 +30,7 @@ describe("eventToPush", () => {
       questionHe: "מי ינצח בבחירות?",
     };
     expect(eventToPush(event)).toEqual<PushPayload>({
-      title: "תחזית שניחשת בה הוכרעה",
+      title: "תחזית שנתת בה מנדט הוכרעה",
       body: "מי ינצח בבחירות?",
       url: "/market/m2",
     });

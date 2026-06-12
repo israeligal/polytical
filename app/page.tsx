@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
-import { getMarketCards } from "@/app/lib/markets/feed";
+import { getMarketCards, getMyPickLabels } from "@/app/lib/markets/feed";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { pctLabel } from "@/lib/format";
 import { CategoryRail } from "@/components/category-rail";
@@ -75,6 +75,7 @@ export default async function Home({
   // so they can always find themselves. Empty state until there are users to rank.
   const session = await getSession();
   const me = session?.user ?? null;
+  const myPicks = me ? await getMyPickLabels({ userId: me.id }) : new Map<string, string>();
   const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,
@@ -151,7 +152,7 @@ export default async function Home({
             {visibleGrid.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleGrid.map((c) => (
-                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} myPickLabel={myPicks.get(c.market.id)} />
                 ))}
               </div>
             ) : (

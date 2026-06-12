@@ -370,7 +370,7 @@ export const marketSuggestions = pgTable("market_suggestions", {
 // ===================================================================
 
 export const notificationType = pgEnum("notification_type", [
-  "bet_won",             // the user predicted the winning outcome ("ניחשת נכון!")
+  "bet_won",             // the user predicted the winning outcome ("המנדט נפדה!")
   "market_resolved",
   "suggestion_approved",
   "suggestion_rejected",

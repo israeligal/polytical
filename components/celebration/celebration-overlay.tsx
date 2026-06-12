@@ -45,7 +45,7 @@ export function CelebrationOverlay({
   return (
     <div
       role="dialog"
-      aria-label={kind === "win" ? "ניחשת נכון" : "טעית"}
+      aria-label={kind === "win" ? "צדקת" : "טעית"}
       onClick={onClose}
       className="fixed inset-0 z-[300] grid place-items-center bg-background/70 px-6 backdrop-blur-sm"
     >
@@ -79,7 +79,7 @@ export function CelebrationOverlay({
             >
               <Trophy className="h-12 w-12" />
             </span>
-            <p className="font-display text-3xl text-foreground">ניחשת נכון!</p>
+            <p className="font-display text-3xl text-foreground">המנדט נפדה — צדקת!</p>
             <p className="font-display text-xl text-gold">צדקת בתחזית 🎯</p>
           </>
         ) : (
@@ -95,7 +95,7 @@ export function CelebrationOverlay({
         )}
         <p className="max-w-xs text-sm text-muted-foreground">{questionHe}</p>
         <p className="text-xs text-muted-foreground">
-          ניחשת: <span className="font-bold text-foreground">{outcomeLabelHe}</span>
+          המנדט שלך: <span className="font-bold text-foreground">{outcomeLabelHe}</span>
         </p>
       </div>
     </div>
