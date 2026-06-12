@@ -15,7 +15,7 @@ import {
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import type { KnessetVoteInsert, MkVoteRawInsert, MkVoteResultValue, VoteDetailsPatch } from "./normalize";
-import { WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
+import { ITEM_TYPE_BILL, WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
 
 export type VotesDb = AppDb;
 type DB = VotesDb;
@@ -79,16 +79,13 @@ export interface AttributionContext {
   stintsByPerson: Map<number, { factionId: number; startDate: Date; finishDate: Date | null }[]>;
   /** nameKeys already dismissed by an admin — never re-queued */
   dismissedKeys: Set<string>;
-  /** K25 bill ids we store — itemId membership sets billId */
-  validBillIds: Set<number>;
 }
 
 export async function loadAttributionContext({ db }: { db: DB }): Promise<AttributionContext & { unverifiedCount: number }> {
-  const [mappingRows, stintRows, queueRows, billRows] = await Promise.all([
+  const [mappingRows, stintRows, queueRows] = await Promise.all([
     db.select().from(mkNameMappings),
     db.select().from(factionStints),
     db.select({ nameKey: unmappedMkNames.nameKey, status: unmappedMkNames.status }).from(unmappedMkNames),
-    db.select({ billId: schema.bills.billId }).from(schema.bills),
   ]);
   const unverifiedCount = mappingRows.filter((m) => m.verifiedAt == null).length;
   const mappings = new Map(mappingRows.filter((m) => m.verifiedAt != null).map((m) => [m.nameKey, m.personId]));
@@ -100,8 +97,7 @@ export async function loadAttributionContext({ db }: { db: DB }): Promise<Attrib
   }
   for (const list of stintsByPerson.values()) list.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   const dismissedKeys = new Set(queueRows.filter((q) => q.status === "dismissed").map((q) => q.nameKey));
-  const validBillIds = new Set(billRows.map((b) => b.billId));
-  return { mappings, stintsByPerson, dismissedKeys, validBillIds, unverifiedCount };
+  return { mappings, stintsByPerson, dismissedKeys, unverifiedCount };
 }
 
 /** Minimal attribution context for a single-person backfill (admin resolve):
@@ -115,7 +111,6 @@ export async function loadStintsContext({ db, personId }: { db: DB; personId: nu
     mappings: new Map(),
     stintsByPerson: new Map([[personId, stints]]),
     dismissedKeys: new Set(),
-    validBillIds: new Set(),
   };
 }
 
@@ -159,7 +154,10 @@ export async function applyVoteDetails({
       .update(knessetVotes)
       .set({
         itemId: patch.itemId,
-        billId: patch.itemId != null && ctx.validBillIds.has(patch.itemId) ? patch.itemId : null,
+        itemTypeId: patch.itemTypeId,
+        // The header's own type signal is authoritative — no bills-table
+        // membership check (which missed bills newer than the manual ingest).
+        billId: patch.itemTypeId === ITEM_TYPE_BILL ? patch.itemId : null,
         decisionHe: patch.decisionHe,
         isAccepted: patch.isAccepted,
         totalFor: patch.totalFor,

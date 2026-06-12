@@ -38,18 +38,19 @@ function headerRow(over: Partial<WsVoteHeader> & Pick<WsVoteHeader, "VoteId">): 
 }
 
 function detailResponse({
-  voteId, itemId = 999, decision = "לקבל בקריאה שנייה", accepted = true,
+  voteId, itemId = 999, itemTypeId = 2, decision = "לקבל בקריאה שנייה", accepted = true,
   voters = [], counters,
 }: {
-  voteId: number; itemId?: number | null; decision?: string | null; accepted?: boolean | null;
+  voteId: number; itemId?: number | null; itemTypeId?: number | null;
+  decision?: string | null; accepted?: boolean | null;
   voters?: { name: string; faction?: string; resultId: number; title: string }[];
   counters?: { Title: string; countOfResult: number }[];
 }): WsVoteDetailsResponse {
   return {
     VoteHeader: [{
       VoteId: voteId, VoteProtocolNo: 1, VoteDate: "2026-06-09T19:00:00", VoteType: "הצבעה אלקטרונית",
-      VoteTypeId: 1, ItemTitle: "חוק לדוגמה", FK_ItemID: itemId, FK_Knesset: 25, Decision: decision,
-      ChairmanName: null, IsForAccepted: accepted, AcceptedText: null, SessionNumber: 1,
+      VoteTypeId: 1, ItemTitle: "חוק לדוגמה", FK_ItemID: itemId, LU_ItemType: itemTypeId, FK_Knesset: 25,
+      Decision: decision, ChairmanName: null, IsForAccepted: accepted, AcceptedText: null, SessionNumber: 1,
     }],
     VoteCounters: (counters ?? [{ Title: "בעד", countOfResult: voters.length }]).map((c, i) => ({ ...c, rn: i + 1 })),
     VoteDetails: voters.map((v) => ({
