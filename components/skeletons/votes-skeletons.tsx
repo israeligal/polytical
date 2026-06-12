@@ -24,14 +24,15 @@ export function VotesFeedSkeleton() {
       <Skeleton className="mb-3 h-6 w-32" />
       <div className="mb-8 grid gap-3">
         {Array.from({ length: 2 }, (_, i) => (
-          <SkeletonCard key={i} className="h-28" />
+          <SkeletonCard key={i} className="h-32" />
         ))}
       </div>
 
       <Skeleton className="mb-3 h-6 w-36" />
       <div className="grid gap-3">
+        {/* h-32 (was h-28) — rows now carry an optional one-line description teaser */}
         {Array.from({ length: 6 }, (_, i) => (
-          <SkeletonCard key={i} className="h-28" />
+          <SkeletonCard key={i} className="h-32" />
         ))}
       </div>
     </main>
@@ -60,6 +61,9 @@ export function VoteDetailSkeleton() {
             <Skeleton className="h-7 w-16 rounded-full" />
           </div>
           <Skeleton className="mt-3 h-4 w-72" />
+
+          {/* official description + law links card (enriched items only) */}
+          <SkeletonCard className="mt-4 h-12" />
 
           {/* stance widget (decisive votes — the common case from the feed) */}
           <SkeletonCard className="mt-4 h-32" />
