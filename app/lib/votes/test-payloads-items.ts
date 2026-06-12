@@ -11,6 +11,7 @@
 //   curl -sG "$base/KNS_Agenda"         --data-urlencode "$filter=AgendaID eq 2243980" --data-urlencode "$format=json"   # CAPTURED_AGENDA
 //   curl -sG "$base/KNS_DocumentAgenda" --data-urlencode "$filter=AgendaID eq 2243980" --data-urlencode "$format=json"   # CAPTURED_AGENDA_DOCS
 //   curl -s  "https://fs.knesset.gov.il/25/law/25_lst_7584510.docx" -o fixtures/25_lst_7584510.docx                      # the preliminary-reading DOCX (דברי הסבר source)
+//   curl -s  "https://fs.knesset.gov.il/25/agendasuggestion/25_as_13440018.docx" -o fixtures/25_as_13440018.docx          # the agenda motion-text DOCX
 //
 // Shape facts these captures pin down (do not "fix" them):
 //  - Document PK ids (DocumentBillID / DocumentAgendaID) are Int64 → serialized as JSON STRINGS.
