@@ -15,6 +15,5 @@ CREATE TABLE "vote_items" (
 	CONSTRAINT "vote_items_itemId_unique" UNIQUE("itemId")
 );
 --> statement-breakpoint
-ALTER TABLE "politicians" ADD COLUMN "gender" text;--> statement-breakpoint
 ALTER TABLE "knesset_votes" ADD COLUMN "itemTypeId" integer;--> statement-breakpoint
 CREATE INDEX "vote_items_initiator_idx" ON "vote_items" USING btree ("initiatorPersonId");
