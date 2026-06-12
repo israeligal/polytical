@@ -6,6 +6,7 @@
 // Extracted so question-deck.tsx stays under 500 lines.
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useRef } from "react";
 import type { Politician } from "@/lib/types";
 import { catTint } from "@/lib/cat";
@@ -311,6 +312,10 @@ export function QuestionDeckCard({
   pendingOptionId,
 }: QuestionDeckCardProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const pathname = usePathname();
+  // The page's own card links to the page we're already on — keep the slot
+  // (identical layout) but render it invisible instead of a dead link.
+  const isOwnPage = question.href === pathname;
 
   const dragOption =
     swipeable && dragging && dx !== 0
@@ -409,13 +414,19 @@ export function QuestionDeckCard({
       )}
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5">
-        <Link
-          href={question.href}
-          className="text-xs font-bold text-primary hover:underline"
-          tabIndex={0}
-        >
-          {question.hrefLabel} ←
-        </Link>
+        {isOwnPage ? (
+          <span aria-hidden className="invisible text-xs font-bold">
+            {question.hrefLabel} ←
+          </span>
+        ) : (
+          <Link
+            href={question.href}
+            className="text-xs font-bold text-primary hover:underline"
+            tabIndex={0}
+          >
+            {question.hrefLabel} ←
+          </Link>
+        )}
         {swipeable && (
           <span className="text-[11px] text-muted-foreground">אפשר גם להחליק</span>
         )}
@@ -453,6 +464,8 @@ export function EndCard({ feedHref, feedLabel }: { feedHref: string; feedLabel: 
 // ─── logged-out single-card read-only view ────────────────────────────────────
 
 export function LoggedOutCard({ question }: { question: DeckQuestion }) {
+  const pathname = usePathname();
+  const loggedOutIsOwnPage = question.href === pathname;
   const isStance = question.kind === "stance";
   const loginHref = isStance
     ? `/login?callbackUrl=${encodeURIComponent(question.href)}`
@@ -498,9 +511,15 @@ export function LoggedOutCard({ question }: { question: DeckQuestion }) {
         </Link>
       </div>
       <div className="mt-3 border-t border-border pt-2.5">
-        <Link href={question.href} className="text-xs font-bold text-primary hover:underline">
-          {question.hrefLabel} ←
-        </Link>
+        {loggedOutIsOwnPage ? (
+          <span aria-hidden className="invisible text-xs font-bold">
+            {question.hrefLabel} ←
+          </span>
+        ) : (
+          <Link href={question.href} className="text-xs font-bold text-primary hover:underline">
+            {question.hrefLabel} ←
+          </Link>
+        )}
       </div>
     </div>
   );
