@@ -5,7 +5,7 @@
 import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import {
-  agendaItems, factions, ingestHeartbeats, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames,
+  agendaItems, factions, ingestHeartbeats, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames, voteItems,
 } from "@/app/lib/schema";
 import type { VotesDb } from "./repo";
 import { jerusalemWeekday } from "@/lib/time";
@@ -14,10 +14,13 @@ type DB = VotesDb;
 
 export type KnessetVoteRow = typeof knessetVotes.$inferSelect;
 export type AgendaItemRow = typeof agendaItems.$inferSelect;
+export type VoteItemRow = typeof voteItems.$inferSelect;
 
 export interface FeedVote extends KnessetVoteRow {
   /** Other votes on the same item (readings/reservations) — 0 for standalones. */
   siblingCount: number;
+  /** First 280 chars of the item's official description — null until enriched. */
+  descriptionTeaser: string | null;
 }
 
 export interface VotesFeedPage {
@@ -73,16 +76,20 @@ export async function getVotesFeed({
     );
   const where = and(...conditions);
   const rows = await db
-    .select()
+    .select({
+      vote: knessetVotes,
+      teaser: sql<string | null>`left(${voteItems.descriptionHe}, 280)`,
+    })
     .from(knessetVotes)
+    .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
     .where(where)
     .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId))
     .limit(limit + 1);
   const page = rows.slice(0, limit);
   const last = page[page.length - 1];
-  const nextBefore = rows.length > limit ? `${last.voteDate.toISOString()}_${last.voteId}` : null;
+  const nextBefore = rows.length > limit ? `${last.vote.voteDate.toISOString()}_${last.vote.voteId}` : null;
 
-  const itemIds = [...new Set(page.map((v) => v.itemId).filter((i): i is number => i != null))];
+  const itemIds = [...new Set(page.map((r) => r.vote.itemId).filter((i): i is number => i != null))];
   const siblingCounts = new Map<number, number>();
   if (itemIds.length) {
     const counts = await db
@@ -93,8 +100,9 @@ export async function getVotesFeed({
     for (const c of counts) if (c.itemId != null) siblingCounts.set(c.itemId, Number(c.n));
   }
   return {
-    votes: page.map((v) => ({
+    votes: page.map(({ vote: v, teaser }) => ({
       ...v,
+      descriptionTeaser: teaser,
       siblingCount: v.itemId != null ? Math.max(0, (siblingCounts.get(v.itemId) ?? 1) - 1) : 0,
     })),
     nextBefore,
@@ -106,14 +114,16 @@ export async function getFeaturedVotes({
   db = defaultDb,
   sinceDays = 31,
   limit = 6,
-}: { db?: DB; sinceDays?: number; limit?: number } = {}): Promise<KnessetVoteRow[]> {
+}: { db?: DB; sinceDays?: number; limit?: number } = {}): Promise<(KnessetVoteRow & { descriptionTeaser: string | null })[]> {
   const since = new Date(Date.now() - sinceDays * 864e5);
-  return db
-    .select()
+  const rows = await db
+    .select({ vote: knessetVotes, teaser: sql<string | null>`left(${voteItems.descriptionHe}, 280)` })
     .from(knessetVotes)
+    .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
     .where(and(eq(knessetVotes.featured, true), gte(knessetVotes.voteDate, since)))
     .orderBy(desc(knessetVotes.voteDate))
     .limit(limit);
+  return rows.map(({ vote, teaser }) => ({ ...vote, descriptionTeaser: teaser }));
 }
 
 export interface MkVoteWithPolitician {
@@ -124,6 +134,12 @@ export interface MkVoteWithPolitician {
   politician: typeof politicians.$inferSelect | null;
 }
 
+export interface VoteItemDetail {
+  item: VoteItemRow;
+  /** The agenda motion's proposing MK, when we know them. */
+  initiator: typeof politicians.$inferSelect | null;
+}
+
 export interface VoteDetail {
   vote: KnessetVoteRow;
   /** Per-MK breakdown with the politician row + faction-at-vote-time name. */
@@ -132,6 +148,8 @@ export interface VoteDetail {
   withheldCount: number;
   /** The item's other votes, newest first (readings/reservations context). */
   siblings: KnessetVoteRow[];
+  /** Enriched item context (official description + law links) — null until enriched. */
+  item: VoteItemDetail | null;
 }
 
 export async function getVoteDetail({
@@ -141,7 +159,7 @@ export async function getVoteDetail({
   const [vote] = await db.select().from(knessetVotes).where(eq(knessetVotes.voteId, voteId)).limit(1);
   if (!vote) return null;
 
-  const [breakdownRows, [rawCount], siblings] = await Promise.all([
+  const [breakdownRows, [rawCount], siblings, item] = await Promise.all([
     db
       .select({
         personId: mkVotes.personId,
@@ -162,12 +180,22 @@ export async function getVoteDetail({
           .from(knessetVotes)
           .where(and(eq(knessetVotes.itemId, vote.itemId), sql`${knessetVotes.voteId} <> ${voteId}`))
           .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId)),
+    vote.itemId == null
+      ? Promise.resolve(null)
+      : db
+          .select({ item: voteItems, initiator: politicians })
+          .from(voteItems)
+          .leftJoin(politicians, eq(politicians.personId, voteItems.initiatorPersonId))
+          .where(eq(voteItems.itemId, vote.itemId))
+          .limit(1)
+          .then((rows): VoteItemDetail | null => rows[0] ?? null),
   ]);
   return {
     vote,
     breakdown: breakdownRows,
     withheldCount: Math.max(0, Number(rawCount?.n ?? 0) - breakdownRows.length),
     siblings,
+    item,
   };
 }
 
