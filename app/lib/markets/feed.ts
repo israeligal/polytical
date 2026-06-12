@@ -1,8 +1,16 @@
 import type { Category, Market, Politician } from "@/lib/types";
 import { getPoliticiansByPersonIds } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
-import { getMarketBundle, listOpenMarkets, getOutcomeCountsForMarkets, getUserPredictions } from "@/app/lib/markets/repo";
+import {
+  getMarketBundle,
+  getMarketBundles,
+  listOpenMarkets,
+  listUnpredictedOpenMarkets,
+  getOutcomeCountsForMarkets,
+  getUserPredictions,
+} from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
+import type { AppDb } from "@/app/lib/db-utils";
 
 /** marketId → the viewer's picked-outcome label, for the המנדט-שלי chip on feed cards. */
 export async function getMyPickLabels({ userId }: { userId: string }): Promise<Map<string, string>> {
@@ -42,6 +50,52 @@ export async function getMarketCards({
     personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
 
   const countsByMarket = await getOutcomeCountsForMarkets({
+    marketIds: bundles.map((b) => b.market.id),
+  });
+
+  return bundles.map((b) => ({
+    market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
+    featured: featuredFor(b.personIds),
+  }));
+}
+
+/**
+ * Open markets the user has NOT yet predicted on — the deck feed. Returns the
+ * same `MarketCardData` view-model as `getMarketCards` (outcomes with live
+ * predictor counts + linked politician portraits) so pages can render deck
+ * cards with the exact same components. Three DB round-trips regardless of
+ * deck size: one for the unpredicted-market ids, one batched bundle fetch,
+ * one batched politician fetch, one batched count fetch.
+ */
+export async function getUnpredictedOpenMarketCards({
+  db,
+  userId,
+  excludeMarketId,
+  limit = 8,
+}: {
+  db: AppDb;
+  userId: string;
+  excludeMarketId?: string;
+  limit?: number;
+}): Promise<MarketCardData[]> {
+  const marketRows = await listUnpredictedOpenMarkets({ db, userId, excludeMarketId, limit });
+  if (marketRows.length === 0) return [];
+
+  const bundles = await getMarketBundles({
+    db,
+    marketIds: marketRows.map((m) => m.id),
+  });
+
+  const linkedIds = [...new Set(bundles.flatMap((b) => b.personIds))];
+  const polById = new Map<string, Politician>();
+  for (const row of await getPoliticiansByPersonIds({ db, personIds: linkedIds })) {
+    polById.set(String(row.personId), dbToCard(row));
+  }
+  const featuredFor = (personIds: number[]): Politician[] =>
+    personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+
+  const countsByMarket = await getOutcomeCountsForMarkets({
+    db,
     marketIds: bundles.map((b) => b.market.id),
   });
 

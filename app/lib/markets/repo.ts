@@ -1,11 +1,12 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, gt, inArray, isNull, lte, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, notExists, notInArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bets, marketPoliticians, markets, outcomes, politicians, users } from "@/app/lib/schema";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
+import { requireUserId } from "@/app/lib/errors";
 
 // Market repository: scope-guarded, tx-aware DB access for the prediction service.
 //
@@ -344,6 +345,48 @@ export async function listOpenMarkets({
     ? and(eq(markets.status, "open"), eq(markets.category, category))
     : eq(markets.status, "open");
   return db.select().from(markets).where(where).orderBy(sql`${markets.createdAt} desc`);
+}
+
+/**
+ * Open markets (status = 'open' AND closeAt > now) where the given user has
+ * made NO prediction yet — the source list for the "answer deck" feature. The
+ * anti-join is via NOT EXISTS on the unique (userId, marketId) bets index, so
+ * it is a single index probe per candidate row, not a hash of all bets.
+ *
+ * Ordering: newest first (createdAt DESC), matching listOpenMarkets. Excludes
+ * `excludeMarketId` when provided.
+ */
+export async function listUnpredictedOpenMarkets({
+  db = defaultDb,
+  userId,
+  excludeMarketId,
+  limit = 8,
+  now = new Date(),
+}: {
+  db?: DB;
+  userId: string;
+  excludeMarketId?: string;
+  limit?: number;
+  now?: Date;
+}): Promise<MarketRow[]> {
+  const uid = requireUserId(userId);
+  const conditions = [
+    eq(markets.status, "open"),
+    gt(markets.closeAt, now),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(bets)
+        .where(and(eq(bets.userId, uid), eq(bets.marketId, markets.id))),
+    ),
+  ];
+  if (excludeMarketId != null) conditions.push(sql`${markets.id} <> ${excludeMarketId}`);
+  return db
+    .select()
+    .from(markets)
+    .where(and(...conditions))
+    .orderBy(desc(markets.createdAt))
+    .limit(limit);
 }
 
 /**

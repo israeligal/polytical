@@ -2,15 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { formatCount } from "@/lib/format";
+import { db } from "@/app/lib/db";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
+import { getUnpredictedOpenMarketCards } from "@/app/lib/markets/feed";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getCelebrations } from "@/app/lib/bets/service";
+import { marketToOwnDeckQuestion, marketCardToQueueQuestion, mergePoliticians } from "@/app/lib/deck/build";
 import { CelebrationHost } from "@/components/celebration/celebration-host";
 import { OddsBar } from "@/components/odds-bar";
-import { BetPanel } from "@/components/bet-panel";
-import { OutcomeRows } from "@/components/outcome-rows";
+import { QuestionDeck } from "@/components/question-deck";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
@@ -40,19 +42,21 @@ export default async function MarketPage({
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
-  // The interactive rows render only on OPEN markets — an admin-closed (or
+  // The interactive deck renders only on OPEN markets — an admin-closed (or
   // draft/voided) multi must not invite picks that always fail. Past-closeAt
-  // open markets keep parity with binary's BetPanel: the server action is the
-  // authoritative closeAt guard (render-time Date.now is impure in RSCs).
-  const multiOpen = market.type === "multi" && bundle.market.status === "open";
+  // open markets keep parity: the server action is the authoritative closeAt guard.
+  const isOpen = bundle.market.status === "open";
 
   // Featured MK cards + the viewer's current pick (highlighted row + the
-  // המנדט-שלי header chip, so it's fetched for every market type/status) are
-  // independent reads — overlap them instead of paying serial roundtrips.
-  const [polRows, positions] = await Promise.all([
+  // המנדט-שלי header chip, so it's fetched for every market type/status) + deck
+  // queue are independent reads — overlap them instead of paying serial roundtrips.
+  const [polRows, positions, queueCards] = await Promise.all([
     Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId }))),
     session?.user
       ? getUserPositions({ userId: session.user.id, marketId: id })
+      : Promise.resolve([]),
+    isOpen && session?.user
+      ? getUnpredictedOpenMarketCards({ db, userId: session.user.id, excludeMarketId: id, limit: 6 })
       : Promise.resolve([]),
   ]);
   const pols = polRows.filter((row): row is NonNullable<typeof row> => row !== null).map(dbToCard);
@@ -60,6 +64,18 @@ export default async function MarketPage({
   const myPickLabel = initialPickId
     ? (bundle.outcomes.find((o) => o.id === initialPickId)?.labelHe ?? null)
     : null;
+
+  // Build deck for open markets (shown to all — logged-out sees login CTA on first card).
+  const deckQuestions = isOpen
+    ? [
+        marketToOwnDeckQuestion({ market, initialPickId }),
+        ...queueCards.map(marketCardToQueueQuestion),
+      ]
+    : [];
+  // Merge queue politicians into the page's own list so all portraits resolve.
+  const deckPoliticians = isOpen
+    ? mergePoliticians(pols, queueCards.flatMap((c) => c.featured))
+    : pols;
   // The politician a winning outcome IS (multi) — for the resolution panel portrait.
   const winnerPol =
     winningOutcome?.personId != null
@@ -117,17 +133,24 @@ export default async function MarketPage({
             <Countdown closeAt={market.closeAt} />
           </div>
 
-          {multiOpen ? (
-            /* Multi markets: the sorted candidate rows ARE the chart AND the
-               picker — no separate odds bar or side bet panel. */
-            <div className="mt-6">
-              <OutcomeRows
-                market={market}
-                politicians={pols}
-                initialPickId={initialPickId}
-                isLoggedIn={isLoggedIn}
-              />
-            </div>
+          {isOpen ? (
+            /* Open markets: OddsBar (binary) or the pct overview (multi) then the
+               QuestionDeck below — the deck is the primary answering surface for
+               both types on the main column. */
+            <>
+              <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <OddsBar market={market} />
+              </div>
+              <div className="mt-6">
+                <QuestionDeck
+                  questions={deckQuestions}
+                  politicians={deckPoliticians}
+                  loggedIn={isLoggedIn}
+                  feedHref="/markets"
+                  feedLabel="חזרה לתחזיות"
+                />
+              </div>
+            </>
           ) : (
             <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
               <OddsBar market={market} />
@@ -167,22 +190,21 @@ export default async function MarketPage({
                 </>
               )}
             </div>
-          ) : market.type === "multi" ? (
-            /* The rows in the main column do the picking (when open) — the
-               sidebar carries the resolution criterion / how-it-works hint.
-               A closed-but-unresolved multi must NOT fall through to BetPanel,
-               which would invite picks that always fail. */
+          ) : (
+            /* Open or closed-unresolved: the deck in the main column is the
+               answering surface — the aside carries the how-it-works hint for
+               all non-settled states (both binary and multi). */
             <div className="rounded-2xl border border-border bg-card p-5 shadow-md">
               <h3 className="mb-2 font-display text-lg font-bold text-foreground">
                 איך מכריעים?
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {bundle.market.descriptionHe ??
-                  "בוחרים תשובה אחת מהרשימה. כשהתחזית תוכרע — מנדט מדויק נוסף לרקורד שלכם."}
+                  (market.type === "multi"
+                    ? "בוחרים תשובה אחת מהרשימה. כשהתחזית תוכרע — מנדט מדויק נוסף לרקורד שלכם."
+                    : "בוחרים כן או לא. כשהתחזית תוכרע — מנדט מדויק נוסף לרקורד שלכם.")}
               </p>
             </div>
-          ) : (
-            <BetPanel market={market} isLoggedIn={isLoggedIn} />
           )}
         </aside>
 
