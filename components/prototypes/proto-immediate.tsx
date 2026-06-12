@@ -163,31 +163,35 @@ export function BottomSheetProto({ questions = PROTO_QUESTIONS }: ProtoFlowProps
 }
 
 /* ------------------------------------------------------------------ */
-/* Desktop adaptation — "next up" spotlight in the existing 320px rail */
+/* Desktop adaptation — "next up" ALWAYS visible in the 320px rail,    */
+/* plus a clickable answered-history nav (each item → its full page)   */
 /* ------------------------------------------------------------------ */
 
 export function DesktopRailProto({ questions = PROTO_QUESTIONS }: ProtoFlowProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [railIndex, setRailIndex] = useState<number | null>(null);
+  const [history, setHistory] = useState<string[]>([]); // question ids, answer order
+  const [railIndex, setRailIndex] = useState(1); // visible from page load — not gated
 
   const page = questions[0];
-  const railQuestion = railIndex != null ? questions[railIndex] : null;
+  const railQuestion = railIndex < questions.length ? questions[railIndex] : null;
   const answeredCount = Object.keys(answers).length;
+  const byId = new Map(questions.map((q) => [q.id, q]));
 
   function answer({ question, optionId, index }: { question: ProtoQuestion; optionId: string; index: number }) {
     const isFirstAnswer = answers[question.id] == null;
     setAnswers((cur) => ({ ...cur, [question.id]: optionId }));
     if (!isFirstAnswer) return;
-    window.setTimeout(() => {
-      const next = index + 1;
-      setRailIndex(next < questions.length ? next : null);
-    }, ADVANCE_MS);
+    setHistory((cur) => [question.id, ...cur]);
+    if (index === 0) return; // the page's own question doesn't advance the rail
+    window.setTimeout(() => setRailIndex(index + 1), ADVANCE_MS);
   }
 
   return (
     <div className="mx-auto w-full max-w-5xl">
       <ProtoStyles />
-      <h2 className="mb-3 font-display text-xl text-foreground">דסקטופ — ״הבא בתור״ ברייל הצדדי</h2>
+      <h2 className="mb-3 font-display text-xl text-foreground">
+        דסקטופ — ״הבא בתור״ קבוע ברייל + היסטוריית תשובות
+      </h2>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div>
           <QuestionCard
@@ -198,9 +202,6 @@ export function DesktopRailProto({ questions = PROTO_QUESTIONS }: ProtoFlowProps
           <PageFiller />
         </div>
         <aside className="space-y-3">
-          <div className="rounded-card border border-border bg-card p-4 text-sm text-muted-foreground shadow-2">
-            איך מכריעים? (הקלף הקיים)
-          </div>
           {railQuestion ? (
             <div key={railQuestion.id} className="proto-rise">
               <div className="rounded-card border-2 border-primary bg-card p-4 shadow-glow-mint">
@@ -211,22 +212,49 @@ export function DesktopRailProto({ questions = PROTO_QUESTIONS }: ProtoFlowProps
                 <QuestionCard
                   question={railQuestion}
                   answerId={answers[railQuestion.id] ?? null}
-                  onAnswer={(optionId) =>
-                    answer({ question: railQuestion, optionId, index: railIndex ?? 0 })
-                  }
+                  onAnswer={(optionId) => answer({ question: railQuestion, optionId, index: railIndex })}
                   flat
                 />
+                <p className="mt-2 text-end text-xs font-bold text-primary">לעמוד המלא ←</p>
               </div>
             </div>
-          ) : answeredCount > 0 ? (
+          ) : (
             <p className="proto-rise rounded-card border border-primary bg-card p-4 text-center text-sm font-bold text-foreground">
               🎉 עניתם על הכול
             </p>
-          ) : (
-            <div className="rounded-card border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-              (אחרי שתענו — השאלה הבאה תופיע כאן)
-            </div>
           )}
+
+          {history.length > 0 && (
+            <nav aria-label="שאלות שעניתם" className="rounded-card border border-border bg-card p-3 shadow-2">
+              <p className="mb-2 text-xs font-bold text-muted-foreground">עניתם הרגע</p>
+              <ul className="space-y-1">
+                {history.map((id) => {
+                  const q = byId.get(id);
+                  if (!q) return null;
+                  const picked = q.options.find((o) => o.id === answers[id]);
+                  return (
+                    <li key={id}>
+                      {/* prototype stand-in for a <Link href=/vote|/market/:id> */}
+                      <button
+                        type="button"
+                        className="group flex w-full items-center gap-2 rounded-[10px] px-2 py-1.5 text-start transition-colors hover:bg-sunken"
+                      >
+                        <span aria-hidden className="text-positive">✓</span>
+                        <span className="min-w-0 flex-1 truncate text-xs text-foreground group-hover:text-primary">
+                          {q.title}
+                        </span>
+                        <span className="shrink-0 text-xs font-extrabold text-foreground">{picked?.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          )}
+
+          <div className="rounded-card border border-border bg-card p-4 text-sm text-muted-foreground shadow-2">
+            איך מכריעים? (הקלף הקיים)
+          </div>
         </aside>
       </div>
     </div>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { BottomSheetProto, DesktopRailProto, InlineStackProto } from "./proto-immediate";
 import { CarouselProto, CtaPeekProto } from "./proto-next-button";
+import { SwipeDeckProto } from "./proto-swipe-deck";
 
 /**
  * ⚠️ THROWAWAY brainstorm prototypes for the post-answer "next question" flow
@@ -27,7 +28,20 @@ const Phone = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
-/** A — IMMEDIATE · the answered card collapses and the next one rises under it. */
+/** E — THE CHOSEN DIRECTION · swipeable deck: swipe toward a side to cast it
+ *  (right = כן/בעד, left = לא/נגד, progressive tint), tap also works,
+ *  back/next nav revisits editable answered cards. Multi = tap-only. */
+export const ESwipeDeck: Story = {
+  name: "E ★ דק קלפים + סוויפ (הכיוון)",
+  globals: mobile,
+  render: () => (
+    <Phone>
+      <SwipeDeckProto />
+    </Phone>
+  ),
+};
+
+/** A — rejected (stack pushes the page down) — kept for comparison. */
 export const AInlineStack: Story = {
   name: "A · מיידי — ערימה במקום",
   globals: mobile,

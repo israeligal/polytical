@@ -93,14 +93,16 @@ export const PROTO_QUESTIONS: ProtoQuestion[] = [
   },
 ];
 
+// Design 1 ("מלבנים גדולים") — the chosen binary surface: two equal 52px
+// targets, flatter radius, % inline. One tap = answer.
 const pillIdle: Record<ProtoTone, string> = {
-  positive: "border-positive bg-positive-soft text-positive",
-  negative: "border-negative bg-negative-soft text-negative",
-  neutral: "border-border bg-sunken text-foreground",
+  positive: "border-positive/35 bg-positive-soft text-positive hover:border-positive",
+  negative: "border-negative/35 bg-negative-soft text-negative hover:border-negative",
+  neutral: "border-border bg-sunken text-foreground hover:border-primary",
 };
 
 const pillActive: Record<ProtoTone, string> = {
-  positive: "border-positive bg-positive text-positive-foreground",
+  positive: "border-positive bg-positive text-positive-foreground shadow-glow-mint",
   negative: "border-negative bg-negative text-negative-foreground",
   neutral: "border-primary bg-primary text-primary-foreground shadow-glow-mint",
 };
@@ -125,13 +127,13 @@ export function QuestionBody({ question, answerId, onAnswer }: QuestionBodyProps
                 type="button"
                 onClick={() => onAnswer(o.id)}
                 aria-pressed={active}
-                className={`flex-1 rounded-[12px] border-[1.5px] px-3 py-2.5 text-sm font-extrabold transition-all duration-150 ${
+                className={`h-[52px] flex-1 rounded-[14px] border-[1.5px] px-3 text-base font-black transition-all duration-150 active:scale-[0.98] ${
                   active ? pillActive[o.tone] : pillIdle[o.tone]
                 }`}
               >
                 {o.label}
                 {active && " ✓"}
-                {o.share != null && <span className="nums ms-1.5 opacity-70">{o.share}%</span>}
+                {o.share != null && <span className="nums ms-1.5 text-sm font-bold opacity-75">{o.share}%</span>}
               </button>
             );
           })}
