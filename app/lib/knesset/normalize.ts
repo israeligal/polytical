@@ -111,6 +111,17 @@ export function buildPositionLabelMap(rows: KnsPosition[]): Map<number, string> 
   return m;
 }
 
+/**
+ * Maps KNS_Person.GenderDesc to a typed literal.
+ * "זכר" → "male", "נקבה" → "female", anything else (null / unknown text) → null.
+ * Null is authoritative: it means "unknown — use neutral copy everywhere".
+ */
+export function parseGender({ genderDesc }: { genderDesc: string | null | undefined }): "male" | "female" | null {
+  if (genderDesc === "זכר") return "male";
+  if (genderDesc === "נקבה") return "female";
+  return null;
+}
+
 export interface FactionRow {
   factionId: number; nameHe: string; knessetNum: number | null; isCurrent: boolean;
   sourceDataset: string; sourceUrl: string; fetchedAt: Date;
@@ -134,6 +145,7 @@ export interface MemberRow {
   personId: number; nameHe: string; nameEn: string | null; party: string | null;
   factionId: number | null; roleHe: string | null; inKnessetSince: string | null;
   dob: string | null; facts: Record<string, unknown>; active: boolean; searchName: string;
+  gender: "male" | "female" | null;
   sourceDataset: string; sourceUrl: string; fetchedAt: Date;
 }
 
@@ -166,9 +178,12 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
     byPersonAll.set(r.PersonID, list);
   }
   const nameByPerson = new Map<number, string>();
+  const genderByPerson = new Map<number, "male" | "female">();
   for (const p of persons) {
     const he = [p.FirstName, p.LastName].filter(Boolean).join(" ").trim();
     if (he) nameByPerson.set(p.PersonID, he);
+    const g = parseGender({ genderDesc: p.GenderDesc });
+    if (g) genderByPerson.set(p.PersonID, g);
   }
 
   const out: MemberRow[] = [];
@@ -233,6 +248,7 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
       dob: null,
       facts: { roles, ministries, committees: committeesNamed, isNorwegianMinister },
       active,
+      gender: genderByPerson.get(personId) ?? null,
       searchName: normalizeSearchName(nameHe),
       sourceDataset: "KNS_PersonToPosition",
       sourceUrl: prov.sourceUrl,
@@ -257,9 +273,12 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
     byPerson.set(r.PersonID, list);
   }
   const nameByPerson = new Map<number, string>();
+  const genderByPerson = new Map<number, "male" | "female">();
   for (const p of persons) {
     const he = [p.FirstName, p.LastName].filter(Boolean).join(" ").trim();
     if (he) nameByPerson.set(p.PersonID, he);
+    const g = parseGender({ genderDesc: p.GenderDesc });
+    if (g) genderByPerson.set(p.PersonID, g);
   }
 
   const out: MemberRow[] = [];
@@ -309,6 +328,7 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
       dob: null,    // not in OData
       facts: { roles, ministries, committees: committeesNamed },
       active: true,
+      gender: genderByPerson.get(personId) ?? null,
       searchName: normalizeSearchName(nameHe),
       sourceDataset: "KNS_PersonToPosition",
       sourceUrl: prov.sourceUrl,

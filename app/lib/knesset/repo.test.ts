@@ -17,7 +17,7 @@ function faction(over: Partial<FactionRow>): FactionRow {
 function member(over: Partial<MemberRow>): MemberRow {
   return {
     personId: 1, nameHe: "פלוני", nameEn: null, party: null, factionId: null, roleHe: null,
-    inKnessetSince: null, dob: null, facts: {}, active: true, searchName: "פלוני",
+    inKnessetSince: null, dob: null, facts: {}, active: true, gender: null, searchName: "פלוני",
     sourceDataset: "KNS_PersonToPosition", sourceUrl: "https://x", fetchedAt: PROV.fetchedAt, ...over,
   };
 }

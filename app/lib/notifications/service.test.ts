@@ -67,7 +67,7 @@ test("resolveMarket emits bet_won for the correct predictor + market_resolved pe
   const won = winnerNotifs.find((n) => n.type === "bet_won");
   expect(won?.refMarketId).toBe(marketId);
   // New copy: no coins — just accuracy confirmation.
-  expect(won?.titleHe).toBe("ניחשת נכון! 🎯");
+  expect(won?.titleHe).toBe("המנדט נפדה! 🎯");
   expect(won?.bodyHe).toContain("המנדט נפדה — צדקת");
 });
 

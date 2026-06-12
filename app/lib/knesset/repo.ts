@@ -21,7 +21,8 @@ export async function upsertMembers({ db, rows }: { db: DB; rows: MemberRow[] })
         nameHe: sqlExcluded("nameHe"), nameEn: sqlExcluded("nameEn"), party: sqlExcluded("party"),
         factionId: sqlExcluded("factionId"), roleHe: sqlExcluded("roleHe"),
         inKnessetSince: sqlExcluded("inKnessetSince"), facts: sqlExcluded("facts"),
-        active: sqlExcluded("active"), searchName: sqlExcluded("searchName"),
+        active: sqlExcluded("active"), gender: sqlExcluded("gender"),
+        searchName: sqlExcluded("searchName"),
         sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"),
         fetchedAt: sqlExcluded("fetchedAt"),
         // dob is editorial — never overwrite a curated value with null on re-ingest

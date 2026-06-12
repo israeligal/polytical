@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
-import { getMarketCards } from "@/app/lib/markets/feed";
+import { getMarketCards, getMyPickLabels } from "@/app/lib/markets/feed";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { pctLabel } from "@/lib/format";
 import { CategoryRail } from "@/components/category-rail";
@@ -13,7 +13,7 @@ import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
 import { LeaderboardRow } from "@/components/leaderboard-row";
-import { ChevronForward, Trophy } from "@/components/icons";
+import { ArrowForward, Trophy } from "@/components/icons";
 import { VoteRow } from "@/components/vote-row";
 import { getVotesFeed } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
@@ -75,6 +75,7 @@ export default async function Home({
   // so they can always find themselves. Empty state until there are users to rank.
   const session = await getSession();
   const me = session?.user ?? null;
+  const myPicks = me ? await getMyPickLabels({ userId: me.id }) : new Map<string, string>();
   const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,
@@ -110,7 +111,9 @@ export default async function Home({
             <h1 className="sr-only">פוליטיקל — תחזיות על הפוליטיקה הישראלית</h1>
             {featured && (
               <div className="grid gap-4 lg:grid-cols-3">
-                <div className={hotItems.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}>
+                {/* min-w-0: grid items default to min-width:auto, letting the card's
+                    min-content blow past narrow viewports (the /market lesson). */}
+                <div className={hotItems.length > 0 ? "min-w-0 lg:col-span-2" : "min-w-0 lg:col-span-3"}>
                   <HeroSpotlight
                     market={featured.market}
                     featured={featured.featured}
@@ -128,26 +131,28 @@ export default async function Home({
           id="markets"
           className={`scroll-mt-24 ${HOME_SECTION_INNER}`}
         >
-          <h2 className="mb-5 font-display text-4xl font-black text-foreground">
-            תחזיות
-          </h2>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <CategoryRail active={active} />
-            </div>
+          {/* Heading row: title + the "all forecasts" link share one line (also on
+              mobile, where the link used to float awkwardly beside the rail). */}
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="font-display text-4xl font-black text-foreground">
+              תחזיות
+            </h2>
             <Link
               href={`/markets${active ? `?cat=${active}` : ""}`}
               scroll={false}
-              className="ms-auto inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary transition-colors hover:underline"
+              className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
             >
-              לכל התחזיות <ChevronForward className="h-4 w-4 rotate-180" />
+              לכל התחזיות <ArrowForward className="h-5 w-5" />
             </Link>
+          </div>
+          <div className="mb-6">
+            <CategoryRail active={active} />
           </div>
           <div className="min-h-[28rem]">
             {visibleGrid.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleGrid.map((c) => (
-                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} />
+                  <MarketCard key={c.market.id} market={c.market} featured={c.featured} myPickLabel={myPicks.get(c.market.id)} />
                 ))}
               </div>
             ) : (
@@ -162,8 +167,8 @@ export default async function Home({
           className="scroll-mt-24 border-y border-border bg-muted"
         >
           <div className={HOME_SECTION_INNER}>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div className="max-w-2xl">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div>
                 <p className="text-sm font-bold text-primary">הקלפים</p>
                 <h2 className="font-display text-3xl font-bold text-foreground">
                   פוליטיקאים על המגרש
@@ -171,9 +176,9 @@ export default async function Home({
               </div>
               <Link
                 href="/politicians"
-                className="rounded-lg border-2 border-primary px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+                className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
               >
-                כל הפוליטיקאים
+                כל הפוליטיקאים <ArrowForward className="h-5 w-5" />
               </Link>
             </div>
             {featuredPoliticians.length > 0 ? (
@@ -223,9 +228,17 @@ export default async function Home({
         {/* KNESSET VOTES — real plenum roll-calls (muted stripe continues the alternation) */}
         <section id="votes" className="scroll-mt-24 border-t border-border bg-muted">
           <div className={HOME_SECTION_INNER}>
-            <div className="mb-6">
-              <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
-              <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
+                <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>
+              </div>
+              <Link
+                href="/votes"
+                className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
+              >
+                לכל ההצבעות <ArrowForward className="h-5 w-5" />
+              </Link>
             </div>
             {recentVotes.length > 0 ? (
               <div className="mx-auto grid max-w-2xl gap-3">
@@ -236,14 +249,6 @@ export default async function Home({
             ) : (
               <EmptyState className="mx-auto w-full max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
             )}
-            <p className="mt-5 text-center">
-              <Link
-                href="/votes"
-                className="inline-flex items-center rounded-full border-2 border-primary px-6 py-2.5 text-sm font-bold text-primary transition-all hover:-translate-y-0.5"
-              >
-                לכל ההצבעות — מי בעד ומי נגד
-              </Link>
-            </p>
           </div>
         </section>
       </main>

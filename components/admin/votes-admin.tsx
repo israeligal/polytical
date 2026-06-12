@@ -5,6 +5,7 @@
 // window.confirm only for terminal acts).
 
 import { useState, useTransition } from "react";
+import { SelectField } from "@/components/select-field";
 import {
   createAgendaItemAction,
   dismissUnmappedNameAction,
@@ -87,7 +88,7 @@ export function UnmappedNameRow({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <select
+          <SelectField
             value={personId}
             onChange={(e) => setPersonId(e.target.value)}
             className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
@@ -99,7 +100,7 @@ export function UnmappedNameRow({
                 {p.name} ({p.personId})
               </option>
             ))}
-          </select>
+          </SelectField>
           <button
             type="button"
             disabled={pending || !personId}

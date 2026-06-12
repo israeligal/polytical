@@ -7,9 +7,16 @@ import {
   listOpenMarkets,
   listUnpredictedOpenMarkets,
   getOutcomeCountsForMarkets,
+  getUserPredictions,
 } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import type { AppDb } from "@/app/lib/db-utils";
+
+/** marketId → the viewer's picked-outcome label, for the המנדט-שלי chip on feed cards. */
+export async function getMyPickLabels({ userId }: { userId: string }): Promise<Map<string, string>> {
+  const predictions = await getUserPredictions({ userId });
+  return new Map(predictions.map((p) => [p.marketId, p.outcomeLabelHe]));
+}
 
 export type MarketCardData = { market: Market; featured: Politician[] };
 

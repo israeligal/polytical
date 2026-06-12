@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Politician } from "@/lib/types";
+import { appearsIn, voted } from "@/lib/gender";
 import {
   getAllPoliticians,
   getPoliticianActivity,
@@ -17,6 +18,7 @@ import { getSession } from "@/lib/auth";
 import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
 import { unlockThreshold } from "@/lib/rarity";
 import { getRecentMkVotes } from "@/app/lib/votes/read-repo";
+import { getMkParticipation } from "@/app/lib/votes/participation";
 import { formatDate } from "@/lib/time";
 import { POLITICIAN_CONTAINER , POLITICIAN_GRID } from "@/components/skeletons/containers";
 
@@ -33,9 +35,10 @@ export default async function PoliticianPage({
   if (!row) notFound();
 
   const politician = dbToCard(row);
-  const [activity, recentVotes] = await Promise.all([
+  const [activity, recentVotes, participation] = await Promise.all([
     getPoliticianActivity({ personId }),
     getRecentMkVotes({ personId }),
+    getMkParticipation({ personId }),
   ]);
 
   // Collection is unlocked by ACCURACY: getting `threshold` correct predictions on
@@ -89,7 +92,7 @@ export default async function PoliticianPage({
                   פתחו את הקלף בדיוק
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  צדקו <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות שהוא מופיע בהן כדי לאסוף את הקלף.
+                  צדקו <span className="nums font-bold text-foreground">{threshold}</span> פעמים בתחזיות {appearsIn({ gender: politician.gender ?? null })} כדי לאסוף את הקלף.
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-background">
                   <div
@@ -197,6 +200,22 @@ export default async function PoliticianPage({
             נתונים ממקור רשמי · הכנסת (OData)
           </p>
 
+          {participation.votesInTenure > 0 && (
+            <section className="mb-6">
+              <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">השתתפות בהצבעות</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
+                  <p className="nums font-display text-3xl font-black text-primary"><bdi>{participation.participated}</bdi></p>
+                  <p className="mt-1 text-sm text-muted-foreground">הצבעות מתוך <bdi className="nums">{participation.votesInTenure}</bdi></p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-4 text-center">
+                  <p className="nums font-display text-3xl font-black text-primary"><bdi>{participation.presentDays}</bdi></p>
+                  <p className="mt-1 text-sm text-muted-foreground">ימי הצבעה מתוך <bdi className="nums">{participation.plenumDaysInTenure}</bdi></p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">מבוסס על הצבעות שמיות במליאה בתקופת כהונתו · לא כולל הצבעות חשאיות והצבעות בהרמת יד</p>
+            </section>
+          )}
           <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">הצבעות אחרונות</h2>
           {recentVotes.for.length === 0 && recentVotes.against.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-muted/50 px-4 py-10 text-center">
@@ -209,8 +228,8 @@ export default async function PoliticianPage({
             <div className="grid gap-4 sm:grid-cols-2">
               {(
                 [
-                  { key: "for", title: "הצביע/ה בעד", votes: recentVotes.for },
-                  { key: "against", title: "הצביע/ה נגד", votes: recentVotes.against },
+                  { key: "for", title: `${voted({ gender: politician.gender ?? null })} בעד`, votes: recentVotes.for },
+                  { key: "against", title: `${voted({ gender: politician.gender ?? null })} נגד`, votes: recentVotes.against },
                 ] as const
               ).map((col) => (
                 <div key={col.key}>

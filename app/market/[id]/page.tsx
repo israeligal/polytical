@@ -16,6 +16,7 @@ import { QuestionDeck } from "@/components/question-deck";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
+import { StatusChip } from "@/components/status-chip";
 import { CommentThread } from "@/components/comments/comment-thread";
 import { ChatBubble, ChevronForward, Users } from "@/components/icons";
 import { MARKET_CONTAINER , MARKET_GRID } from "@/components/skeletons/containers";
@@ -46,11 +47,12 @@ export default async function MarketPage({
   // open markets keep parity: the server action is the authoritative closeAt guard.
   const isOpen = bundle.market.status === "open";
 
-  // Featured MK cards + the viewer's current pick (the highlighted row) + deck
+  // Featured MK cards + the viewer's current pick (highlighted row + the
+  // המנדט-שלי header chip, so it's fetched for every market type/status) + deck
   // queue are independent reads — overlap them instead of paying serial roundtrips.
   const [polRows, positions, queueCards] = await Promise.all([
     Promise.all(bundle.personIds.map((personId) => getPoliticianByPersonId({ personId }))),
-    isOpen && session?.user
+    session?.user
       ? getUserPositions({ userId: session.user.id, marketId: id })
       : Promise.resolve([]),
     isOpen && session?.user
@@ -59,6 +61,9 @@ export default async function MarketPage({
   ]);
   const pols = polRows.filter((row): row is NonNullable<typeof row> => row !== null).map(dbToCard);
   const initialPickId = positions[0]?.outcomeId ?? null;
+  const myPickLabel = initialPickId
+    ? (bundle.outcomes.find((o) => o.id === initialPickId)?.labelHe ?? null)
+    : null;
 
   // Build deck for open markets (shown to all — logged-out sees login CTA on first card).
   const deckQuestions = isOpen
@@ -119,8 +124,11 @@ export default async function MarketPage({
               <span className="nums font-bold text-foreground">
                 {formatCount(predictors)}
               </span>
-              ניחשו
+              נתנו מנדט
             </span>
+            {myPickLabel && (
+              <StatusChip tone="positive">המנדט שלי: {myPickLabel}</StatusChip>
+            )}
             <span className="text-border">•</span>
             <Countdown closeAt={market.closeAt} />
           </div>

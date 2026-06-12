@@ -2,6 +2,7 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-11 | 5080b98 | home hero mobile blow-out (user: Android out-of-frame-left) | 🔴 | spotlight min-content 435px sized the grid track; min-w-0 on hero grid children (3rd min-width:auto hit); verified in reporter's tab at 389px |
 | 2026-06-11 | 0061203 | hot-rail hover glitch (user report, screenshots) | ⚠️ | NOT repro either theme; shot pixel-matches light-hover; deploy-skew suspect (6 deploys/day); SW ruled out |
 | 2026-06-11 | 0061203 | hover/focus token audit, all state variants × both themes | ✅ | every state token has dark override; raised/sunken/ring are aliases — verified in-browser |
 | 2026-06-11 | 7e4a516 | prod: Bennett missing from מי-ירכיב market (user report) | 🔴 | NO politicians row; inserted 23511 (OData provenance, inactive) + market link; renders live |

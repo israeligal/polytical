@@ -33,14 +33,14 @@ export function composeNotification(e: NotificationEvent): NewNotification {
     case "bet_won":
       return {
         userId: e.userId, type: "bet_won",
-        titleHe: "ניחשת נכון! 🎯",
+        titleHe: "המנדט נפדה! 🎯",
         bodyHe: `המנדט נפדה — צדקת · ${e.questionHe}`,
         refMarketId: e.marketId, refBetId: e.betId,
       };
     case "market_resolved":
       return {
         userId: e.userId, type: "market_resolved",
-        titleHe: "תחזית שניחשת בה הוכרעה",
+        titleHe: "תחזית שנתת בה מנדט הוכרעה",
         bodyHe: e.questionHe,
         refMarketId: e.marketId,
       };

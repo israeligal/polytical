@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import {
   parseODataDate, buildPositionLabelMap, normalizeFactions, normalizeCurrentMembers,
-  normalizeBillSponsors, resolveRoleLabel, normalizeK25Members,
+  normalizeBillSponsors, resolveRoleLabel, normalizeK25Members, parseGender,
 } from "./normalize";
 import type {
   KnsBillInitiator, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition,
@@ -154,6 +154,34 @@ test("normalizeBillSponsors keeps all rows when no valid set is given", () => {
     { BillInitiatorID: 1, BillID: 17000, PersonID: 526, IsInitiator: true, Ordinal: 1, LastUpdatedDate: null },
   ];
   expect(normalizeBillSponsors(raw, PROV)).toHaveLength(1);
+});
+
+test("parseGender maps OData GenderDesc to typed literal", () => {
+  expect(parseGender({ genderDesc: "זכר" })).toBe("male");
+  expect(parseGender({ genderDesc: "נקבה" })).toBe("female");
+  expect(parseGender({ genderDesc: null })).toBeNull();
+  expect(parseGender({ genderDesc: undefined })).toBeNull();
+  expect(parseGender({ genderDesc: "unknown" })).toBeNull();
+});
+
+test("normalizeCurrentMembers carries gender from KNS_Person rows", () => {
+  const p2p: KnsPersonToPosition[] = [
+    base({ PersonToPositionID: 1, PersonID: 100, PositionID: 43, IsCurrent: true }),
+    base({ PersonToPositionID: 2, PersonID: 200, PositionID: 43, IsCurrent: true }),
+    base({ PersonToPositionID: 3, PersonID: 300, PositionID: 43, IsCurrent: true }),
+  ];
+  const persons: KnsPerson[] = [
+    { PersonID: 100, FirstName: "אמיר", LastName: "כהן", GenderDesc: "זכר", Email: null, IsCurrent: true, LastUpdatedDate: null },
+    { PersonID: 200, FirstName: "מירי", LastName: "רגב", GenderDesc: "נקבה", Email: null, IsCurrent: true, LastUpdatedDate: null },
+    { PersonID: 300, FirstName: "ג'ון", LastName: "דו", GenderDesc: null, Email: null, IsCurrent: true, LastUpdatedDate: null },
+  ];
+  const members = normalizeCurrentMembers({ p2p, positionLabels: buildPositionLabelMap([]), prov: PROV, persons });
+  const male = members.find((m) => m.personId === 100)!;
+  const female = members.find((m) => m.personId === 200)!;
+  const unknown = members.find((m) => m.personId === 300)!;
+  expect(male.gender).toBe("male");
+  expect(female.gender).toBe("female");
+  expect(unknown.gender).toBeNull();
 });
 
 // fixture helper — full KnsPersonToPosition with overridable fields
