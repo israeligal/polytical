@@ -55,6 +55,7 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
   const start = useRef({ x: 0, y: 0 });
   const axis = useRef<Axis>(null);
   const moved = useRef(false);
+  const active = useRef(false); // a real pointerdown is in flight — hover never drags
   const undoTimer = useRef<number | null>(null);
 
   const total = questions.length;
@@ -80,6 +81,11 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
   function flyoutThenGo({ dir, nextIndex }: { dir: FlyDir; nextIndex: number }) {
     setFlyDir(dir);
     window.setTimeout(() => {
+      // full gesture reset — stale axis/active state must never leak onto the
+      // next card (desktop "autograb": hover pointermove resumed a dead drag)
+      axis.current = null;
+      active.current = false;
+      moved.current = false;
       setDeckOpen(true);
       setIndex(nextIndex);
       setFlyDir(0);
@@ -129,10 +135,16 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
     start.current = { x: e.clientX, y: e.clientY };
     axis.current = null;
     moved.current = false;
+    active.current = true;
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (flyDir !== 0) return;
+    if (!active.current || flyDir !== 0) return; // hover is not a drag
+    if (e.pointerType === "mouse" && e.buttons === 0) {
+      // the button was released outside the card — a mouse can't keep dragging
+      onPointerAbort();
+      return;
+    }
     const ddx = e.clientX - start.current.x;
     const ddy = e.clientY - start.current.y;
     if (axis.current == null) {
@@ -156,11 +168,13 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
   /** pointercancel = the OS/browser stole the gesture. ALWAYS abort — never cast. */
   function onPointerAbort() {
     axis.current = null;
+    active.current = false;
     setDx(0);
     setDragging(false);
   }
 
   function onPointerUp() {
+    active.current = false;
     if (axis.current !== "h" || flyDir !== 0) {
       setDragging(false);
       return;
@@ -265,12 +279,8 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
               <span className="text-xs font-bold text-primary">
                 {deckOpen ? "לעמוד המלא ←" : ""}
               </span>
-              {swipeable ? (
-                <span className="text-[11px] text-muted-foreground">
-                  אפשר גם להחליק — ימינה {question.options[0].label} · שמאלה {question.options[1].label}
-                </span>
-              ) : (
-                <span className="text-[11px] text-muted-foreground">בחירה בלחיצה</span>
+              {swipeable && (
+                <span className="text-[11px] text-muted-foreground">אפשר גם להחליק</span>
               )}
             </div>
           </div>
@@ -279,45 +289,39 @@ export function SwipeDeckProto({ questions = PROTO_QUESTIONS }: SwipeDeckProps) 
 
       {/* deck chrome appears only after the first answer (the hybrid morph) */}
       {deckOpen && (
-        <div className="proto-rise mt-3 flex items-center justify-between rounded-card border border-border bg-card px-3 py-2">
+        <div className="proto-rise mt-2.5 flex items-center justify-between px-1">
           <button
             type="button"
             onClick={() => navigate(-1)}
             disabled={index === 0 || flyDir !== 0}
-            className="min-h-11 rounded-full border border-border bg-sunken px-4 text-xs font-extrabold text-foreground transition-all duration-150 hover:border-primary disabled:opacity-40"
+            aria-label="השאלה הקודמת"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-sm text-foreground shadow-2 transition-all duration-150 hover:border-primary hover:text-primary disabled:opacity-35"
           >
-            → הקודמת
+            →
           </button>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex items-center gap-1.5"
-              aria-label={`שאלה ${Math.min(index + 1, total)} מתוך ${total}`}
-            >
-              {questions.map((q, i) => (
-                <span
-                  key={q.id}
-                  aria-hidden
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === index
-                      ? "w-5 bg-primary"
-                      : answers[q.id] != null
-                        ? "w-1.5 bg-positive"
-                        : "w-1.5 bg-border"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="nums text-[11px] text-muted-foreground">
-              {Math.min(index + 1, total)}/{total}
-            </span>
+          <div className="flex items-center gap-1.5" aria-label={`שאלה ${Math.min(index + 1, total)} מתוך ${total}`}>
+            {questions.map((q, i) => (
+              <span
+                key={q.id}
+                aria-hidden
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === index
+                    ? "w-5 bg-primary"
+                    : answers[q.id] != null
+                      ? "w-1.5 bg-positive"
+                      : "w-1.5 bg-border"
+                }`}
+              />
+            ))}
           </div>
           <button
             type="button"
             onClick={() => navigate(1)}
             disabled={atEnd || flyDir !== 0}
-            className="min-h-11 rounded-full border border-border bg-sunken px-4 text-xs font-extrabold text-foreground transition-all duration-150 hover:border-primary disabled:opacity-40"
+            aria-label="השאלה הבאה"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-sm text-foreground shadow-2 transition-all duration-150 hover:border-primary hover:text-primary disabled:opacity-35"
           >
-            הבאה ←
+            ←
           </button>
         </div>
       )}
