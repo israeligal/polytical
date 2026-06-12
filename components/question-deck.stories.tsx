@@ -305,11 +305,34 @@ export const Mobile: Story = {
 };
 
 /**
- * End-of-deck card — all questions answered to reach the summary.
- * Uses Storybook fn() for the interaction test.
+ * Revisit landing — the page's own question (card 0) is pre-answered. The deck
+ * must land ON IT showing the pick (never skip ahead to a queue card), with the
+ * chrome already open so the queue is one tap away.
  */
-export const EndOfDeck: Story = {
-  name: "End of deck — all answered",
+export const RevisitLanding: Story = {
+  name: "Revisit — lands on own answered card, chrome open",
+  args: {
+    questions: [makeStanceQ({ initialAnswerId: "for" }), makeBinaryQ()],
+    feedHref: "/votes",
+    feedLabel: "חזרה להצבעות",
+    _setStanceAction: fn(makeStanceOkAction()) as SetStanceFn,
+    _makePredictionAction: fn(makePredictionOkAction()) as MakePredictionFn,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Lands on the own card with the pick lit — not on the queue card.
+    await expect(canvas.getByRole("button", { name: /בעד ✓/ })).toBeInTheDocument();
+    // Chrome is open on a revisit (arrows present).
+    await expect(canvas.getByRole("button", { name: "השאלה הבאה" })).toBeInTheDocument();
+  },
+};
+
+/**
+ * FIX 2 regression: walking forward to the end card and back must always
+ * render the answered cards with their picks (the bug showed blank cards).
+ */
+export const BackFromEnd: Story = {
+  name: "Regression — end card round-trip shows answered cards",
   args: {
     questions: [
       makeStanceQ({ initialAnswerId: "for" }),
@@ -322,9 +345,16 @@ export const EndOfDeck: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Both cards are pre-answered — deck should show the end card
-    await expect(canvas.getByText("ענית על הכול!")).toBeInTheDocument();
-    await expect(canvas.getByRole("link", { name: /חזרה להצבעות/ })).toBeInTheDocument();
+    const nextBtn = canvas.getByRole("button", { name: "השאלה הבאה" });
+    // Walk forward: own card → answered queue card → end card.
+    await userEvent.click(nextBtn);
+    await expect(await canvas.findByRole("button", { name: /כן ✓/ })).toBeInTheDocument();
+    await userEvent.click(nextBtn);
+    await expect(await canvas.findByText("ענית על הכול!")).toBeInTheDocument();
+    // Back from the end card must reveal the answered card again, pick lit.
+    const prevBtn = canvas.getByRole("button", { name: "השאלה הקודמת" });
+    await userEvent.click(prevBtn);
+    await expect(await canvas.findByRole("button", { name: /כן ✓/ })).toBeInTheDocument();
   },
 };
 

@@ -16,15 +16,29 @@ import type { DeckQuestion, DeckOption } from "@/app/lib/deck/types";
 
 type OptionTone = "positive" | "negative" | "neutral";
 
-function toneFromId(id: string): OptionTone {
+/**
+ * Derive tone from option id OR position index.
+ * Stance cards use semantic ids ("for"/"against"); binary market cards use
+ * arbitrary ids ("yes"/"no", etc.) — those fall back to position-based tone
+ * so that option[0] is always positive and option[1] always negative.
+ */
+function toneFromIdOrIndex(id: string, index: number): OptionTone {
   if (id === "for") return "positive";
   if (id === "against") return "negative";
+  // Binary market options: colour by position (first=positive, second=negative).
+  // This ensures כן/לא and any other two-option market renders with distinct tones.
+  if (index === 0) return "positive";
+  if (index === 1) return "negative";
   return "neutral";
 }
 
+// Idle: alpha-based so BOTH themes show a clearly visible tint.
+// bg-positive-soft / bg-negative-soft are very dark in dark-mode (#0c3f3a / #3a1626),
+// which can be imperceptible on the dark card surface.  The /15 alpha of the full
+// token gives a clearly distinct tint without relying on the -soft variable.
 const pillIdle: Record<OptionTone, string> = {
-  positive: "border-positive/35 bg-positive-soft text-positive hover:border-positive",
-  negative: "border-negative/35 bg-negative-soft text-negative hover:border-negative",
+  positive: "border-positive/35 bg-positive/15 text-positive hover:border-positive/70",
+  negative: "border-negative/35 bg-negative/15 text-negative hover:border-negative/70",
   neutral: "border-border bg-sunken text-foreground hover:border-primary",
 };
 
@@ -47,9 +61,9 @@ interface BinaryPillsProps {
 export function BinaryPills({ options, answerId, pending, pendingId, onAnswer }: BinaryPillsProps) {
   return (
     <div className="flex gap-2.5" role="group" aria-label="בחירת תשובה">
-      {options.map((o) => {
+      {options.map((o, index) => {
         const isActive = o.id === answerId;
-        const tone = toneFromId(o.id);
+        const tone = toneFromIdOrIndex(o.id, index);
         const isThisPending = pending && pendingId === o.id;
         return (
           <button
@@ -228,6 +242,16 @@ export function PendingOverlay() {
   );
 }
 
+// ─── transition kind ──────────────────────────────────────────────────────────
+
+/**
+ * "swipe"  — physical swipe-cast release: big translateX + 14° rotate fly-off.
+ * "subtle" — tap-cast, arrow nav, undo return: fade + ~16px directional slide,
+ *            ~180ms ease-out, no rotation.
+ * The outgoing card receives the kind; the incoming card always fades in.
+ */
+export type TransitionKind = "swipe" | "subtle";
+
 // ─── main card ────────────────────────────────────────────────────────────────
 
 export interface QuestionDeckCardProps {
@@ -239,6 +263,12 @@ export interface QuestionDeckCardProps {
   dx: number;
   armed: boolean;
   flyDir: -1 | 0 | 1;
+  /**
+   * Controls the exit animation style.
+   * "swipe" = dramatic fly-off (only for physical swipe-cast).
+   * "subtle" = fade + 16px directional slide (tap, arrow nav, undo).
+   */
+  transitionKind: TransitionKind;
   /** Action-pending overlay */
   snapPending: boolean;
   /** Inline error (action failure or rate-limit) */
@@ -270,6 +300,7 @@ export function QuestionDeckCard({
   dx,
   armed,
   flyDir,
+  transitionKind,
   snapPending,
   inlineMessage,
   stanceState,
@@ -288,11 +319,21 @@ export function QuestionDeckCard({
         : question.options[1]
       : null;
 
+  // Exit transform: swipe = dramatic fly (130% + 14°), subtle = 16px directional slide.
+  const flyingOut = flyDir !== 0;
   const cardTransform = dragging
     ? `translateX(${dx}px) rotate(${dx * 0.05}deg)`
-    : flyDir !== 0
-      ? `translateX(${flyDir * 130}%) rotate(${flyDir * 14}deg)`
+    : flyingOut
+      ? transitionKind === "swipe"
+        ? `translateX(${flyDir * 130}%) rotate(${flyDir * 14}deg)`
+        : `translateX(${flyDir * 16}px)`
       : "none";
+
+  // Transition duration: swipe exit is 280ms, subtle exit is 180ms.
+  const transitionStyle =
+    flyingOut && transitionKind === "subtle"
+      ? "transition-[transform,opacity] duration-[180ms] ease-out"
+      : "transition-[transform,opacity] duration-300 ease-out";
 
   return (
     <div
@@ -308,8 +349,8 @@ export function QuestionDeckCard({
         "relative overflow-hidden rounded-card border bg-card p-4 shadow-2 outline-none",
         armed ? "border-primary" : "border-border",
         swipeable ? "select-none" : "",
-        dragging ? "cursor-grabbing" : "transition-[transform,opacity] duration-300 ease-out",
-        flyDir !== 0 ? "opacity-0" : "",
+        dragging ? "cursor-grabbing" : transitionStyle,
+        flyingOut ? "opacity-0" : "",
         snapPending ? "pointer-events-none" : "",
       ]
         .filter(Boolean)
@@ -501,7 +542,7 @@ export function DeckChrome({
         onClick={onPrev}
         disabled={index === 0 || flyDir !== 0 || snapPending}
         aria-label="השאלה הקודמת"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-sm text-foreground shadow-2 transition-all duration-150 hover:border-primary hover:text-primary disabled:opacity-35"
+        className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary/60 bg-card text-base font-bold text-primary shadow-2 transition-all duration-150 hover:border-primary hover:bg-primary/10 disabled:border-border disabled:text-muted-foreground disabled:opacity-35 disabled:hover:bg-transparent"
       >
         →
       </button>
@@ -531,7 +572,7 @@ export function DeckChrome({
         onClick={onNext}
         disabled={atEnd || flyDir !== 0 || snapPending}
         aria-label="השאלה הבאה"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-sm text-foreground shadow-2 transition-all duration-150 hover:border-primary hover:text-primary disabled:opacity-35"
+        className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary/60 bg-card text-base font-bold text-primary shadow-2 transition-all duration-150 hover:border-primary hover:bg-primary/10 disabled:border-border disabled:text-muted-foreground disabled:opacity-35 disabled:hover:bg-transparent"
       >
         ←
       </button>

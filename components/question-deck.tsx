@@ -23,6 +23,7 @@ import {
   UndoSnackbar,
   prefersReducedMotion,
 } from "@/components/question-deck-card";
+import type { TransitionKind } from "@/components/question-deck-card";
 
 // ─── constants (mirror the prototype) ────────────────────────────────────────
 
@@ -30,6 +31,7 @@ const CAST_PX = 110;
 const LOCK_PX = 12;
 const EDGE_PX = 36;
 const FLY_MS = 280;
+const SUBTLE_MS = 180; // tap / arrow nav / undo exit duration
 const TAP_BEAT_MS = 800;
 const UNDO_MS = 5000;
 
@@ -73,6 +75,8 @@ export interface QuestionDeckProps {
   _makePredictionAction?: MakePredictionFn;
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
 // ─── main component ────────────────────────────────────────────────────────────
 
 export function QuestionDeck({
@@ -100,11 +104,15 @@ export function QuestionDeck({
     return init;
   });
 
-  const [deckOpen, setDeckOpen] = useState(false);
+  // The deck ALWAYS lands on the page's own question (card 0) — on a revisit it
+  // shows the user's pick. Chrome starts open on a revisit so the queue is one
+  // tap away; on a fresh card it appears after the first answer (hybrid morph).
   const [index, setIndex] = useState(0);
+  const [deckOpen, setDeckOpen] = useState(() => questions[0]?.initialAnswerId != null);
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [flyDir, setFlyDir] = useState<FlyDir>(0);
+  const [transitionKind, setTransitionKind] = useState<TransitionKind>("subtle");
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [snapPending, setSnapPending] = useState(false);
   const [pendingOptionId, setPendingOptionId] = useState<string | null>(null);
@@ -148,7 +156,17 @@ export function QuestionDeck({
   // ── fly-off then advance ──────────────────────────────────────────────────────
 
   const flyoutThenGo = useCallback(
-    ({ dir, nextIndex, fromKey }: { dir: FlyDir; nextIndex: number; fromKey: string }) => {
+    ({
+      dir,
+      nextIndex,
+      fromKey,
+      kind,
+    }: {
+      dir: FlyDir;
+      nextIndex: number;
+      fromKey: string;
+      kind: TransitionKind;
+    }) => {
       const announceAdvance = () => {
         const nextQ = questions[nextIndex];
         if (!nextQ) return;
@@ -174,10 +192,19 @@ export function QuestionDeck({
         advance();
         return;
       }
+      // When navigating back from the end card there is no outgoing QuestionDeckCard
+      // to animate — the EndCard doesn't participate in the fly-off.  Skip the
+      // fly-out delay and swap immediately so the card just fades in cleanly.
+      const fromEndCard = atEnd && dir !== 0;
+      if (fromEndCard) {
+        advance();
+        return;
+      }
+      setTransitionKind(kind);
       setFlyDir(dir);
-      window.setTimeout(advance, FLY_MS);
+      window.setTimeout(advance, kind === "swipe" ? FLY_MS : SUBTLE_MS);
     },
-    [cardStates, questions],
+    [cardStates, questions, atEnd],
   );
 
   // ── cast via tap ──────────────────────────────────────────────────────────────
@@ -232,7 +259,12 @@ export function QuestionDeck({
         setPendingOptionId(null);
         if (ok && isFirstAnswer && !isSameStance && !errored) {
           window.setTimeout(() => {
-            flyoutThenGo({ dir: optionId === q.options[0].id ? 1 : -1, nextIndex: index + 1, fromKey: q.key });
+            flyoutThenGo({
+              dir: optionId === q.options[0].id ? 1 : -1,
+              nextIndex: index + 1,
+              fromKey: q.key,
+              kind: "subtle",
+            });
           }, TAP_BEAT_MS);
         }
       });
@@ -288,7 +320,7 @@ export function QuestionDeck({
         setSnapPending(false);
         if (ok) {
           scheduleUndoClear({ questionKey: q.key, cardIndex: index, label: pickedLabel, kind: q.kind === "stance" ? "stance" : "market" });
-          flyoutThenGo({ dir, nextIndex: index + 1, fromKey: q.key });
+          flyoutThenGo({ dir, nextIndex: index + 1, fromKey: q.key, kind: "swipe" });
         }
       });
     },
@@ -329,7 +361,12 @@ export function QuestionDeck({
     if (flyDir !== 0 || snapPending) return;
     const nextIndex = index + step;
     if (nextIndex < 0 || nextIndex > total) return;
-    flyoutThenGo({ dir: step === 1 ? -1 : 1, nextIndex, fromKey: question?.key ?? "" });
+    flyoutThenGo({
+      dir: step === 1 ? -1 : 1,
+      nextIndex,
+      fromKey: question?.key ?? "",
+      kind: "subtle",
+    });
   }
 
   // ── pointer handlers ──────────────────────────────────────────────────────────
@@ -436,6 +473,7 @@ export function QuestionDeck({
               dx={dx}
               armed={armed}
               flyDir={flyDir}
+              transitionKind={transitionKind}
               snapPending={snapPending}
               inlineMessage={cardStates[question.key]?.message ?? null}
               stanceState={cardStates[question.key]?.stanceState ?? null}
