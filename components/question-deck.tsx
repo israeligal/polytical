@@ -79,7 +79,7 @@ export interface QuestionDeckProps {
 // ─── main component ────────────────────────────────────────────────────────────
 
 export function QuestionDeck({
-  questions,
+  questions: questionsProp,
   politicians,
   loggedIn,
   feedHref,
@@ -87,6 +87,15 @@ export function QuestionDeck({
   _setStanceAction = setStanceAction,
   _makePredictionAction = makePredictionAction,
 }: QuestionDeckProps) {
+  // BUG 2 FIX: Freeze the question list for the lifetime of this deck mount.
+  // revalidatePath() in server actions causes the RSC to re-render with a
+  // shorter `questions` array (excluding just-answered items). If we read
+  // `questionsProp` directly, the stack shrinks and answered cards vanish.
+  // We capture the list once via a lazy useState initializer so prop updates
+  // after mount never mutate the displayed stack. A real navigation (different
+  // page) remounts the component and gets a fresh list via the `key` on the
+  // page mount site.
+  const [questions] = useState<DeckQuestion[]>(() => questionsProp);
   const total = questions.length;
 
   const [cardStates, setCardStates] = useState<Record<string, CardState>>(() => {
@@ -443,42 +452,55 @@ export function QuestionDeck({
         {announcement}
       </div>
 
-      <div className="relative">
-        {/* Peek: next card behind current */}
-        {peek && flyDir === 0 && !snapPending && (
-          <div
-            aria-hidden
-            className="absolute inset-0 translate-y-2.5 scale-x-[.96] overflow-hidden rounded-card border border-border bg-card p-4 opacity-60"
-          >
-            <p className="text-xs font-semibold text-muted-foreground">{peek.chip}</p>
-            <p className="truncate font-display text-lg text-foreground">{peek.title}</p>
-          </div>
-        )}
+      {/*
+        BUG 1 FIX: overflow-x-clip truncates the card's translateX fly-off so it
+        cannot create horizontal page overflow on mobile (which causes the whole
+        page to pan sideways). `clip` — not `hidden` — is critical: overflow:hidden
+        establishes a new scroll container (blocks position:sticky inside it and
+        creates BFC side-effects); overflow:clip just truncates paint without
+        scroll-container semantics. `overflow-y-visible` keeps card shadows and
+        the undo snackbar below unclipped. overscroll-x-none prevents partial
+        horizontal pans from chaining up to the page scroll container.
+      */}
+      {/* Clip region: only the card stack gets clipped, not the chrome or snackbar below */}
+      <div className="overflow-x-clip overflow-y-visible overscroll-x-none">
+        <div className="relative">
+          {/* Peek: next card behind current */}
+          {peek && flyDir === 0 && !snapPending && (
+            <div
+              aria-hidden
+              className="absolute inset-0 translate-y-2.5 scale-x-[.96] overflow-hidden rounded-card border border-border bg-card p-4 opacity-60"
+            >
+              <p className="text-xs font-semibold text-muted-foreground">{peek.chip}</p>
+              <p className="truncate font-display text-lg text-foreground">{peek.title}</p>
+            </div>
+          )}
 
-        {atEnd ? (
-          <EndCard feedHref={feedHref} feedLabel={feedLabel} />
-        ) : question ? (
-          <div ref={cardRef}>
-            <QuestionDeckCard
-              question={question}
-              answerId={answerId}
-              politicians={politicians}
-              dragging={dragging}
-              dx={dx}
-              armed={armed}
-              flyDir={flyDir}
-              transitionKind={transitionKind}
-              snapPending={snapPending}
-              inlineMessage={cardStates[question.key]?.message ?? null}
-              stanceState={cardStates[question.key]?.stanceState ?? null}
-              onAnswer={(optionId) => castTap(question, optionId)}
-              swipeHandlers={swipeHandlers}
-              swipeable={swipeable}
-              actionPending={snapPending || pendingOptionId != null}
-              pendingOptionId={pendingOptionId}
-            />
-          </div>
-        ) : null}
+          {atEnd ? (
+            <EndCard feedHref={feedHref} feedLabel={feedLabel} />
+          ) : question ? (
+            <div ref={cardRef}>
+              <QuestionDeckCard
+                question={question}
+                answerId={answerId}
+                politicians={politicians}
+                dragging={dragging}
+                dx={dx}
+                armed={armed}
+                flyDir={flyDir}
+                transitionKind={transitionKind}
+                snapPending={snapPending}
+                inlineMessage={cardStates[question.key]?.message ?? null}
+                stanceState={cardStates[question.key]?.stanceState ?? null}
+                onAnswer={(optionId) => castTap(question, optionId)}
+                swipeHandlers={swipeHandlers}
+                swipeable={swipeable}
+                actionPending={snapPending || pendingOptionId != null}
+                pendingOptionId={pendingOptionId}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {deckOpen && (

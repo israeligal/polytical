@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { fn, expect, within, userEvent } from "storybook/test";
 import { QuestionDeck, type QuestionDeckProps } from "@/components/question-deck";
@@ -355,6 +356,66 @@ export const BackFromEnd: Story = {
     const prevBtn = canvas.getByRole("button", { name: "השאלה הקודמת" });
     await userEvent.click(prevBtn);
     await expect(await canvas.findByRole("button", { name: /כן ✓/ })).toBeInTheDocument();
+  },
+};
+
+/**
+ * BUG 2 regression — prop-shrink: simulates the revalidatePath-triggered
+ * RSC re-render that passes a shorter `questions` array to an already-mounted
+ * QuestionDeck. Without the freeze fix, answered cards would vanish from the
+ * stack; with the fix the deck ignores the shrunken prop and keeps all cards.
+ *
+ * The wrapper simulates what the server does: after the action resolves it
+ * cuts the answered question from the questions array (mimicking
+ * getUnansweredDeckVotes / getUnpredictedOpenMarketCards excluding answered
+ * items). The deck must still show all original questions navigable back/forward.
+ */
+function PropShrinkWrapper(props: QuestionDeckProps) {
+  const full = [makeStanceQ(), makeBinaryQ()];
+  const [questions, setQuestions] = useState<DeckQuestion[]>(full);
+  const shrinkingStanceAction: QuestionDeckProps["_setStanceAction"] = async (args) => {
+    const result = await (props._setStanceAction ?? makeStanceOkAction())(args);
+    if (result.ok) {
+      // Simulate RSC re-render: strip the just-answered stance card
+      setQuestions(full.filter((q) => q.kind !== "stance"));
+    }
+    return result;
+  };
+  return (
+    <QuestionDeck
+      {...props}
+      questions={questions}
+      _setStanceAction={shrinkingStanceAction}
+    />
+  );
+}
+
+export const PropShrinkRegression: Story = {
+  name: "Regression — answered cards survive prop shrink (BUG 2)",
+  render: (args) => <PropShrinkWrapper {...args} />,
+  args: {
+    questions: [makeStanceQ(), makeBinaryQ()],
+    feedHref: "/votes",
+    feedLabel: "חזרה להצבעות",
+    _setStanceAction: fn(makeStanceOkAction()) as SetStanceFn,
+    _makePredictionAction: fn(makePredictionOkAction()) as MakePredictionFn,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Tap the first card's answer — this triggers the prop-shrink via shrinkingStanceAction.
+    const forBtn = canvas.getByRole("button", { name: "בעד" });
+    await userEvent.click(forBtn);
+    // After the optimistic update the button should be pressed.
+    await expect(forBtn).toHaveAttribute("aria-pressed", "true");
+    // Wait for the deck chrome (next/prev buttons) to appear, meaning the deck
+    // advanced past the first card.
+    const nextBtn = await canvas.findByRole("button", { name: "השאלה הבאה" }, { timeout: 3000 });
+    await expect(nextBtn).toBeInTheDocument();
+    // Navigate back — must still show the answered stance card (prop was shrunken,
+    // but the frozen list keeps it).
+    const prevBtn = canvas.getByRole("button", { name: "השאלה הקודמת" });
+    await userEvent.click(prevBtn);
+    await expect(await canvas.findByRole("button", { name: /בעד ✓/ })).toBeInTheDocument();
   },
 };
 

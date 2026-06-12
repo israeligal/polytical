@@ -142,7 +142,12 @@ export default async function MarketPage({
                 <OddsBar market={market} />
               </div>
               <div className="mt-6">
+                {/* key=market.id: guarantees a fresh QuestionDeck mount if the
+                    user navigates between /market/[id] pages without a full
+                    reload, so the frozen question list (BUG 2 fix) always
+                    starts from the correct set of questions for this market. */}
                 <QuestionDeck
+                  key={market.id}
                   questions={deckQuestions}
                   politicians={deckPoliticians}
                   loggedIn={isLoggedIn}
