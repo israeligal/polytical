@@ -14,6 +14,7 @@ import {
   factionStints, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, unmappedMkNames,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
+import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 import type { KnessetVoteInsert, MkVoteRawInsert, MkVoteResultValue, VoteDetailsPatch } from "./normalize";
 import { WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
 
@@ -88,7 +89,10 @@ export async function loadAttributionContext({ db }: { db: DB }): Promise<Attrib
     db.select().from(mkNameMappings),
     db.select().from(factionStints),
     db.select({ nameKey: unmappedMkNames.nameKey, status: unmappedMkNames.status }).from(unmappedMkNames),
-    db.select({ billId: schema.bills.billId }).from(schema.bills),
+    // K25 only: a K25 vote's FK_ItemID can only reference a K25 bill, and since the
+    // lifetime-bills backfill the bills table spans every Knesset — an unfiltered read
+    // would let an itemId coincidentally collide with a stored pre-K25 BillID.
+    db.select({ billId: schema.bills.billId }).from(schema.bills).where(eq(schema.bills.knessetNum, CURRENT_KNESSET)),
   ]);
   const unverifiedCount = mappingRows.filter((m) => m.verifiedAt == null).length;
   const mappings = new Map(mappingRows.filter((m) => m.verifiedAt != null).map((m) => [m.nameKey, m.personId]));

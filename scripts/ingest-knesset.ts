@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
 import { bills, politicians } from "@/app/lib/schema";
@@ -96,9 +97,15 @@ async function ingestBills(prov: { fetchedAt: Date }) {
   logger.info("knesset.ingest.entity_done", { entity: "bills", fetched: raw.length, upserted: n });
 }
 
-/** The set of bill IDs we actually store (K25), read back from the bills table. */
+/** The set of CURRENT-Knesset bill IDs we store, read back from the bills table.
+ *  MUST filter by knessetNum: since ingestLifetimeBills, the bills table spans every
+ *  Knesset, so an unfiltered read would drop minBillId to an ancient id and blow
+ *  ingestBillSponsors' `BillID ge minBillId` fetch past the 100k page cap. */
 async function loadK25BillIds(): Promise<Set<number>> {
-  const rows = await db.select({ billId: bills.billId }).from(bills);
+  const rows = await db
+    .select({ billId: bills.billId })
+    .from(bills)
+    .where(eq(bills.knessetNum, KNESSET_NUM));
   return new Set(rows.map((r) => r.billId));
 }
 

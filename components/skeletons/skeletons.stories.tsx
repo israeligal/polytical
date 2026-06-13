@@ -3,6 +3,7 @@ import { expect, within } from "storybook/test";
 import { HomeSkeleton } from "./home-skeleton";
 import { MyMatchSkeleton, VoteDetailSkeleton, VotesFeedSkeleton } from "./votes-skeletons";
 import { CollectionSkeleton, PoliticianSkeleton, PoliticiansSkeleton } from "./politician-skeletons";
+import { BillSkeleton } from "./bill-skeleton";
 import { MarketSkeleton, MarketsPageSkeleton, NotificationsSkeleton, ProfileSkeleton, SearchSkeleton } from "./misc-skeletons";
 
 // Every route skeleton, browsable side-by-side with the app. THE REVIEW RULE:
@@ -54,6 +55,11 @@ export const MyMatch: Story = {
 export const Politician: Story = {
   render: () => <PoliticianSkeleton />,
   play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען פוליטיקאי"),
+};
+
+export const Bill: Story = {
+  render: () => <BillSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען הצעת חוק"),
 };
 
 export const PoliticiansGallery: Story = {
