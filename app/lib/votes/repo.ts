@@ -367,15 +367,21 @@ export type VoteItemInsert = typeof schema.voteItems.$inferInsert;
 export async function listEnrichmentCandidates({
   db, limit,
 }: { db: DB; limit: number }): Promise<{ itemId: number; itemTypeId: number }[]> {
+  // Group by itemId ALONE (not itemId+itemTypeId): vote_items is keyed by
+  // itemId, so each item must yield exactly ONE candidate. Grouping by both
+  // would emit two candidates for one item if sibling votes ever disagreed on
+  // itemTypeId — wasting a fetch + a slot, the second upsert clobbering the
+  // first. max() collapses to a single (stable) type; an item is a bill XOR an
+  // agenda in practice, so the value is unambiguous.
   const rows = await db
-    .select({ itemId: knessetVotes.itemId, itemTypeId: knessetVotes.itemTypeId })
+    .select({ itemId: knessetVotes.itemId, itemTypeId: sql<number>`max(${knessetVotes.itemTypeId})` })
     .from(knessetVotes)
     .leftJoin(schema.voteItems, eq(schema.voteItems.itemId, knessetVotes.itemId))
     .where(and(
       inArray(knessetVotes.itemTypeId, [ITEM_TYPE_BILL, ITEM_TYPE_AGENDA]),
       isNull(schema.voteItems.itemId),
     ))
-    .groupBy(knessetVotes.itemId, knessetVotes.itemTypeId)
+    .groupBy(knessetVotes.itemId)
     .orderBy(sql`max(${knessetVotes.voteDate}) desc`)
     .limit(limit);
   return rows

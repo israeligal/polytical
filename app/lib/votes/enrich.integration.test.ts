@@ -111,6 +111,37 @@ test("links-only TERMINAL row: bill with no summary and no DOCX is not retried",
   expect(r2.candidates).toBe(0); // terminal — row exists, never re-fetched
 });
 
+test("a permanently-gone DOCX (HTTP 404) writes a links-only TERMINAL row, not an endless retry", async () => {
+  await h.db.insert(knessetVotes).values(voteRow({ voteId: 20, itemId: 2233112, itemTypeId: 2 }));
+  mockOdata({ bill: CAPTURED_BILL_WITHOUT_SUMMARY.value, billDocs: CAPTURED_BILL_DOCS_PRELIMINARY.value });
+  mockBinary.mockRejectedValue(new Error("HTTP 404"));
+
+  const r1 = await enrichVoteItems({ db: h.db, throttleMs: 0 });
+  expect(r1).toMatchObject({ candidates: 1, enriched: 1, failed: 0 }); // 404 is terminal, not a failure
+  const [item] = await h.db.select().from(voteItems).where(eq(voteItems.itemId, 2233112));
+  expect(item.descriptionHe).toBeNull();
+  expect(item.docUrl).toContain("25_lst_7584510.pdf"); // links still written
+
+  const r2 = await enrichVoteItems({ db: h.db, throttleMs: 0 });
+  expect(r2.candidates).toBe(0); // terminal — never re-fetched
+});
+
+test("a transient DOCX fetch error (HTTP 503) writes NO row and retries next run", async () => {
+  await h.db.insert(knessetVotes).values(voteRow({ voteId: 21, itemId: 2233112, itemTypeId: 2 }));
+  mockOdata({ bill: CAPTURED_BILL_WITHOUT_SUMMARY.value, billDocs: CAPTURED_BILL_DOCS_PRELIMINARY.value });
+  mockBinary.mockRejectedValueOnce(new Error("HTTP 503"));
+
+  const r1 = await enrichVoteItems({ db: h.db, throttleMs: 0 });
+  expect(r1).toMatchObject({ candidates: 1, enriched: 0, failed: 1 }); // transient → item failed, no row
+  expect(await h.db.select().from(voteItems)).toHaveLength(0);
+
+  mockBinary.mockResolvedValue(billDocx); // service recovers
+  const r2 = await enrichVoteItems({ db: h.db, throttleMs: 0 });
+  expect(r2).toMatchObject({ candidates: 1, enriched: 1, failed: 0 });
+  const [item] = await h.db.select().from(voteItems).where(eq(voteItems.itemId, 2233112));
+  expect(item.descriptionSource).toBe("explanatory_notes");
+});
+
 test("agenda path: motion_text from the real DOCX + initiator personId", async () => {
   await h.db.insert(politicians).values({ personId: 30895, nameHe: "עדי עזוז", searchName: "עדי עזוז", active: true, facts: {}, ...PROV });
   await h.db.insert(knessetVotes).values(voteRow({ voteId: 4, itemId: 2243980, itemTypeId: 4 }));
@@ -164,6 +195,26 @@ test("sibling votes share one item row; re-run is idempotent", async () => {
 
   const r = await enrichVoteItems({ db: h.db, throttleMs: 0 });
   expect(r.candidates).toBe(1); // ONE candidate for two sibling votes
+  expect(await h.db.select().from(voteItems)).toHaveLength(1);
+});
+
+test("an item is ONE candidate even if sibling votes disagree on itemTypeId", async () => {
+  // Defensive: vote_items is keyed by itemId, so the candidate query must
+  // collapse to one row per item regardless of per-vote itemTypeId skew.
+  await h.db.insert(knessetVotes).values([
+    voteRow({ voteId: 11, itemId: 2229413, itemTypeId: 2, voteDate: new Date("2026-06-09T12:00:00Z") }),
+    voteRow({ voteId: 12, itemId: 2229413, itemTypeId: 4, voteDate: new Date("2026-06-10T12:00:00Z") }),
+  ]);
+  // Mock BOTH item types — which one max() picks for the collapsed candidate is
+  // unspecified, but EITHER way the item must enrich to exactly one row.
+  mockOdata({
+    bill: CAPTURED_BILL_WITH_SUMMARY.value, billDocs: CAPTURED_BILL_DOCS_MULTISTAGE.value,
+    agenda: CAPTURED_AGENDA.value, agendaDocs: CAPTURED_AGENDA_DOCS.value,
+  });
+  mockBinary.mockResolvedValue(agendaDocx);
+
+  const r = await enrichVoteItems({ db: h.db, throttleMs: 0 });
+  expect(r.candidates).toBe(1);
   expect(await h.db.select().from(voteItems)).toHaveLength(1);
 });
 

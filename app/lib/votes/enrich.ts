@@ -144,6 +144,15 @@ async function enrichBillItem({ db, itemId }: { db: VotesDb; itemId: number }): 
     }
   }
   const latestDoc = pickLatestBillDoc({ docs });
+  // A bill with PDFs but none in a known stage means the Knesset added a
+  // GroupTypeID we don't rank — surface it (we'd otherwise link nothing,
+  // silently). Mirrors the open-domain logging discipline for itemTypeId.
+  if (!latestDoc && docs.some((d) => d.ApplicationDesc === "PDF")) {
+    logger.warn("votes.enrich.no_rankable_bill_doc", {
+      itemId,
+      groupTypeIds: [...new Set(docs.map((d) => d.GroupTypeID))],
+    });
+  }
   await upsertVoteItem({
     db,
     row: {

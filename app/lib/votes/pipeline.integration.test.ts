@@ -144,6 +144,24 @@ test("a failed detail fetch leaves pending_details and the next run completes it
   expect(vote.detailsStatus).toBe("complete");
 });
 
+test("a refetch with a NULL LU_ItemType never clobbers a classified itemTypeId/billId", async () => {
+  // First ingest classifies the vote as a bill (itemTypeId 2 → billId set).
+  mockHeaders.mockResolvedValue([headerRow({ VoteId: 1010 })]);
+  mockDetails.mockResolvedValue(detailResponse({ voteId: 1010, itemId: 555, itemTypeId: 2 }));
+  await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10" });
+  let [vote] = await h.db.select().from(knessetVotes).where(eq(knessetVotes.voteId, 1010));
+  expect(vote.itemTypeId).toBe(2);
+  expect(vote.billId).toBe(555);
+
+  // A later refetch returns LU_ItemType: null (no information) — must NOT erase
+  // the prior classification (the open-domain null-signal carve-out).
+  mockDetails.mockResolvedValue(detailResponse({ voteId: 1010, itemId: 555, itemTypeId: null }));
+  await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10", refetchDetails: true });
+  [vote] = await h.db.select().from(knessetVotes).where(eq(knessetVotes.voteId, 1010));
+  expect(vote.itemTypeId).toBe(2);
+  expect(vote.billId).toBe(555);
+});
+
 test("hand votes store counters and never produce per-MK rows", async () => {
   mockHeaders.mockResolvedValue([headerRow({ VoteId: 1003, VoteType: "הרמת יד" })]);
   mockDetails.mockResolvedValue(detailResponse({
