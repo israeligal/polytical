@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDateTime } from "@/lib/time";
-import { getVoteDetail, getVotesFeed, groupByFaction, type MkVoteWithPolitician } from "@/app/lib/votes/read-repo";
+import { getVoteDetail, getVotesFeed, getUnansweredDeckVotes, groupByFaction, type MkVoteWithPolitician } from "@/app/lib/votes/read-repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { StatusChip, type ChipTone } from "@/components/status-chip";
@@ -9,8 +9,9 @@ import { VoteTotalsBar } from "@/components/vote-totals-bar";
 import { ChevronForward } from "@/components/icons";
 import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
-import { getStanceState, MATCH_UNLOCK_THRESHOLD } from "@/app/lib/stances/service";
-import { StanceWidget } from "@/components/stance-widget";
+import { getStanceState } from "@/app/lib/stances/service";
+import { QuestionDeck } from "@/components/question-deck";
+import { voteToOwnDeckQuestion, deckVoteToQueueQuestion } from "@/app/lib/deck/build";
 import { VoteDescription } from "@/components/vote-description";
 import { VOTE_TYPE_HE } from "@/components/vote-row";
 import { VOTE_PAGE_CONTAINER, VOTE_PAGE_GRID } from "@/components/skeletons/containers";
@@ -46,12 +47,26 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
 
   // Full stance state (incl. k-gated aggregate + match progress) so a
   // returning user sees their aggregate immediately, not only post-cast.
-  // Decisive votes only — the widget never renders elsewhere, so non-decisive
+  // Decisive votes only — the deck never renders elsewhere, so non-decisive
   // pages (~2/3 of votes) skip the stance queries entirely.
   const stanceState =
     session?.user && vote.isDecisive
       ? await getStanceState({ userId: session.user.id, voteId: vote.voteId })
       : null;
+
+  // Deck queue: unanswered decisive votes for logged-in users (beyond this one).
+  const queueVotes =
+    session?.user && vote.isDecisive
+      ? await getUnansweredDeckVotes({ userId: session.user.id, excludeVoteId: vote.voteId, limit: 6 })
+      : [];
+
+  // Build deck questions (own card first, then queue).
+  const deckQuestions = vote.isDecisive
+    ? [
+        voteToOwnDeckQuestion({ voteId: vote.voteId, titleHe: vote.titleHe, stanceState }),
+        ...queueVotes.map(deckVoteToQueueQuestion),
+      ]
+    : [];
 
   const isPending = vote.detailsStatus === "pending_details";
   const nonVoters = vote.totalDidntVote ?? 0;
@@ -86,20 +101,23 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
 
           {item ? <VoteDescription item={item} /> : null}
 
-          {/* עמדה widget ABOVE the breakdown — capture the user's opinion before
+          {/* QuestionDeck ABOVE the breakdown — capture the user's opinion before
               (or at least alongside) the Knesset outcome anchoring them. */}
           {vote.isDecisive && (
-            <StanceWidget
-              voteId={vote.voteId}
-              loggedIn={Boolean(session?.user)}
-              initialStance={stanceState?.stance ?? null}
-              initialAggregate={stanceState?.aggregate ?? null}
-              initialProgress={
-                stanceState
-                  ? { scoreableCount: stanceState.scoreableCount, unlockThreshold: MATCH_UNLOCK_THRESHOLD }
-                  : null
-              }
-            />
+            <div className="mt-4">
+              {/* key=voteId: guarantees a fresh QuestionDeck mount if the user
+                  navigates between /vote/[id] pages without a full reload, so
+                  the frozen question list (BUG 2 fix) always starts from the
+                  correct set of questions for this specific vote. */}
+              <QuestionDeck
+                key={vote.voteId}
+                questions={deckQuestions}
+                politicians={[]}
+                loggedIn={Boolean(session?.user)}
+                feedHref="/votes"
+                feedLabel="חזרה להצבעות"
+              />
+            </div>
           )}
 
           <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">

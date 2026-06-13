@@ -140,9 +140,9 @@ export default async function Home({
             <Link
               href={`/markets${active ? `?cat=${active}` : ""}`}
               scroll={false}
-              className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:underline"
+              className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
             >
-              לכל התחזיות <ArrowForward className="h-4 w-4" />
+              לכל התחזיות <ArrowForward className="h-5 w-5" />
             </Link>
           </div>
           <div className="mb-6">
@@ -167,8 +167,8 @@ export default async function Home({
           className="scroll-mt-24 border-y border-border bg-muted"
         >
           <div className={HOME_SECTION_INNER}>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div className="max-w-2xl">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div>
                 <p className="text-sm font-bold text-primary">הקלפים</p>
                 <h2 className="font-display text-3xl font-bold text-foreground">
                   פוליטיקאים על המגרש
@@ -176,9 +176,9 @@ export default async function Home({
               </div>
               <Link
                 href="/politicians"
-                className="rounded-lg border-2 border-primary px-5 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+                className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
               >
-                כל הפוליטיקאים
+                כל הפוליטיקאים <ArrowForward className="h-5 w-5" />
               </Link>
             </div>
             {featuredPoliticians.length > 0 ? (
@@ -228,9 +228,17 @@ export default async function Home({
         {/* KNESSET VOTES — real plenum roll-calls (muted stripe continues the alternation) */}
         <section id="votes" className="scroll-mt-24 border-t border-border bg-muted">
           <div className={HOME_SECTION_INNER}>
-            <div className="mb-6">
-              <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
-              <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-primary">ישר מהמליאה</p>
+                <h2 className="font-display text-3xl font-bold text-foreground">הצבעות אחרונות בכנסת</h2>
+              </div>
+              <Link
+                href="/votes"
+                className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
+              >
+                לכל ההצבעות <ArrowForward className="h-5 w-5" />
+              </Link>
             </div>
             {recentVotes.length > 0 ? (
               <div className="mx-auto grid max-w-2xl gap-3">
@@ -241,14 +249,6 @@ export default async function Home({
             ) : (
               <EmptyState className="mx-auto w-full max-w-2xl">אין הצבעות להצגה כרגע.</EmptyState>
             )}
-            <p className="mt-5 text-center">
-              <Link
-                href="/votes"
-                className="inline-flex items-center rounded-full border-2 border-primary px-6 py-2.5 text-sm font-bold text-primary transition-all hover:-translate-y-0.5"
-              >
-                לכל ההצבעות — מי בעד ומי נגד
-              </Link>
-            </p>
           </div>
         </section>
       </main>

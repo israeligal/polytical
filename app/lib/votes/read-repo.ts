@@ -2,13 +2,15 @@
 // spine is "primary" votes: isDecisive (one per item — see pickDecisiveVoteId)
 // plus standalone votes with no itemId. ~2.3k primaries over 6,979 votes.
 
-import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt, notExists, or, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import {
-  agendaItems, factions, ingestHeartbeats, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames, voteItems,
+  agendaItems, factions, ingestHeartbeats, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames,
+  userStances, voteItems,
 } from "@/app/lib/schema";
 import type { VotesDb } from "./repo";
 import { jerusalemWeekday } from "@/lib/time";
+import { requireUserId } from "@/app/lib/errors";
 
 type DB = VotesDb;
 
@@ -295,6 +297,62 @@ export async function getAnnouncedAgendaItems({
     .from(agendaItems)
     .where(eq(agendaItems.status, "announced"))
     .orderBy(sql`${agendaItems.expectedDate} asc nulls last`, desc(agendaItems.createdAt))
+    .limit(limit);
+}
+
+// --- deck reads ---
+
+/** Minimal vote shape needed to render an "answer deck" card. */
+export interface DeckVote {
+  voteId: number;
+  titleHe: string;
+  voteDate: Date;
+  isAccepted: boolean | null;
+  voteType: typeof knessetVotes.$inferSelect.voteType;
+}
+
+/**
+ * Recent decisive votes the user has NOT yet taken a stance on — the source
+ * list for the "answer deck" feature. Only `isDecisive = true` votes are
+ * answerable (stances attach only to decisive votes, per the service invariant).
+ * The anti-join is done via NOT EXISTS so the filter is a single index scan on
+ * the (userId, voteId) primary key of user_stances, not a full table hash.
+ *
+ * Ordering: voteDate DESC, voteId DESC (same tie-safe ordering as the feed).
+ */
+export async function getUnansweredDeckVotes({
+  db = defaultDb,
+  userId,
+  excludeVoteId,
+  limit = 8,
+}: {
+  db?: DB;
+  userId: string;
+  excludeVoteId?: number;
+  limit?: number;
+}): Promise<DeckVote[]> {
+  const uid = requireUserId(userId);
+  const conditions = [
+    eq(knessetVotes.isDecisive, true),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(userStances)
+        .where(and(eq(userStances.userId, uid), eq(userStances.voteId, knessetVotes.voteId))),
+    ),
+  ];
+  if (excludeVoteId != null) conditions.push(sql`${knessetVotes.voteId} <> ${excludeVoteId}`);
+  return db
+    .select({
+      voteId: knessetVotes.voteId,
+      titleHe: knessetVotes.titleHe,
+      voteDate: knessetVotes.voteDate,
+      isAccepted: knessetVotes.isAccepted,
+      voteType: knessetVotes.voteType,
+    })
+    .from(knessetVotes)
+    .where(and(...conditions))
+    .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId))
     .limit(limit);
 }
 
