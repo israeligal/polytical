@@ -1,5 +1,8 @@
 # Key Decisions: Vote Descriptions & Law Links
 
+### ~67% of agenda motions ship links-only — heading-bound extraction is a deliberate tradeoff (2026-06-13, feat/vote-bill-context)
+The production backfill yielded motion text for 113/338 agenda items; the rest have no `דברי הסבר` heading in their DOCX (older/variant templates). We extract by heading only — a heuristic "body minus preamble" fallback risks shipping procedural boilerplate as if it were the official description, which violates the verbatim-or-nothing rule. Those rows are links-only TERMINAL (won't auto-heal); if v2 adds a smarter fallback, re-enrich agendas with `delete from vote_items where "itemTypeId" = 4 and "descriptionHe" is null` and re-run the drain.
+
 ### Official text only — no AI summaries, no PDF parsing in v1 (2026-06-12, feat/vote-bill-context)
 A vote's description comes exclusively from official sources: `KNS_Bill.SummaryLaw` (only 488/7,434 K25 bills, mostly enacted laws), else דברי הסבר extracted VERBATIM from the preliminary-reading DOCX (`KNS_DocumentBill` GroupTypeID 1 — DOC exists for ~every preliminary doc; first/second-reading docs are PDF-only). PDF-only (mostly government) bills get links without a description. Considered: AI-generated summaries (conflicts with the cited-source-only trust rule) and PDF text extraction (extra dependency + fidelity risk — possible v2).
 
