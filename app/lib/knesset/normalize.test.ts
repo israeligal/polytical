@@ -1,11 +1,13 @@
 import { expect, test } from "vitest";
 import {
   parseODataDate, buildPositionLabelMap, normalizeFactions, normalizeCurrentMembers,
-  normalizeBillSponsors,
+  normalizeBillSponsors, normalizeBills, normalizeBillDocuments, normalizeBillStatuses, splitExpandedInitiators,
 } from "./normalize";
 import type {
-  KnsBillInitiator, KnsFaction, KnsPersonToPosition, KnsPosition,
+  KnsBillInitiator, KnsBillInitiatorExpanded, KnsFaction, KnsPersonToPosition, KnsPosition,
 } from "./odata-types";
+
+const billProv = { sourceUrl: "https://knesset.gov.il/x", fetchedAt: new Date("2026-06-13T00:00:00Z") };
 
 const PROV = { sourceUrl: "https://x", fetchedAt: new Date("2026-05-31T00:00:00Z") };
 
@@ -143,3 +145,72 @@ function base(over: Partial<KnsPersonToPosition> & Pick<KnsPersonToPosition, "Pe
     CommitteeName: null, LastUpdatedDate: null, ...over,
   };
 }
+
+test("normalizeBills carries the widened fields and parses dates", () => {
+  const [row] = normalizeBills(
+    [{
+      BillID: 2243802, KnessetNum: 25, Name: "הצעת חוק כלשהי", SubTypeID: 54, SubTypeDesc: "פרטית",
+      PrivateNumber: 6755, CommitteeID: null, Number: null, StatusID: 104,
+      PublicationDate: null, SummaryLaw: null, IsContinuationBill: null,
+      PublicationSeriesDesc: null, LastUpdatedDate: "2026-06-08T16:15:33.697",
+    }],
+    billProv,
+  );
+  expect(row.billId).toBe(2243802);
+  expect(row.subTypeId).toBe(54);
+  expect(row.privateNumber).toBe(6755);
+  expect(row.statusId).toBe(104);
+  expect(row.lastUpdatedDate).toEqual(new Date("2026-06-08T16:15:33.697"));
+  expect(row.publicationDate).toBeNull();
+  expect(row.sourceDataset).toBe("KNS_Bill");
+});
+
+test("normalizeBillDocuments maps file links per format", () => {
+  const rows = normalizeBillDocuments(
+    [
+      { DocumentBillID: 11996526, BillID: 2243802, GroupTypeID: 1, GroupTypeDesc: "הצעת חוק לדיון מוקדם", ApplicationDesc: "DOC", FilePath: "https://fs.knesset.gov.il//25/law/x.docx", LastUpdatedDate: null },
+      { DocumentBillID: 11996526, BillID: 2243802, GroupTypeID: 1, GroupTypeDesc: "הצעת חוק לדיון מוקדם", ApplicationDesc: "PDF", FilePath: "https://fs.knesset.gov.il//25/law/x.pdf", LastUpdatedDate: null },
+    ],
+    billProv,
+  );
+  expect(rows).toHaveLength(2);
+  expect(rows.map((r) => r.format).sort()).toEqual(["DOC", "PDF"]);
+  expect(rows[0].documentBillId).toBe(11996526);
+  expect(rows[0].sourceDataset).toBe("KNS_DocumentBill");
+});
+
+test("normalizeBillStatuses maps statusId -> Hebrew desc", () => {
+  const rows = normalizeBillStatuses([{ StatusID: 104, Desc: "בהכנה לקריאה ראשונה", TypeID: 2, TypeDesc: "הצעת חוק" }], billProv);
+  expect(rows[0]).toMatchObject({ statusId: 104, descHe: "בהכנה לקריאה ראשונה", sourceDataset: "KNS_Status" });
+});
+
+test("splitExpandedInitiators dedupes bills + documents, flattens sponsors", () => {
+  const raw: KnsBillInitiatorExpanded[] = [
+    {
+      BillInitiatorID: 1, BillID: 900, PersonID: 30300, IsInitiator: true, Ordinal: 1, LastUpdatedDate: null,
+      KNS_Bill: {
+        BillID: 900, KnessetNum: 25, Name: "חוק א", SubTypeID: 54, SubTypeDesc: "פרטית", PrivateNumber: null,
+        CommitteeID: null, Number: null, StatusID: 104, PublicationDate: null, SummaryLaw: null,
+        IsContinuationBill: null, PublicationSeriesDesc: null, LastUpdatedDate: null,
+        KNS_DocumentBills: [
+          { DocumentBillID: 5, BillID: 900, GroupTypeID: 1, GroupTypeDesc: "x", ApplicationDesc: "PDF", FilePath: "p.pdf", LastUpdatedDate: null },
+        ],
+      },
+    },
+    {
+      BillInitiatorID: 2, BillID: 900, PersonID: 999, IsInitiator: false, Ordinal: 2, LastUpdatedDate: null,
+      KNS_Bill: {
+        BillID: 900, KnessetNum: 25, Name: "חוק א", SubTypeID: 54, SubTypeDesc: "פרטית", PrivateNumber: null,
+        CommitteeID: null, Number: null, StatusID: 104, PublicationDate: null, SummaryLaw: null,
+        IsContinuationBill: null, PublicationSeriesDesc: null, LastUpdatedDate: null,
+        KNS_DocumentBills: [
+          { DocumentBillID: 5, BillID: 900, GroupTypeID: 1, GroupTypeDesc: "x", ApplicationDesc: "PDF", FilePath: "p.pdf", LastUpdatedDate: null },
+        ],
+      },
+    },
+  ];
+  const { bills, sponsors, documents } = splitExpandedInitiators(raw);
+  expect(bills.map((b) => b.BillID)).toEqual([900]);          // deduped
+  expect(sponsors.map((s) => s.BillInitiatorID)).toEqual([1, 2]); // both kept
+  expect(documents.map((d) => d.DocumentBillID)).toEqual([5]);  // deduped by id+format
+});
