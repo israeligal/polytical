@@ -53,6 +53,48 @@ export interface KnsBill {
   Name: string;
   SubTypeDesc: string | null;
   StatusID: number | null;
+  /** Official plain-Hebrew summary — populated mostly on enacted laws
+   *  (488/7,434 K25 bills as of 2026-06-12); null for everything else. */
+  SummaryLaw: string | null;
+  LastUpdatedDate: string | null;
+}
+
+/** Shared shape of the KNS_Document* entities (KNS_DocumentBill / KNS_DocumentAgenda).
+ *  PK ids are Int64 → serialized as JSON STRINGS (verified live, test-payloads-items.ts). */
+export interface KnsDocumentBill {
+  DocumentBillID: string;
+  BillID: number;
+  /** 1=הצעת חוק לדיון מוקדם (DOC+PDF), 2=לקריאה הראשונה, 4=לקריאה השנייה והשלישית,
+   *  9=חוק - פרסום ברשומות, 59=חומר רקע (2/4/9/59 are PDF-only). */
+  GroupTypeID: number;
+  GroupTypeDesc: string | null;
+  /** "DOC" | "PDF" (ApplicationID 1 | 4). */
+  ApplicationDesc: string | null;
+  /** fs.knesset.gov.il URL — may contain BACKSLASHES (normalize before use). */
+  FilePath: string;
+  LastUpdatedDate: string | null;
+}
+
+export interface KnsAgenda {
+  AgendaID: number;
+  KnessetNum: number | null;
+  Name: string | null;
+  SubTypeDesc: string | null;
+  StatusID: number | null;
+  /** OData PersonID of the proposing MK — joins politicians.personId. */
+  InitiatorPersonID: number | null;
+  LastUpdatedDate: string | null;
+}
+
+export interface KnsDocumentAgenda {
+  DocumentAgendaID: string;
+  AgendaID: number;
+  /** 16=נוסח הצעה לסדר היום (DOC+PDF) — verified live. */
+  GroupTypeID: number;
+  GroupTypeDesc: string | null;
+  ApplicationDesc: string | null;
+  /** fs.knesset.gov.il URL — observed WITH backslashes (normalize before use). */
+  FilePath: string;
   LastUpdatedDate: string | null;
 }
 

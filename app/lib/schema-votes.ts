@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, unique, primaryKey,
+  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, unique, primaryKey, check,
 } from "drizzle-orm/pg-core";
 import { users } from "./schema";
 
@@ -41,7 +41,11 @@ export const knessetVotes = pgTable(
     voteId: integer("voteId").notNull().unique(),      // website VoteId — the stable key
     knessetNum: integer("knessetNum").notNull(),
     itemId: integer("itemId"),                         // VoteHeader.FK_ItemID (null until details land)
-    billId: integer("billId"),                         // = itemId when it resolves to bills.billId (FK-by-value)
+    // VoteHeader.LU_ItemType — what itemId points at in the KNS_ItemType space
+    // (2=KNS_Bill, 4=KNS_Agenda, 3=no-confidence/no table). OPEN domain (9 observed
+    // live) — plain int + named constants in normalize.ts, never a closed enum.
+    itemTypeId: integer("itemTypeId"),
+    billId: integer("billId"),                         // = itemId when itemTypeId=2 (FK-by-value into bills.billId)
     titleHe: text("titleHe").notNull(),                // ItemTitle
     voteDate: timestamp("voteDate").notNull(),         // UTC instant (converted from Jerusalem wall-clock)
     voteType: knessetVoteType("voteType").notNull(),   // hand/secret votes have NO per-MK rows, ever
@@ -187,6 +191,46 @@ export const ingestHeartbeats = pgTable("ingest_heartbeats", {
   job: text("job").primaryKey(),                       // e.g. 'votes'
   lastSuccessAt: timestamp("lastSuccessAt").notNull(),
 });
+
+// Which official text backs vote_items.descriptionHe. Official sources ONLY —
+// never inferred/generated (docs/decisions/vote-descriptions.md).
+export const voteItemDescSource = pgEnum("vote_item_desc_source", [
+  "summary_law",        // KNS_Bill.SummaryLaw (mostly enacted laws)
+  "explanatory_notes",  // דברי הסבר extracted verbatim from the preliminary-reading DOCX
+  "motion_text",        // נוסח הצעה לסדר היום extracted verbatim from the agenda DOCX
+]);
+
+// One row per ENRICHED Knesset item (bill / agenda motion), shared by all its
+// sibling votes via knesset_votes.itemId. Terminal-state by existence: row
+// absent = enrichment pending (retried each ingest run); row present = done,
+// never re-fetched. A links-only row (descriptionHe null) is a legitimate
+// terminal state — no official text exists for that item (explicit absence,
+// never guessed). Keeps the provenance triplet notNull: every written row
+// really was fetched.
+export const voteItems = pgTable(
+  "vote_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: integer("itemId").notNull().unique(),      // = knesset_votes.itemId (KNS BillID | AgendaID)
+    itemTypeId: integer("itemTypeId").notNull(),       // 2=bill, 4=agenda (raw LU_ItemType)
+    descriptionHe: text("descriptionHe"),              // official text only; null = none exists
+    descriptionSource: voteItemDescSource("descriptionSource"), // null iff descriptionHe null
+    legislationUrl: text("legislationUrl"),            // main.knesset.gov.il/apps/legislation/main/bills/<id> — bills only
+    docUrl: text("docUrl"),                            // fs.knesset.gov.il PDF (latest bill stage / motion text)
+    docTypeDescHe: text("docTypeDescHe"),              // KNS_Document* GroupTypeDesc — the link's label
+    initiatorPersonId: integer("initiatorPersonId"),   // KNS_Agenda.InitiatorPersonID -> politicians.personId
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [
+    index("vote_items_initiator_idx").on(t.initiatorPersonId),
+    // Text and its source attribution live or die together — a description
+    // without a named official source (or vice versa) must be unwritable,
+    // not merely commented against (trust-backbone rule).
+    check("vote_items_desc_source_pairing", sql`(${t.descriptionHe} IS NULL) = (${t.descriptionSource} IS NULL)`),
+  ],
+);
 
 // Upcoming/announced plenum items (v1: read-only list; admin-curated + future
 // ingest). Admin-authored rows have no Knesset itemId and carry

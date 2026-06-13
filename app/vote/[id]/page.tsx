@@ -12,6 +12,7 @@ import { getSession } from "@/lib/auth";
 import { getStanceState } from "@/app/lib/stances/service";
 import { QuestionDeck } from "@/components/question-deck";
 import { voteToOwnDeckQuestion, deckVoteToQueueQuestion } from "@/app/lib/deck/build";
+import { VoteDescription } from "@/components/vote-description";
 import { VOTE_TYPE_HE } from "@/components/vote-row";
 import { VOTE_PAGE_CONTAINER, VOTE_PAGE_GRID } from "@/components/skeletons/containers";
 import { KnessetSourceFooter } from "@/components/knesset-source-footer";
@@ -31,7 +32,7 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
     ? await Promise.all([getVoteDetail({ voteId }), getSession(), getVotesFeed({ limit: 8 })])
     : [null, null, null];
   if (!detail) notFound();
-  const { vote, breakdown, withheldCount, siblings } = detail;
+  const { vote, breakdown, withheldCount, siblings, item } = detail;
 
   // Exclude current vote and all siblings (same itemId) from the recent rail.
   const recentVotes = (feedPage?.votes ?? [])
@@ -97,6 +98,8 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
             <span className="nums">{formatDateTime(vote.voteDate)}</span> · {VOTE_TYPE_HE[vote.voteType]}
             {vote.decisionHe && <> · {vote.decisionHe}</>}
           </p>
+
+          {item ? <VoteDescription item={item} /> : null}
 
           {/* QuestionDeck ABOVE the breakdown — capture the user's opinion before
               (or at least alongside) the Knesset outcome anchoring them. */}

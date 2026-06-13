@@ -1,0 +1,1 @@
+ALTER TABLE "vote_items" ADD CONSTRAINT "vote_items_desc_source_pairing" CHECK (("vote_items"."descriptionHe" IS NULL) = ("vote_items"."descriptionSource" IS NULL));

@@ -54,6 +54,9 @@ export function VoteRow({
           </>
         )}
       </p>
+      {vote.descriptionTeaser ? (
+        <p className="line-clamp-1 text-xs text-muted-foreground">{vote.descriptionTeaser}</p>
+      ) : null}
       <VoteTotalsBar
         className="mt-3"
         totals={{ totalFor: vote.totalFor, totalAgainst: vote.totalAgainst, totalAbstain: vote.totalAbstain }}
