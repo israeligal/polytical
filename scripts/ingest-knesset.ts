@@ -6,15 +6,16 @@ import {
   fetchAll, fetchCount, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl, CURRENT_KNESSET,
 } from "@/app/lib/knesset/odata";
 import type {
-  KnsBill, KnsBillInitiator, KnsCommittee, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsQuery,
+  KnsBill, KnsBillInitiator, KnsBillInitiatorExpanded, KnsCommittee, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsQuery, KnsStatus,
 } from "@/app/lib/knesset/odata-types";
 import {
   buildPositionLabelMap, normalizeFactions, normalizeK25Members, normalizeFactionStints, applyEnglishNames,
-  normalizeBills, normalizeBillSponsors, normalizeQueries, normalizeCommittees, normalizeCommitteeMemberships,
+  normalizeBills, normalizeBillSponsors, normalizeBillDocuments, normalizeBillStatuses, splitExpandedInitiators,
+  normalizeQueries, normalizeCommittees, normalizeCommitteeMemberships,
   SENTINEL_FACTION_ID,
 } from "@/app/lib/knesset/normalize";
 import {
-  upsertFactions, upsertMembers, upsertBills, upsertBillSponsors, upsertQueries,
+  upsertFactions, upsertMembers, upsertBills, upsertBillSponsors, upsertBillDocuments, upsertBillStatuses, upsertQueries,
   upsertCommittees, upsertCommitteeMemberships, upsertFactionStints, upsertActivityCounts,
 } from "@/app/lib/knesset/repo";
 import type { ActivityCountsRow } from "@/app/lib/knesset/repo";
@@ -173,6 +174,54 @@ async function ingestActivityCounts(prov: { fetchedAt: Date }) {
   logger.info("knesset.ingest.entity_done", { entity: "activity_counts", mks: mks.length, written: n, failed });
 }
 
+// KNS_Status lookup (81 rows) — statusId -> Hebrew desc, so the bill page renders
+// readable status. Tiny; runs alongside the lifetime-bills backfill.
+async function ingestBillStatuses(prov: { fetchedAt: Date }) {
+  const sourceUrl = buildODataUrl({ entity: "KNS_Status" });
+  const raw = await fetchAll<KnsStatus>({ entity: "KNS_Status" });
+  const n = await upsertBillStatuses({ db, rows: normalizeBillStatuses(raw, { sourceUrl, fetchedAt: prov.fetchedAt }) });
+  logger.info("knesset.ingest.entity_done", { entity: "bill_statuses", fetched: raw.length, upserted: n });
+}
+
+// LIFETIME bills for every roster MK (closes the כץ gap). KNS_BillInitiator has no
+// KnessetNum, so we go per-PersonID and pull the bill + its documents inline via a
+// nested $expand (verified live). Bounded: ~140 MKs, one paged call each. Upserts
+// bills (all Knessets, no K25 filter), sponsors, and document links. Members first.
+async function ingestLifetimeBills(prov: { fetchedAt: Date }) {
+  await ingestBillStatuses(prov); // status lookup before bills so the page can join
+  const mks = await db.select({ personId: politicians.personId }).from(politicians);
+  if (mks.length === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "lifetime_bills", reason: "no politicians — run members first" });
+    return;
+  }
+  let totalBills = 0, totalSponsors = 0, totalDocs = 0, failed = 0;
+  for (const { personId } of mks) {
+    const filter = `PersonID eq ${personId}`;
+    const expand = "KNS_Bill/KNS_DocumentBills";
+    const sourceUrl = buildODataUrl({ entity: "KNS_BillInitiator", filter, expand });
+    try {
+      const raw = await fetchAll<KnsBillInitiatorExpanded>({ entity: "KNS_BillInitiator", filter, expand });
+      const { bills: rawBills, sponsors: rawSponsors, documents: rawDocs } = splitExpandedInitiators(raw);
+      // bills first (sponsors/docs reference billId by value)
+      totalBills += await upsertBills({ db, rows: normalizeBills(rawBills, { sourceUrl, fetchedAt: prov.fetchedAt }) });
+      totalSponsors += await upsertBillSponsors({ db, rows: normalizeBillSponsors(rawSponsors, { sourceUrl, fetchedAt: prov.fetchedAt }) });
+      if (rawDocs.length > 0) {
+        totalDocs += await upsertBillDocuments({ db, rows: normalizeBillDocuments(rawDocs, { sourceUrl, fetchedAt: prov.fetchedAt }) });
+      }
+    } catch (err) {
+      failed += 1;
+      logger.warn("knesset.ingest.lifetime_bills_failed", { personId, err: String(err) });
+    }
+    await sleep(250);
+  }
+  if (totalBills === 0 && failed > 0) {
+    throw new Error(`lifetime bills: all ${failed} MK fetches failed — API shape change?`);
+  }
+  logger.info("knesset.ingest.entity_done", {
+    entity: "lifetime_bills", mks: mks.length, bills: totalBills, sponsors: totalSponsors, documents: totalDocs, failed,
+  });
+}
+
 // Committee LIST (card-critical) — always part of the bounded default.
 async function ingestCommittees(prov: { fetchedAt: Date }) {
   const filter = `KnessetNum eq ${KNESSET_NUM}`;
@@ -214,6 +263,7 @@ async function main() {
     activityCounts: () => ingestActivityCounts(prov),
     bills: () => ingestBills(prov),
     billSponsors: () => ingestBillSponsors(prov),
+    lifetimeBills: () => ingestLifetimeBills(prov),
     queries: () => ingestQueries(prov),
     committees: () => ingestCommittees(prov),
     committeeMemberships: () => ingestCommitteeMemberships(prov),
@@ -224,10 +274,10 @@ async function main() {
   // counts after members (they UPDATE existing rows by personId), then committees.
   const bounded = ["factions", "members", "activityCounts", "committees"];
   // Heavy entities (~7387 bills / ~1538 queries + bulk membership CSV) only on --full.
-  const heavy = ["bills", "billSponsors", "queries", "committeeMemberships"];
+  const heavy = ["bills", "billSponsors", "lifetimeBills", "queries", "committeeMemberships"];
   // Run order keeps dependency order; heavy steps appended when --full is set.
   const order = full
-    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "queries", "committees", "committeeMemberships"]
+    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "lifetimeBills", "queries", "committees", "committeeMemberships"]
     : bounded;
 
   // A specific --only=<entity> always runs that one (even a heavy one), bypassing the bound.
