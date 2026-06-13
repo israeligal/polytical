@@ -1,0 +1,1 @@
+CREATE INDEX "knesset_votes_item_type_idx" ON "knesset_votes" USING btree ("itemTypeId");

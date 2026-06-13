@@ -4,6 +4,7 @@
 // Radware challenge); a browser-ish UA keeps us on the polite path.
 
 import { logger } from "@/app/lib/logger";
+import { fetchWithRetry, sleep } from "@/app/lib/http/fetch-retry";
 import type {
   WsMkDropdownRow,
   WsVoteDetailsResponse,
@@ -21,8 +22,6 @@ export function voteSourceUrl(voteId: number): string {
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 interface RequestArgs {
   path: string;
   body?: unknown; // present => POST
@@ -31,34 +30,23 @@ interface RequestArgs {
 }
 
 async function request<T>({ path, body, retries = 2, retryDelayMs = 500 }: RequestArgs): Promise<T> {
-  const url = `${WEBSITE_API_BASE}${path}`;
-  let attempt = 0;
-  for (;;) {
-    try {
-      const res = await fetch(url, {
-        method: body === undefined ? "GET" : "POST",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": UA,
-          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // 204 = empty result set (e.g. a headers window with no votes).
-      if (res.status === 204) return null as T;
-      return (await res.json()) as T;
-    } catch (err) {
-      if (attempt >= retries) {
-        logger.error("votes.api.fetch_failed", { url, attempt, err: String(err) });
-        throw err;
-      }
-      const backoff = retryDelayMs * Math.pow(2, attempt);
-      logger.warn("votes.api.retry", { url, attempt, backoff, err: String(err) });
-      await sleep(backoff);
-      attempt += 1;
-    }
-  }
+  return fetchWithRetry<T>({
+    url: `${WEBSITE_API_BASE}${path}`,
+    label: "votes.api",
+    retries,
+    retryDelayMs,
+    init: {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": UA,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+    // 204 = empty result set (e.g. a headers window with no votes).
+    parse: async (res) => (res.status === 204 ? (null as T) : ((await res.json()) as T)),
+  });
 }
 
 /**
