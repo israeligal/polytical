@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique, primaryKey,
+  pgTable, text, timestamp, boolean, integer, bigint, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique, primaryKey,
 } from "drizzle-orm/pg-core";
 
 // --- Better Auth tables ---
@@ -143,14 +143,56 @@ export const bills = pgTable(
     billId: integer("billId").notNull().unique(),      // KNS_Bill.BillID
     knessetNum: integer("knessetNum"),
     nameHe: text("nameHe").notNull(),                  // KNS_Bill.Name
+    subTypeId: integer("subTypeId"),                   // KNS_Bill.SubTypeID
     subTypeDesc: text("subTypeDesc"),                  // private/committee/government
-    statusId: integer("statusId"),                     // KNS_Bill.StatusID (code; lookup later)
+    privateNumber: integer("privateNumber"),           // KNS_Bill.PrivateNumber
+    committeeId: integer("committeeId"),               // KNS_Bill.CommitteeID
+    number: integer("number"),                         // KNS_Bill.Number
+    statusId: integer("statusId"),                     // KNS_Bill.StatusID -> bill_statuses.statusId
+    publicationDate: timestamp("publicationDate"),     // KNS_Bill.PublicationDate (often null in-progress)
+    summaryLaw: text("summaryLaw"),                    // KNS_Bill.SummaryLaw (sparse ~6.5%)
+    isContinuationBill: boolean("isContinuationBill"), // KNS_Bill.IsContinuationBill
+    publicationSeriesDesc: text("publicationSeriesDesc"),
+    lastUpdatedDate: timestamp("lastUpdatedDate"),     // KNS_Bill.LastUpdatedDate
     sourceDataset: text("sourceDataset").notNull(),
     sourceUrl: text("sourceUrl").notNull(),
     fetchedAt: timestamp("fetchedAt").notNull(),
   },
   (t) => [index("bills_knesset_idx").on(t.knessetNum)],
 );
+
+// Official bill-text documents (KNS_DocumentBill). FilePath -> fs.knesset.gov.il
+// (NOT WAF'd). One DocumentBillID carries one row per format (PDF/DOC).
+export const billDocuments = pgTable(
+  "bill_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentBillId: bigint("documentBillId", { mode: "number" }).notNull(), // KNS_DocumentBill.DocumentBillID (Int64)
+    billId: integer("billId").notNull(),               // -> bills.billId (FK-by-value)
+    groupTypeId: integer("groupTypeId"),
+    groupTypeDesc: text("groupTypeDesc"),              // e.g. "הצעת חוק לדיון מוקדם"
+    format: text("format"),                            // ApplicationDesc: "PDF" | "DOC"
+    filePath: text("filePath").notNull(),              // fs.knesset.gov.il URL (verbatim)
+    lastUpdatedDate: timestamp("lastUpdatedDate"),
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [
+    unique("bill_documents_doc_format_uq").on(t.documentBillId, t.format),
+    index("bill_documents_bill_idx").on(t.billId),
+  ],
+);
+
+// KNS_Status lookup (81 rows) — statusId -> Hebrew description, so the bill page
+// shows readable status instead of a numeric code.
+export const billStatuses = pgTable("bill_statuses", {
+  statusId: integer("statusId").primaryKey(),          // KNS_Status.StatusID
+  descHe: text("descHe").notNull(),                    // KNS_Status.Desc
+  sourceDataset: text("sourceDataset").notNull(),
+  sourceUrl: text("sourceUrl").notNull(),
+  fetchedAt: timestamp("fetchedAt").notNull(),
+});
 
 export const billSponsors = pgTable(
   "bill_sponsors",
