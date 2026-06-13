@@ -348,10 +348,9 @@ export function splitExpandedInitiators(raw: KnsBillInitiatorExpanded[]): {
     });
     const b = r.KNS_Bill;
     if (!b) continue;
-    if (!billsById.has(b.BillID)) {
-      const { KNS_DocumentBills: _omit, ...bill } = b;
-      billsById.set(b.BillID, bill);
-    }
+    // Store the bill once; its nested KNS_DocumentBills (collected separately below)
+    // is ignored by normalizeBills, so no need to strip it.
+    if (!billsById.has(b.BillID)) billsById.set(b.BillID, b);
     for (const d of b.KNS_DocumentBills ?? []) {
       documentsByKey.set(`${d.DocumentBillID}:${d.ApplicationDesc ?? ""}`, d);
     }
