@@ -19,7 +19,9 @@ export type KnsEntity =
   | "KNS_Bill"
   | "KNS_BillInitiator"
   | "KNS_Query"
-  | "KNS_Committee";
+  | "KNS_Committee"
+  | "KNS_DocumentBill"
+  | "KNS_Status";
 
 interface BuildUrlArgs {
   entity: KnsEntity;

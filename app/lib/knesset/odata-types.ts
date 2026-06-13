@@ -51,9 +51,34 @@ export interface KnsBill {
   BillID: number;
   KnessetNum: number | null;
   Name: string;
+  SubTypeID: number | null;
   SubTypeDesc: string | null;
+  PrivateNumber: number | null;
+  CommitteeID: number | null;
+  Number: number | null;
   StatusID: number | null;
+  PublicationDate: string | null;
+  SummaryLaw: string | null;
+  IsContinuationBill: boolean | null;
+  PublicationSeriesDesc: string | null;
   LastUpdatedDate: string | null;
+}
+
+export interface KnsDocumentBill {
+  DocumentBillID: number;       // Int64 in OData; values observed ~10^7, safe as JS number
+  BillID: number;
+  GroupTypeID: number | null;
+  GroupTypeDesc: string | null;
+  ApplicationDesc: string | null; // "PDF" | "DOC"
+  FilePath: string;               // fs.knesset.gov.il URL (may contain a double slash — verbatim)
+  LastUpdatedDate: string | null;
+}
+
+export interface KnsStatus {
+  StatusID: number;
+  Desc: string;
+  TypeID: number | null;
+  TypeDesc: string | null;
 }
 
 export interface KnsBillInitiator {
@@ -63,6 +88,12 @@ export interface KnsBillInitiator {
   IsInitiator: boolean | null;
   Ordinal: number | null;
   LastUpdatedDate: string | null;
+}
+
+/** Shape returned by `KNS_BillInitiator?$expand=KNS_Bill/KNS_DocumentBills`:
+ *  each initiator carries its bill inline, and the bill carries its documents. */
+export interface KnsBillInitiatorExpanded extends KnsBillInitiator {
+  KNS_Bill?: (KnsBill & { KNS_DocumentBills?: KnsDocumentBill[] }) | null;
 }
 
 export interface KnsQuery {
