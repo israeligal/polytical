@@ -76,7 +76,7 @@ export interface KnsDocumentBill {
 
 export interface KnsStatus {
   StatusID: number;
-  Desc: string;
+  Desc: string | null;          // a few rows (e.g. 6015–6017) carry a null Desc
   TypeID: number | null;
   TypeDesc: string | null;
 }

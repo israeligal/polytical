@@ -184,6 +184,11 @@ test("normalizeBillStatuses maps statusId -> Hebrew desc", () => {
   expect(rows[0]).toMatchObject({ statusId: 104, descHe: "בהכנה לקריאה ראשונה", sourceDataset: "KNS_Status" });
 });
 
+test("normalizeBillStatuses coalesces a null Desc to '' (descHe is NOT NULL — e.g. KNS_Status 6015)", () => {
+  const rows = normalizeBillStatuses([{ StatusID: 6015, Desc: null, TypeID: 6, TypeDesc: null }], billProv);
+  expect(rows[0]).toMatchObject({ statusId: 6015, descHe: "" });
+});
+
 test("splitExpandedInitiators dedupes bills + documents, flattens sponsors", () => {
   const raw: KnsBillInitiatorExpanded[] = [
     {

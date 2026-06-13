@@ -327,7 +327,9 @@ export interface BillStatusRow {
 }
 export function normalizeBillStatuses(raw: KnsStatus[], prov: Prov): BillStatusRow[] {
   return raw.map((s) => ({
-    statusId: s.StatusID, descHe: s.Desc,
+    // KNS_Status has a handful of rows with a null Desc (e.g. 6015–6017); descHe is
+    // NOT NULL, so coalesce to "" — readers treat empty as "no status" (falsy).
+    statusId: s.StatusID, descHe: s.Desc ?? "",
     sourceDataset: "KNS_Status", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
   }));
 }
