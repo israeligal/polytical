@@ -102,7 +102,12 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
               (or at least alongside) the Knesset outcome anchoring them. */}
           {vote.isDecisive && (
             <div className="mt-4">
+              {/* key=voteId: guarantees a fresh QuestionDeck mount if the user
+                  navigates between /vote/[id] pages without a full reload, so
+                  the frozen question list (BUG 2 fix) always starts from the
+                  correct set of questions for this specific vote. */}
               <QuestionDeck
+                key={vote.voteId}
                 questions={deckQuestions}
                 politicians={[]}
                 loggedIn={Boolean(session?.user)}
