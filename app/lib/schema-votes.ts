@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, unique, primaryKey,
+  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, unique, primaryKey, check,
 } from "drizzle-orm/pg-core";
 import { users } from "./schema";
 
@@ -223,7 +223,13 @@ export const voteItems = pgTable(
     sourceUrl: text("sourceUrl").notNull(),
     fetchedAt: timestamp("fetchedAt").notNull(),
   },
-  (t) => [index("vote_items_initiator_idx").on(t.initiatorPersonId)],
+  (t) => [
+    index("vote_items_initiator_idx").on(t.initiatorPersonId),
+    // Text and its source attribution live or die together — a description
+    // without a named official source (or vice versa) must be unwritable,
+    // not merely commented against (trust-backbone rule).
+    check("vote_items_desc_source_pairing", sql`(${t.descriptionHe} IS NULL) = (${t.descriptionSource} IS NULL)`),
+  ],
 );
 
 // Upcoming/announced plenum items (v1: read-only list; admin-curated + future

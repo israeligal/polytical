@@ -106,10 +106,11 @@ test("ingest is idempotent and the admin `featured` flag survives re-ingest", as
 
   const r1 = await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10" });
   expect(r1.attributed).toBe(1);
-  // enrichment is offline (mocked fetchAll → []) so the bill item fails per-item —
-  // but the run still completes (heartbeat stamped), proving enrichment failures
-  // never break ingest.
-  expect(r1.itemsFailed).toBeGreaterThanOrEqual(0);
+  // enrichment is offline (mocked fetchAll → []) so the single bill item (999)
+  // FAILS per-item — yet the run still completes and the heartbeat is stamped,
+  // proving enrichment failures never break ingest.
+  expect(r1.itemsFailed).toBe(1);
+  expect(r1.itemsEnriched).toBe(0);
   const [heartbeat] = await h.db.select().from(ingestHeartbeats).where(eq(ingestHeartbeats.job, "votes"));
   expect(heartbeat).toBeDefined();
 

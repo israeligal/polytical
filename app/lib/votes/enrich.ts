@@ -36,21 +36,30 @@ export function normalizeDocPath({ filePath }: { filePath: string }): string {
 const BILL_DOC_STAGE_RANK: Record<number, number> = { 9: 4, 4: 3, 2: 2, 1: 1 };
 const AGENDA_MOTION_GROUP = 16; // נוסח הצעה לסדר היום (verified live)
 
+/** Newest-first by LastUpdatedDate — a revised/re-submitted document must win
+ *  over the stale revision (rows are terminal once written). Null dates sort last. */
+function byNewest<T extends { LastUpdatedDate: string | null }>(a: T, b: T): number {
+  return (b.LastUpdatedDate ?? "").localeCompare(a.LastUpdatedDate ?? "");
+}
+
 export function pickLatestBillDoc({ docs }: { docs: KnsDocumentBill[] }): KnsDocumentBill | null {
   const ranked = docs
     .filter((d) => d.ApplicationDesc === "PDF" && BILL_DOC_STAGE_RANK[d.GroupTypeID] != null)
-    .sort((a, b) => BILL_DOC_STAGE_RANK[b.GroupTypeID] - BILL_DOC_STAGE_RANK[a.GroupTypeID]);
+    .sort((a, b) => BILL_DOC_STAGE_RANK[b.GroupTypeID] - BILL_DOC_STAGE_RANK[a.GroupTypeID] || byNewest(a, b));
   return ranked[0] ?? null;
 }
 
 export function pickPreliminaryDocx({ docs }: { docs: KnsDocumentBill[] }): KnsDocumentBill | null {
-  return docs.find((d) => d.GroupTypeID === 1 && d.ApplicationDesc === "DOC") ?? null;
+  return docs.filter((d) => d.GroupTypeID === 1 && d.ApplicationDesc === "DOC").sort(byNewest)[0] ?? null;
 }
 
 export function pickAgendaDoc({
   docs, application,
 }: { docs: KnsDocumentAgenda[]; application: "DOC" | "PDF" }): KnsDocumentAgenda | null {
-  return docs.find((d) => d.GroupTypeID === AGENDA_MOTION_GROUP && d.ApplicationDesc === application) ?? null;
+  return (
+    docs.filter((d) => d.GroupTypeID === AGENDA_MOTION_GROUP && d.ApplicationDesc === application).sort(byNewest)[0] ??
+    null
+  );
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -87,10 +96,21 @@ export async function enrichVoteItems({
   return { candidates: candidates.length, enriched, failed };
 }
 
-/** Official text from a DOCX, or null — a fetched-but-unparseable document is
- *  a links-only TERMINAL row (explicit absence), never an endless retry. */
+/** Official text from a DOCX, or null — a fetched-but-unparseable document OR
+ *  a permanently-missing one (HTTP 404 after retries) yields a links-only
+ *  TERMINAL row (explicit absence), never an endless retry. Transient fetch
+ *  errors (5xx/network) rethrow so the whole item retries next run. */
 async function tryExtractNotes({ url, itemId }: { url: string; itemId: number }): Promise<string | null> {
-  const file = await fetchBinaryFile({ url });
+  let file: Uint8Array;
+  try {
+    file = await fetchBinaryFile({ url });
+  } catch (err) {
+    if (/HTTP 404/.test(String(err))) {
+      logger.warn("votes.enrich.docx_gone", { itemId, url });
+      return null;
+    }
+    throw err;
+  }
   try {
     const notes = extractExplanatoryNotes({ text: extractDocxText({ docx: file }) });
     if (!notes) logger.warn("votes.enrich.no_explanatory_notes", { itemId, url });

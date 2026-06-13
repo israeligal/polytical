@@ -18,6 +18,7 @@ import { logger } from "@/app/lib/logger";
 import { fetchAll } from "@/app/lib/knesset/odata";
 import type { KnsAgenda } from "@/app/lib/knesset/odata-types";
 import { enrichVoteItems } from "@/app/lib/votes/enrich";
+import { ITEM_TYPE_AGENDA, ITEM_TYPE_BILL } from "@/app/lib/votes/normalize";
 
 function arg(name: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -31,7 +32,7 @@ async function classify(): Promise<void> {
   // bills: membership in the (freshly ingested) bills table. postgres-js
   // returns a RowList (array) with a `.count` of affected rows for UPDATE.
   const billsRes = await db.execute(sql`
-    update knesset_votes v set "itemTypeId" = 2
+    update knesset_votes v set "itemTypeId" = ${ITEM_TYPE_BILL}
     from bills b
     where v."itemId" = b."billId" and v."itemTypeId" is null
   `);
@@ -42,16 +43,16 @@ async function classify(): Promise<void> {
   let agendaRows = 0;
   for (const batch of chunk(agendas.map((a) => a.AgendaID), 500)) {
     const res = await db.execute(sql`
-      update knesset_votes set "itemTypeId" = 4
+      update knesset_votes set "itemTypeId" = ${ITEM_TYPE_AGENDA}
       where "itemTypeId" is null and "itemId" in (${sql.join(batch.map((id) => sql`${id}`), sql`, `)})
     `);
     agendaRows += res.count ?? 0;
   }
   logger.info("votes.enrich.classified_agendas", { agendas: agendas.length, rows: agendaRows });
 
-  // legacy billId fill under the new rule
+  // legacy billId fill under the same rule applyVoteDetails owns (billId = itemId iff bill-typed)
   const billIdRes = await db.execute(sql`
-    update knesset_votes set "billId" = "itemId" where "itemTypeId" = 2 and "billId" is null
+    update knesset_votes set "billId" = "itemId" where "itemTypeId" = ${ITEM_TYPE_BILL} and "billId" is null
   `);
   logger.info("votes.enrich.billid_filled", { rows: billIdRes.count ?? 0 });
 

@@ -183,6 +183,13 @@
       "when": 1781900000001,
       "tag": "0025_spotty_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1781900000002,
+      "tag": "0026_absent_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

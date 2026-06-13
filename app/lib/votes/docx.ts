@@ -28,7 +28,10 @@ export function extractDocxText({ docx }: { docx: Uint8Array }): string {
   );
 }
 
-const EXPLANATORY_HEADING = /דברי הסבר:?/;
+// Anchored to its own line (the heading is a standalone paragraph in the
+// official template) so a mid-sentence mention of "דברי הסבר" earlier in the
+// document can't be mistaken for the section heading.
+const EXPLANATORY_HEADING = /^[ \t]*דברי הסבר:?[ \t]*$/m;
 // Official-template trailers, observed on the real fixtures: bills end with a
 // dash rule + submission block; agenda motions end with a signature block.
 const TRAILERS = [/\n-{3,}/, /\nבכבוד רב,/];

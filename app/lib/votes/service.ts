@@ -139,19 +139,6 @@ export async function ingestVotes({
     }
   }
 
-  // 2.5) enrich the items behind the swept votes (official description + law
-  // links → vote_items). Failure-isolated: enrichment must NEVER fail the vote
-  // ingest or block the heartbeat — vote-row completeness outranks context.
-  let itemsEnriched = 0;
-  let itemsFailed = 0;
-  try {
-    const er = await enrichVoteItems({ db });
-    itemsEnriched = er.enriched;
-    itemsFailed = er.failed;
-  } catch (err) {
-    logger.error("votes.enrich.run_failed", { err: String(err) });
-  }
-
   // 3) decisive recompute for every touched item
   await recomputeDecisive({ db, itemIds: touchedItemIds });
 
@@ -161,6 +148,22 @@ export async function ingestVotes({
     .insert(schema.ingestHeartbeats)
     .values({ job: "votes", lastSuccessAt: new Date() })
     .onConflictDoUpdate({ target: schema.ingestHeartbeats.job, set: { lastSuccessAt: new Date() } });
+
+  // 5) enrich the items behind the swept votes (official description + law
+  // links → vote_items). Deliberately AFTER the heartbeat: enrichment is
+  // context, not vote data — many sequential OData/doc fetches could push a
+  // backlog-heavy cron run into the function timeout, and a kill here must
+  // not read as a stale votes pipeline. Failure-isolated per run AND per item;
+  // unfinished items simply remain candidates for the next run.
+  let itemsEnriched = 0;
+  let itemsFailed = 0;
+  try {
+    const er = await enrichVoteItems({ db });
+    itemsEnriched = er.enriched;
+    itemsFailed = er.failed;
+  } catch (err) {
+    logger.error("votes.enrich.run_failed", { err: String(err) });
+  }
 
   const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued, itemsEnriched, itemsFailed };
   logger.info("votes.ingest.done", { fromDate, toDate, refetchDetails, ...result });

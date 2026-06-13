@@ -156,10 +156,14 @@ export async function applyVoteDetails({
       .update(knessetVotes)
       .set({
         itemId: patch.itemId,
-        itemTypeId: patch.itemTypeId,
         // The header's own type signal is authoritative — no bills-table
         // membership check (which missed bills newer than the manual ingest).
-        billId: patch.itemTypeId === ITEM_TYPE_BILL ? patch.itemId : null,
+        // A NULL signal means "no information", not "no type": it must never
+        // clobber a previously classified itemTypeId/billId (e.g. legacy rows
+        // classified by scripts/enrich-vote-items.ts, then --refetch'd).
+        ...(patch.itemTypeId != null
+          ? { itemTypeId: patch.itemTypeId, billId: patch.itemTypeId === ITEM_TYPE_BILL ? patch.itemId : null }
+          : {}),
         decisionHe: patch.decisionHe,
         isAccepted: patch.isAccepted,
         totalFor: patch.totalFor,

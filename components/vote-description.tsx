@@ -5,9 +5,11 @@
 
 import Link from "next/link";
 import { ChevronForward } from "@/components/icons";
-import type { VoteItemDetail } from "@/app/lib/votes/read-repo";
+import type { VoteItemDetail, VoteItemRow } from "@/app/lib/votes/read-repo";
 
-const SOURCE_LABEL: Record<string, string> = {
+// Exhaustive over the pgEnum — a new descriptionSource member fails the build
+// here instead of rendering a literal "undefined" attribution line.
+const SOURCE_LABEL: Record<NonNullable<VoteItemRow["descriptionSource"]>, string> = {
   summary_law: "התקציר הרשמי, מאגר החקיקה הלאומי",
   explanatory_notes: "דברי ההסבר מתוך נוסח הצעת החוק הרשמי",
   motion_text: "דברי ההסבר מתוך נוסח ההצעה לסדר היום",

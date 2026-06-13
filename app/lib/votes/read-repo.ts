@@ -46,6 +46,11 @@ function parseCursor(before: string | undefined): { date: Date; voteId: number }
   return { date, voteId };
 }
 
+/** One-line feed teaser, truncated in SQL so list queries never ship the
+ *  multi-KB official text. Shared by the feed and the featured rail —
+ *  one definition, one truncation length. */
+const TEASER_SELECT = sql<string | null>`left(${voteItems.descriptionHe}, 280)`;
+
 /** Official facets only — the website API carries no topic taxonomy, so the
  *  feed filters are outcome + has-per-MK-rows (see docs/decisions/votes-discovery.md).
  *  `accepted` filters stored IsForAccepted (NULL = outcome unknown — excluded
@@ -78,7 +83,7 @@ export async function getVotesFeed({
   const rows = await db
     .select({
       vote: knessetVotes,
-      teaser: sql<string | null>`left(${voteItems.descriptionHe}, 280)`,
+      teaser: TEASER_SELECT,
     })
     .from(knessetVotes)
     .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
@@ -117,7 +122,7 @@ export async function getFeaturedVotes({
 }: { db?: DB; sinceDays?: number; limit?: number } = {}): Promise<(KnessetVoteRow & { descriptionTeaser: string | null })[]> {
   const since = new Date(Date.now() - sinceDays * 864e5);
   const rows = await db
-    .select({ vote: knessetVotes, teaser: sql<string | null>`left(${voteItems.descriptionHe}, 280)` })
+    .select({ vote: knessetVotes, teaser: TEASER_SELECT })
     .from(knessetVotes)
     .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
     .where(and(eq(knessetVotes.featured, true), gte(knessetVotes.voteDate, since)))
