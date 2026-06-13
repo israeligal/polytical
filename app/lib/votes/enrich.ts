@@ -8,6 +8,7 @@
 // Terminal-state-by-existence: fetch failures write NOTHING (retried next
 // run); fetched-but-no-text items write a links-only row (explicit absence).
 
+import { sleep } from "@/app/lib/http/fetch-retry";
 import { buildODataUrl, fetchAll } from "@/app/lib/knesset/odata";
 import type { KnsAgenda, KnsBill, KnsDocumentAgenda, KnsDocumentBill } from "@/app/lib/knesset/odata-types";
 import { normalizeBills } from "@/app/lib/knesset/normalize";
@@ -61,8 +62,6 @@ export function pickAgendaDoc({
     null
   );
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface EnrichResult {
   candidates: number;

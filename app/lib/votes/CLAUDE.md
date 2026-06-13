@@ -6,12 +6,12 @@ K25 per-MK roll-call ingestion from the Knesset **website API** (the only live s
 
 | File | Purpose |
 |---|---|
-| `website-api.ts` | HTTP client (`GetVotesHeaders` POST, `GetVoteDetails/{id}` GET, `GetMksDropDown`); retry/throttle mirrors `../knesset/odata.ts`; `voteSourceUrl()` builds the per-vote provenance URL |
+| `website-api.ts` | HTTP client (`GetVotesHeaders` POST, `GetVoteDetails/{id}` GET, `GetMksDropDown`); retry via the shared `app/lib/http/fetch-retry.ts` (`fetchWithRetry`), throttle between calls; `voteSourceUrl()` builds the per-vote provenance URL |
 | `website-types.ts` | Raw API row shapes (PascalCase, captured live 2026-06-10; `LU_ItemType` added 2026-06-12) |
 | `test-payloads.ts` | VERBATIM captured responses (one per vote type) — test builders derive from these; refresh via the curl commands in the plan §5, never hand-edit |
 | `test-payloads-items.ts` + `fixtures/*.docx` | VERBATIM OData captures (KNS_Bill/DocumentBill/Agenda/DocumentAgenda) + two real DOCX for the enrichment tests — refresh via the curl commands in the file header |
 | `docx.ts` | Pure DOCX → plain text (`fflate`) + verbatim דברי הסבר extraction (`extractExplanatoryNotes`; null = explicit not-found, trailer-cut at the official dash-rule/בכבוד-רב markers) |
-| `files-api.ts` | Binary download from fs.knesset.gov.il (retry/backoff) — the mockable file boundary; NEVER fetch main.knesset.gov.il (Radware) |
+| `files-api.ts` | Binary download from fs.knesset.gov.il via shared `fetchWithRetry` — the mockable file boundary; NEVER fetch main.knesset.gov.il (Radware) |
 | `enrich.ts` | Vote-item enrichment (`enrichVoteItems`, ingest step 2.5 + backfill): official description (SummaryLaw → דברי הסבר DOCX → motion text) + legislation-page/PDF links + agenda initiator into `vote_items`; doc-stage rank 9>4>2>1; failure-isolated per item |
 | `name-key.ts` | `nameKey()` — token-SORTED `normalizeSearchName` (website is "Last First", OData "First Last"). Both sides of every mapping lookup MUST use it |
 | `normalize.ts` | Closed maps (`WEBSITE_RESULT_BY_ID` 6/7/8/9, `HEADER_VOTE_TYPE` 4 types) — unknown values THROW; `pickDecisiveVoteId` (highest accepted reading → latest scoreable → latest of ANY type, so hand/secret-only items keep a feed representative; decisive ≠ scoreable) |

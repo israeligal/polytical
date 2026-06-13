@@ -71,6 +71,10 @@ export const knessetVotes = pgTable(
     index("knesset_votes_item_idx").on(t.itemId),
     index("knesset_votes_bill_idx").on(t.billId),
     index("knesset_votes_featured_idx").on(t.voteDate).where(sql`${t.featured} = true`),
+    // Supports the enrichment-candidate scan (listEnrichmentCandidates filters
+    // itemTypeId IN (2,4)). NB: at K25 scale this predicate matches most rows,
+    // so the planner may still seq-scan — kept as the table grows across terms.
+    index("knesset_votes_item_type_idx").on(t.itemTypeId),
   ],
 );
 
