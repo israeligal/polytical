@@ -16,6 +16,7 @@ export default async function NotificationsPage() {
     titleHe: n.titleHe,
     bodyHe: n.bodyHe,
     refMarketId: n.refMarketId,
+    refGroupId: n.refGroupId,
     read: n.read,
     createdAtIso: n.createdAt.toISOString(),
   }));

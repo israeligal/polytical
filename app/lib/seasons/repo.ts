@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
@@ -73,6 +73,7 @@ export async function getSeasonCorrect({
       and(
         eq(bets.userId, requireUserId(userId)),
         eq(markets.status, "resolved"),
+        isNull(markets.groupId), // sandbox: group-motion wins never count toward seasons
         gte(markets.resolvedAt, startAt),
         lte(markets.resolvedAt, endAt),
         sql`${bets.outcomeId} = ${markets.resolvedOutcomeId}`,

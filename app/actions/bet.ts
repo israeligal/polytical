@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { makePrediction } from "@/app/lib/markets/service";
-import { MarketClosedError, MarketNotFoundError } from "@/app/lib/errors";
+import { MarketClosedError, MarketNotFoundError, NotGroupMemberError } from "@/app/lib/errors";
 
 /** Server action: record (or change) the signed-in user's prediction on a market.
  *  Stake-less — one pick per market, changeable until close. Returns a
@@ -29,6 +29,8 @@ export async function makePredictionAction({
     if (e instanceof MarketClosedError) return { ok: false, message: "התחזית סגורה" };
     // The market can be hard-deleted by an admin while the page is open.
     if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית הוסרה" };
+    // Removed from the group while the page was open → can't predict on its motion.
+    if (e instanceof NotGroupMemberError) return { ok: false, message: "אינכם חברים בקואליציה הזו" };
     throw e;
   }
 }

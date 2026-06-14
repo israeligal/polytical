@@ -211,6 +211,13 @@
       "when": 1781455067310,
       "tag": "0029_agenda_stances",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1781471060485,
+      "tag": "0030_groups_coalition",
+      "breakpoints": true
     }
   ]
 }

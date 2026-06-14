@@ -2,8 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { postComment, toggleCommentUpvote, hideComment } from "@/app/lib/comments/service";
-import { EmptyCommentError, CommentTooLongError } from "@/app/lib/errors";
+import { toggleCommentUpvote, hideComment } from "@/app/lib/comments/service";
+import { postGroupAwareComment } from "@/app/lib/groups/discussion";
+import { EmptyCommentError, CommentTooLongError, NotGroupMemberError } from "@/app/lib/errors";
 import { isForeignKeyViolation } from "@/app/lib/pg-errors";
 
 export async function postCommentAction({ marketId, body }: { marketId: string; body: string }) {
@@ -12,12 +13,15 @@ export async function postCommentAction({ marketId, body }: { marketId: string; 
   const limit = checkRateLimit({ key: `comment:${s.user.id}`, max: 8, windowMs: 5 * 60_000 });
   if (!limit.allowed) return { ok: false, message: "יותר מדי תגובות — נסו שוב מאוחר יותר" };
   try {
-    await postComment({ marketId, userId: s.user.id, body });
+    // Group-aware: on a group motion this gates membership + emits @-mention
+    // notifications (מליאה); on a global market it's a plain comment.
+    await postGroupAwareComment({ marketId, userId: s.user.id, actorName: s.user.name, body });
     revalidatePath(`/market/${marketId}`);
     return { ok: true };
   } catch (e) {
     if (e instanceof EmptyCommentError) return { ok: false, message: "אי אפשר להגיב ריק" };
     if (e instanceof CommentTooLongError) return { ok: false, message: "התגובה ארוכה מדי (עד 500 תווים)" };
+    if (e instanceof NotGroupMemberError) return { ok: false, message: "רק חברי הקואליציה יכולים להגיב כאן" };
     // The market can be hard-deleted while the page is open — the insert then
     // hits the comments.marketId FK instead of a domain error.
     if (isForeignKeyViolation(e)) return { ok: false, message: "התחזית הוסרה" };

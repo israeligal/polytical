@@ -29,6 +29,7 @@ export interface NewNotification {
   refMarketId?: string | null;
   refBetId?: string | null;
   refSuggestionId?: string | null;
+  refGroupId?: string | null;
 }
 
 /** Batched insert that rides the caller's transaction. No-op on empty input. */
@@ -49,6 +50,7 @@ export async function insertNotifications({
       refMarketId: r.refMarketId ?? null,
       refBetId: r.refBetId ?? null,
       refSuggestionId: r.refSuggestionId ?? null,
+      refGroupId: r.refGroupId ?? null,
     })),
   );
 }

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { formatCount } from "@/lib/format";
 import { db } from "@/app/lib/db";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
+import { getMembership, getGroupMotionPicks } from "@/app/lib/groups/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getUnpredictedOpenMarketCards } from "@/app/lib/markets/feed";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
@@ -30,6 +31,14 @@ export default async function MarketPage({
   const bundle = await getMarketBundle({ marketId: id });
   if (!bundle) notFound();
 
+  const session = await getSession();
+  // Group motions are member-only — gate access (and hide global chrome below).
+  const groupId = bundle.market.groupId;
+  if (groupId) {
+    const membership = session?.user ? await getMembership({ groupId, userId: session.user.id }) : null;
+    if (!membership || membership.status !== "active") notFound();
+  }
+
   const counts = await getOutcomeCounts({ marketId: id });
   const market = bundleToMarket({ ...bundle, counts });
   const status = bundle.market.status;
@@ -39,7 +48,6 @@ export default async function MarketPage({
       ? bundle.outcomes.find((o) => o.id === bundle.market.resolvedOutcomeId)
       : undefined;
 
-  const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
   // The interactive deck renders only on OPEN markets — an admin-closed (or
@@ -55,7 +63,9 @@ export default async function MarketPage({
     session?.user
       ? getUserPositions({ userId: session.user.id, marketId: id })
       : Promise.resolve([]),
-    isOpen && session?.user
+    // No global queue inside a group motion's deck (would mix global markets
+    // into the group context, and they're a different audience).
+    isOpen && session?.user && !groupId
       ? getUnpredictedOpenMarketCards({ db, userId: session.user.id, excludeMarketId: id, limit: 6 })
       : Promise.resolve([]),
   ]);
@@ -65,10 +75,23 @@ export default async function MarketPage({
     ? (bundle.outcomes.find((o) => o.id === initialPickId)?.labelHe ?? null)
     : null;
 
+  // Group-motion reveal gate: members see the crowd split + friends' picks only
+  // after locking their own pick (or once the motion is settled). Group motions
+  // go open→resolved (no intermediate closed state), so this covers all reveals.
+  const groupReveal = !groupId || settled || initialPickId != null;
+  const friendsPicks =
+    groupId && groupReveal && session?.user
+      ? await getGroupMotionPicks({ marketId: id, viewerId: session.user.id })
+      : null;
+  // The deck embeds per-outcome shares into the client payload — for an
+  // unrevealed group motion that would leak the split (esp. multi, which renders
+  // it). Feed the deck a zero-count market until the viewer has predicted.
+  const deckMarket = groupReveal ? market : bundleToMarket({ ...bundle, counts: new Map() });
+
   // Build deck for open markets (shown to all — logged-out sees login CTA on first card).
   const deckQuestions = isOpen
     ? [
-        marketToOwnDeckQuestion({ market, initialPickId }),
+        marketToOwnDeckQuestion({ market: deckMarket, initialPickId }),
         ...queueCards.map(marketCardToQueueQuestion),
       ]
     : [];
@@ -91,11 +114,11 @@ export default async function MarketPage({
     <main className={MARKET_CONTAINER}>
       <CelebrationHost predictions={celebrations} />
       <Link
-        href="/markets"
+        href={groupId ? `/g/by-id/${groupId}` : "/markets"}
         className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronForward className="h-4 w-4 rotate-180" />
-        חזרה לתחזיות
+        {groupId ? "חזרה לקואליציה" : "חזרה לתחזיות"}
       </Link>
 
       {/*
@@ -120,14 +143,16 @@ export default async function MarketPage({
             </h1>
             {/* In focus on this forecast — surface the CTA inline so mobile
                 doesn't need the hamburger to reach it (desktop already has
-                it in the header nav). */}
-            <Link
-              href="/suggest"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20 md:hidden"
-            >
-              <Ballot className="h-4 w-4" />
-              הצעה לסדר
-            </Link>
+                it in the header nav). Hidden on group motions (no global suggest). */}
+            {!groupId && (
+              <Link
+                href="/suggest"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20 md:hidden"
+              >
+                <Ballot className="h-4 w-4" />
+                הצעה לסדר
+              </Link>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -151,7 +176,13 @@ export default async function MarketPage({
                both types on the main column. */
             <>
               <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <OddsBar market={market} />
+                {groupReveal ? (
+                  <OddsBar market={market} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    בחרו תשובה כדי לראות איך שאר חברי הקואליציה ניבאו.
+                  </p>
+                )}
               </div>
               <div className="mt-6">
                 {/* key=market.id: guarantees a fresh QuestionDeck mount if the
@@ -241,9 +272,29 @@ export default async function MarketPage({
             </p>
           )}
 
+          {friendsPicks?.revealed && friendsPicks.picks.length > 0 && (
+            <section className="mt-8">
+              <h2 className="mb-3 inline-flex items-center gap-2 font-display text-xl font-bold text-foreground">
+                <Users className="h-5 w-5 text-accent" />
+                מי ניבא מה
+              </h2>
+              <ul className="space-y-2">
+                {friendsPicks.picks.map((p) => (
+                  <li
+                    key={p.userId}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate text-foreground">{p.handle ? `@${p.handle}` : p.name}</span>
+                    <span className="shrink-0 font-semibold text-primary">{p.outcomeLabelHe}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <h2 className="mb-3 mt-8 inline-flex items-center gap-2 font-display text-xl font-bold text-foreground">
             <ChatBubble className="h-5 w-5 text-primary" />
-            דעות חמות
+            מליאה
           </h2>
           <CommentThread
             marketId={market.id}

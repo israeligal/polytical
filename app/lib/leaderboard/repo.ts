@@ -119,7 +119,7 @@ export async function getUserStats({
     .where(sql`
       ${users.totalWins} > ${row.totalWins}
       OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} > ${row.accuracy})
-      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.createdAt} > ${userRow?.createdAt})
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.createdAt} > ${userRow?.createdAt?.toISOString() ?? null})
     `);
 
   return {

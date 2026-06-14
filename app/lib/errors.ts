@@ -58,3 +58,11 @@ export function requireUserId(userId: string): string {
 // --- Multi-outcome suggestions ---
 export class OutcomeCountError extends Error { constructor() { super("A multi suggestion needs 2-8 outcomes"); this.name = "OutcomeCountError"; } }
 export class OutcomeLabelError extends Error { constructor() { super("Outcome labels must be 1-40 chars and unique"); this.name = "OutcomeLabelError"; } }
+// --- Groups / קואליציה ---
+export class GroupNotFoundError extends Error { constructor() { super("Group not found"); this.name = "GroupNotFoundError"; } }
+export class NotGroupMemberError extends Error { constructor() { super("Not a member of this group"); this.name = "NotGroupMemberError"; } }
+export class InsufficientGroupRoleError extends Error { constructor() { super("Insufficient group role"); this.name = "InsufficientGroupRoleError"; } }
+export class AlreadyMemberError extends Error { constructor() { super("Already a member of this group"); this.name = "AlreadyMemberError"; } }
+export class InvalidInviteCodeError extends Error { constructor() { super("Invalid or expired invite code"); this.name = "InvalidInviteCodeError"; } }
+export class GroupCapError extends Error { constructor() { super("Group limit reached"); this.name = "GroupCapError"; } }
+export class GroupNameError extends Error { constructor() { super("Group name must be 2-40 chars"); this.name = "GroupNameError"; } }

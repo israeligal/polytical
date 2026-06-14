@@ -42,6 +42,10 @@ const EVENT_PRIORITY: Record<NotificationEvent["type"], number> = {
   market_closing_soon: 1,
   suggestion_approved: 1,
   suggestion_rejected: 0,
+  group_motion_resolved: 2,
+  group_motion_posted: 1,
+  group_mention: 1,
+  group_member_joined: 0,
 };
 
 /**

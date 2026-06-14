@@ -7,12 +7,14 @@ import { emitNotifications, type NotificationEvent } from "@/app/lib/notificatio
 import { dispatchPush } from "@/app/lib/push/service";
 import { logger } from "@/app/lib/logger";
 import { unlockThreshold } from "@/lib/rarity";
+import { getMembership } from "@/app/lib/groups/repo";
 import * as schema from "@/app/lib/schema";
 import {
   AlreadyResolvedError,
   InvalidOutcomeError,
   MarketClosedError,
   MarketNotFoundError,
+  NotGroupMemberError,
 } from "@/app/lib/errors";
 
 // Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
@@ -47,6 +49,11 @@ export async function makePrediction({
     if (!market) throw new MarketNotFoundError();
     if (market.status !== "open" || market.closeAt.getTime() <= Date.now())
       throw new MarketClosedError();
+    // Group motions are member-only: a non-member can't predict on one.
+    if (market.groupId) {
+      const membership = await getMembership({ db: tx, groupId: market.groupId, userId });
+      if (!membership || membership.status !== "active") throw new NotGroupMemberError();
+    }
     const outcome = await repo.getOutcome({ tx, outcomeId, marketId });
     if (!outcome) throw new InvalidOutcomeError();
     const prediction = await repo.upsertPrediction({ tx, userId, marketId, outcomeId });
@@ -82,6 +89,9 @@ export async function resolveMarket({
   await db.transaction(async (tx) => {
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
+    // Sandbox: a group motion is NEVER settled via the global path (it would
+    // bump global stats/cards/seasons). It resolves only via resolveGroupMotion.
+    if (market.groupId) throw new MarketNotFoundError();
     if (market.status === "resolved" || market.status === "voided")
       throw new AlreadyResolvedError();
     const outs = await repo.listOutcomes({ tx, marketId });
@@ -154,6 +164,7 @@ export async function voidMarket({
   await db.transaction(async (tx) => {
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
+    if (market.groupId) throw new MarketNotFoundError(); // group motions: sandboxed path only
     if (market.status === "resolved" || market.status === "voided")
       throw new AlreadyResolvedError();
     const predictions = await repo.listPredictions({ tx, marketId });
@@ -197,6 +208,7 @@ export async function deleteMarket({
   await db.transaction(async (tx) => {
     const market = await repo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market) throw new MarketNotFoundError();
+    if (market.groupId) throw new MarketNotFoundError(); // group motions: sandboxed path only
     if (market.status === "resolved") throw new AlreadyResolvedError();
     // One notice per distinct predictor, emitted BEFORE the delete so both
     // commit (or roll back) together. Skipped for voided markets — those

@@ -24,7 +24,12 @@ export type NotificationEvent =
   // in-app link and push URL then fall back to /profile and /notifications
   // instead of deep-linking a market page that would 404.
   | { type: "market_voided"; userId: string; marketId: string | null; questionHe: string }
-  | { type: "market_closing_soon"; userId: string; marketId: string; questionHe: string };
+  | { type: "market_closing_soon"; userId: string; marketId: string; questionHe: string }
+  // --- Groups / קואליציה ---
+  | { type: "group_motion_posted"; userId: string; groupId: string; marketId: string; questionHe: string }
+  | { type: "group_motion_resolved"; userId: string; groupId: string; marketId: string; questionHe: string; won: boolean }
+  | { type: "group_mention"; userId: string; groupId: string; marketId: string; questionHe: string; actorName: string }
+  | { type: "group_member_joined"; userId: string; groupId: string; groupNameHe: string; actorName: string };
 
 // Exported so the push dispatcher derives its `{title, body}` from the SAME
 // Hebrew copy as the in-app row — one source of truth for notification text.
@@ -71,6 +76,34 @@ export function composeNotification(e: NotificationEvent): NewNotification {
         titleHe: "תחזית נסגרת בקרוב ⏰",
         bodyHe: `הספיקו לתת מנדט לפני הסגירה · ${e.questionHe}`,
         refMarketId: e.marketId,
+      };
+    case "group_motion_posted":
+      return {
+        userId: e.userId, type: "group_motion_posted",
+        titleHe: "הצעה חדשה בקואליציה 🗳️",
+        bodyHe: e.questionHe,
+        refMarketId: e.marketId, refGroupId: e.groupId,
+      };
+    case "group_motion_resolved":
+      return {
+        userId: e.userId, type: "group_motion_resolved",
+        titleHe: e.won ? "צדקת בקואליציה! 🎯" : "הצעה בקואליציה הוכרעה",
+        bodyHe: e.questionHe,
+        refMarketId: e.marketId, refGroupId: e.groupId,
+      };
+    case "group_mention":
+      return {
+        userId: e.userId, type: "group_mention",
+        titleHe: "תויגת במליאה 💬",
+        bodyHe: `${e.actorName} הזכיר/ה אותך · ${e.questionHe}`,
+        refMarketId: e.marketId, refGroupId: e.groupId,
+      };
+    case "group_member_joined":
+      return {
+        userId: e.userId, type: "group_member_joined",
+        titleHe: "חבר/ה חדש/ה בקואליציה 👋",
+        bodyHe: `${e.actorName} הצטרף/ה ל${e.groupNameHe}`,
+        refGroupId: e.groupId,
       };
   }
 }

@@ -57,6 +57,10 @@ export const auth = betterAuth({
       handle: { type: "string", required: false, input: false },
       arena: { type: "string", required: false, input: false },
       onboardedAt: { type: "date", required: false, input: false },
+      // The user's "home" group — read by proxy.ts to land members on /g/[slug].
+      // Declared here or it won't surface on session.user. input:false → set only
+      // by our group services, never client-writable.
+      defaultGroupId: { type: "string", required: false, input: false },
     },
   },
 
