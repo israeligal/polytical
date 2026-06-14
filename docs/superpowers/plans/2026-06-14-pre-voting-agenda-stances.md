@@ -5,8 +5,10 @@
 
 ## Worktree & branch
 - **Already set up.** Session is in worktree `.claude/worktrees/agenda-stances` on branch `feat/agenda-stances`, based off `feat/bill-pages` (it carries the `bills.statusId` / `/bill/[id]` deps not yet on `main`).
-- **Dependency gate:** PR #80 (`feat/bill-pages`) must merge to `main`; then rebase this branch onto `main` and **regenerate the migration number if it collides** (memory: parallel-worktree migration collisions). Commit early/often.
-- Subagents run in the repo root, not this worktree — do isolation-sensitive steps (migration, prod apply) **inline**.
+- **Dependency gate: RESOLVED (2026-06-14).** PR #80 merged to `main` (squash `a432c55`); this branch is rebased onto current `origin/main`. `main` advanced to migration `0028_bill_details`, so the new migration is **`0029_agenda_stances`** (not 0025). Commit early/often.
+- **Re-validated against current main (2026-06-14):** stances/match/stance-widget UNCHANGED since the plan was written (citations hold). The votes domain advanced (#77 enrich, #79 itemTypeId) but `agenda_items` is still written ONLY by admin CRUD (`votes/repo.ts:341/354`) — my curation/resolution sweeps remain unclaimed. Crucially, `knesset_votes.billId` is now reliably populated from the header signal (`billId = itemTypeId===2 ? itemId : null`, see `app/lib/votes/CLAUDE.md`), so the resolution query `WHERE billId=? AND isDecisive=true` is more robust than before.
+- Subagents run in the repo root, not this worktree — implement **inline** in the worktree (TDD), do isolation-sensitive steps (migration, prod apply) inline too.
+- **Respect `app/lib/votes/CLAUDE.md`** (votes-domain conventions) and keep it fresh if I add ingest steps.
 
 ## Files to read/touch (verified this session)
 
@@ -26,7 +28,7 @@
 - `app/lib/agenda/read-repo.ts` (or extend `votes/read-repo.ts`) + test
 - `app/agenda/{page.tsx,loading.tsx}`
 - `components/agenda-stance-widget.tsx`, `components/skeletons/agenda-skeleton.tsx`
-- `drizzle/0025_agenda_stances.sql` (+ journal), `scripts/apply-agenda-migration.ts` (guarded prod applier)
+- `drizzle/0029_agenda_stances.sql` (+ journal), `scripts/apply-agenda-migration.ts` (guarded prod applier)
 
 **Modify:**
 - `app/lib/schema-votes.ts` (add `agendaStances` + `agendaItems` billId partial-unique index)
@@ -49,7 +51,7 @@
 | `logger` | `logger.ts:1-8` | structured ingest logs |
 | `agendaItems` table + `AgendaItemRow` | `schema-votes.ts:194-207`, `read-repo.ts:16` | curation/resolution/feed |
 | `Prov` interface | `normalize.ts:7` | normalize signature |
-| `getAnnouncedAgendaItems` | `read-repo.ts:243-253` | extend for the feed |
+| `getAnnouncedAgendaItems` | `read-repo.ts:290-301` (admin writes: `votes/repo.ts:341,354`) | extend for the feed |
 | decisive-vote query | `bills/repo.ts:61-66` | mirror in resolution |
 | `StanceWidget` | `components/stance-widget.tsx` | mirror as `AgendaStanceWidget` |
 | `BILL_CONTAINER` + container convention | `containers.ts:25` | add `AGENDA_CONTAINER` |
@@ -65,7 +67,7 @@ Searched `app/lib`, `app/actions`, `components`, schema files — **no existing*
 - No external HTTP API changes (OData ingest already in place; curation reads `bills` we already store).
 
 ## Fixtures
-- **Harness:** `createTestDb()` from `@/app/lib/testing/create-test-db` (PGlite, replays `drizzle/*.sql` via `migrate()`). The new `0025` migration must exist before tests run so the test DB has `agenda_stances` (schema + test DDL in lockstep — CLAUDE.md).
+- **Harness:** `createTestDb()` from `@/app/lib/testing/create-test-db` (PGlite, replays `drizzle/*.sql` via `migrate()`). The new `0029` migration must exist before tests run so the test DB has `agenda_stances` (schema + test DDL in lockstep — CLAUDE.md).
 - **Seeds** (mirror `stances/service.test.ts` `$inferInsert` helpers): `users`, `bills` (with `statusId` in/out of {113,130,114}), `agendaItems`, `knessetVotes` (with `isDecisive`), `mkVotes` (for the match-visibility assertion). No external payload fixtures needed — OData normalize shapes are already covered by existing `knesset/normalize` tests.
 
 ## Build steps (TDD order, bottom-up)
@@ -73,7 +75,7 @@ Searched `app/lib`, `app/actions`, `components`, schema files — **no existing*
 **1. Schema + migration (foundation).**
 - Add `agendaStances` pgTable to `schema-votes.ts` (mirror `userStances`): `userId` text cascade→users, `agendaItemId` uuid cascade→agendaItems.id, `stance` (userStance enum), `createdAt`/`updatedAt`; `primaryKey(userId, agendaItemId)`; `index` on `agendaItemId`.
 - Add **partial unique index** on `agendaItems.billId WHERE billId IS NOT NULL` (enables idempotent curation `onConflictDoUpdate({ target: agendaItems.billId })`). Declare **in-schema** (db:push drops migration-only indexes).
-- Generate `0025_agenda_stances.sql` via `drizzle-kit` (CI shell → `push` needs no TTY, but for a tracked migration generate the SQL; apply to prod later via guarded applier). Update `_journal.json` (idx 25).
+- Generate `0029_agenda_stances.sql` via `drizzle-kit` (CI shell → `push` needs no TTY, but for a tracked migration generate the SQL; apply to prod later via guarded applier). Update `_journal.json` (idx 29).
 - Verify `createTestDb()` migrates clean (first repo test will exercise this).
 
 **2. `agenda-stances/repo.ts` — TDD.** Write `repo.test.ts` first (toggle sets→flips→retracts on `(userId, agendaItemId)`; `getAgendaStanceCounts` GROUP BY stance). Watch fail. Implement `toggleAgendaStance` (DELETE-same-then-`insert().onConflictDoUpdate`), `getAgendaStance`, `getAgendaStancesForItems`, `getAgendaStanceCounts` — `requireUserId` guard first line of each user-scoped fn.
@@ -94,7 +96,7 @@ Searched `app/lib`, `app/actions`, `components`, schema files — **no existing*
 
 **10. Analytics.** `track()` on stance set/remove + feed view; structured `logger.info` on resolution adoption (counts adopted per item).
 
-**11. Prod migration apply (HARD GATE — after PR #80 merge + rebase).** Regenerate migration number if it collides on rebase. Apply `0025` to prod via a guarded additive-only applier (mirror `scripts/apply-bill-migration.ts`) — `assertNonProductionDb` does NOT catch the Neon host (memory), so the applier is additive-only + idempotent (skip "already exists"). New table + index only → safe.
+**11. Prod migration apply (HARD GATE — after PR #80 merge + rebase).** Regenerate migration number if it collides on rebase. Apply `0029` to prod via a guarded additive-only applier (mirror `scripts/apply-bill-migration.ts`) — `assertNonProductionDb` does NOT catch the Neon host (memory), so the applier is additive-only + idempotent (skip "already exists"). New table + index only → safe.
 
 **12. Final steps (in order).**
 - Refresh/delete any captured fixtures that differed during implementation (none expected).
@@ -125,7 +127,7 @@ Searched `app/lib`, `app/actions`, `components`, schema files — **no existing*
 | Drizzle tx + onConflictDoNothing/Update available | `votes/repo.ts:161,279`; `cards/repo.ts`; `knesset/repo.ts:93-114` |
 | Test harness (PGlite createTestDb) | `stances/service.test.ts:1-30`; `@/app/lib/testing/create-test-db` |
 | Eligible statuses present in prod (~183 bills) | queried prod K25 status distribution this session (113/130/114) |
-| Migration journal at idx 24 → new is 0025 | `drizzle/meta/_journal.json` |
+| Migration journal at idx 28 (0028_bill_details on main) → new is 0029 | `drizzle/meta/_journal.json` |
 
 **NOT verified — needs live testing:**
 | Item | How to verify | Owner |
