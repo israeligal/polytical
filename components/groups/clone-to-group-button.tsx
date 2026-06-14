@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cloneForecastToGroupAction } from "@/app/actions/groups";
@@ -12,13 +12,6 @@ export interface PickerGroup {
   slug: string;
   nameHe: string;
   emblem: string | null;
-}
-
-/** Local "YYYY-MM-DDTHH:mm" a week out — computed in an effect (Date in render is impure). */
-function defaultCloseLocal(): string {
-  const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /**
@@ -34,10 +27,6 @@ export function CloneToGroupButton({ sourceMarketId, groups }: { sourceMarketId:
   const [closeAt, setCloseAt] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setCloseAt((c) => c || defaultCloseLocal());
-  }, []);
 
   function clone(group: PickerGroup) {
     setMessage(null);
