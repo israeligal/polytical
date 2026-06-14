@@ -168,9 +168,6 @@ export function VoteHeroSpotlight({
       className="group flex flex-col rounded-card border border-border bg-card p-5 shadow-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-3 sm:p-6"
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 font-accent text-xs font-bold text-accent-foreground">
-          הצבעה מובלטת
-        </span>
         {vote.isAccepted != null && (
           <StatusChip tone={vote.isAccepted ? "positive" : "negative"}>
             {vote.isAccepted ? "התקבל" : "נדחה"}
