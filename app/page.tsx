@@ -13,7 +13,7 @@ import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
 import { LeaderboardRow } from "@/components/leaderboard-row";
-import { ArrowForward, Trophy } from "@/components/icons";
+import { ArrowForward, Ballot, Trophy } from "@/components/icons";
 import { VoteRow } from "@/components/vote-row";
 import { getVotesFeed } from "@/app/lib/votes/read-repo";
 import { formatDate } from "@/lib/time";
@@ -137,13 +137,22 @@ export default async function Home({
             <h2 className="font-display text-4xl font-black text-foreground">
               תחזיות
             </h2>
-            <Link
-              href={`/markets${active ? `?cat=${active}` : ""}`}
-              scroll={false}
-              className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
-            >
-              לכל התחזיות <ArrowForward className="h-5 w-5" />
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/suggest"
+                className="hidden items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-hover md:inline-flex"
+              >
+                <Ballot className="h-4 w-4" />
+                הצעה לסדר
+              </Link>
+              <Link
+                href={`/markets${active ? `?cat=${active}` : ""}`}
+                scroll={false}
+                className="inline-flex shrink-0 items-center gap-1.5 text-base font-bold text-primary transition-colors hover:underline"
+              >
+                לכל התחזיות <ArrowForward className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
           <div className="mb-6">
             <CategoryRail active={active} />

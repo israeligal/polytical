@@ -60,8 +60,8 @@ export async function getLeaderboard({
 }): Promise<LeaderboardEntry[]> {
   const order =
     by === "accuracy"
-      ? sql`${accuracyExpr} DESC, ${users.totalWins} DESC, ${users.id} ASC`
-      : sql`${users.totalWins} DESC, ${accuracyExpr} DESC, ${users.id} ASC`;
+      ? sql`${accuracyExpr} DESC, ${users.totalWins} DESC, ${users.createdAt} DESC`
+      : sql`${users.totalWins} DESC, ${accuracyExpr} DESC, ${users.createdAt} DESC`;
   const rows = await db
     .select({
       userId: users.id,
@@ -108,13 +108,18 @@ export async function getUserStats({
   // Rank = how many users sort strictly AHEAD of this one in the SAME order
   // getLeaderboard("wins") uses (totalWins desc, accuracy desc, id asc), + 1 — so
   // the profile rank matches the leaderboard table's row number exactly, even on ties.
+  const [userRow] = await db
+    .select({ createdAt: users.createdAt })
+    .from(users)
+    .where(eq(users.id, userId));
+
   const [higher] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(users)
     .where(sql`
       ${users.totalWins} > ${row.totalWins}
       OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} > ${row.accuracy})
-      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.id} < ${userId})
+      OR (${users.totalWins} = ${row.totalWins} AND ${accuracyExpr} = ${row.accuracy} AND ${users.createdAt} > ${userRow?.createdAt})
     `);
 
   return {

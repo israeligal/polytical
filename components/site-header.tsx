@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Ballot, PolyticalLogo, Search } from "@/components/icons";
+import { PolyticalLogo, Search } from "@/components/icons";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
@@ -45,14 +45,6 @@ export async function SiteHeader() {
               {n.label}
             </Link>
           ))}
-          {/* The community CTA — gold accent so it reads as "do something", not another nav link. */}
-          <Link
-            href="/suggest"
-            className="inline-flex items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20"
-          >
-            <Ballot className="h-4 w-4" />
-            הצעה לסדר
-          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
