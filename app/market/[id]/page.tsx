@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { formatCount } from "@/lib/format";
 import { db } from "@/app/lib/db";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
 import { getMembership, getGroupMotionPicks } from "@/app/lib/groups/repo";
+import { listMyGroups } from "@/app/lib/groups/service";
+import { CopyMotionLink } from "@/components/groups/copy-motion-link";
+import { CloneToGroupButton } from "@/components/groups/clone-to-group-button";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getUnpredictedOpenMarketCards } from "@/app/lib/markets/feed";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
@@ -35,7 +38,10 @@ export default async function MarketPage({
   // Group motions are member-only — gate access (and hide global chrome below).
   const groupId = bundle.market.groupId;
   if (groupId) {
-    const membership = session?.user ? await getMembership({ groupId, userId: session.user.id }) : null;
+    // A logged-out member following a shared vote link → bounce through login
+    // back to the motion (instead of a dead 404). Non-members still 404 below.
+    if (!session?.user) redirect(`/login?callbackUrl=${encodeURIComponent(`/market/${id}`)}`);
+    const membership = await getMembership({ groupId, userId: session.user.id });
     if (!membership || membership.status !== "active") notFound();
   }
 
@@ -49,6 +55,8 @@ export default async function MarketPage({
       : undefined;
 
   const isLoggedIn = Boolean(session?.user);
+  // Global forecasts: offer to clone into one of the viewer's groups.
+  const myGroups = !groupId && session?.user ? await listMyGroups({ userId: session.user.id }) : [];
   const predictors = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
   // The interactive deck renders only on OPEN markets — an admin-closed (or
   // draft/voided) multi must not invite picks that always fail. Past-closeAt
@@ -144,15 +152,21 @@ export default async function MarketPage({
             {/* In focus on this forecast — surface the CTA inline so mobile
                 doesn't need the hamburger to reach it (desktop already has
                 it in the header nav). Hidden on group motions (no global suggest). */}
-            {!groupId && (
-              <Link
-                href="/suggest"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20 md:hidden"
-              >
-                <Ballot className="h-4 w-4" />
-                הצעה לסדר
-              </Link>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Global forecast: bring it into one of your coalitions. */}
+              {!groupId && isLoggedIn && <CloneToGroupButton sourceMarketId={market.id} groups={myGroups} />}
+              {!groupId && (
+                <Link
+                  href="/suggest"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20 md:hidden"
+                >
+                  <Ballot className="h-4 w-4" />
+                  הצעה לסדר
+                </Link>
+              )}
+              {/* Group motions: share the vote link with fellow members. */}
+              {groupId && <CopyMotionLink marketId={market.id} />}
+            </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -194,8 +208,8 @@ export default async function MarketPage({
                   questions={deckQuestions}
                   politicians={deckPoliticians}
                   loggedIn={isLoggedIn}
-                  feedHref="/markets"
-                  feedLabel="חזרה לתחזיות"
+                  feedHref={groupId ? `/g/by-id/${groupId}` : "/markets"}
+                  feedLabel={groupId ? "חזרה לקואליציה" : "חזרה לתחזיות"}
                 />
               </div>
             </>

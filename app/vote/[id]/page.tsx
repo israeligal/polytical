@@ -10,6 +10,8 @@ import { ChevronForward } from "@/components/icons";
 import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
 import { getStanceState } from "@/app/lib/stances/service";
+import { getMyGroupsVoteStances } from "@/app/lib/groups/stance-service";
+import { GroupVoteStances } from "@/components/groups/group-vote-stances";
 import { QuestionDeck } from "@/components/question-deck";
 import { voteToOwnDeckQuestion, deckVoteToQueueQuestion } from "@/app/lib/deck/build";
 import { VoteDescription } from "@/components/vote-description";
@@ -53,6 +55,13 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
     session?.user && vote.isDecisive
       ? await getStanceState({ userId: session.user.id, voteId: vote.voteId })
       : null;
+
+  // "How my coalitions voted" — only groups where the viewer shares stances
+  // (the service gate drops the rest); empty for everyone else.
+  const myGroupStances =
+    session?.user && vote.isDecisive
+      ? await getMyGroupsVoteStances({ userId: session.user.id, voteId: vote.voteId })
+      : [];
 
   // Deck queue: unanswered decisive votes for logged-in users (beyond this one).
   const queueVotes =
@@ -119,6 +128,8 @@ export default async function VotePage({ params }: { params: Promise<{ id: strin
               />
             </div>
           )}
+
+          <GroupVoteStances groups={myGroupStances} />
 
           <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
             {isPending ? (

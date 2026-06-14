@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/app/lib/rate-limit";
 import { createGroup, joinGroup, leaveGroup } from "@/app/lib/groups/service";
 import { createGroupMotion, resolveGroupMotion } from "@/app/lib/groups/motions";
 import { setDefaultGroup, getMembership } from "@/app/lib/groups/repo";
+import { getMarketBundle } from "@/app/lib/markets/repo";
 import {
   GroupNotFoundError,
   NotGroupMemberError,
@@ -180,6 +181,64 @@ export async function createGroupMotionAction({
     if (e instanceof ClosePastError) return { ok: false, message: "תאריך ההכרעה חייב להיות בעתיד" };
     if (e instanceof OutcomeCountError) return { ok: false, message: "הצעה עם כמה תשובות צריכה 2–8 תשובות" };
     if (e instanceof OutcomeLabelError) return { ok: false, message: "כל תשובה צריכה תווית ייחודית של עד 40 תווים" };
+    if (e instanceof DailySuggestionLimitError) return { ok: false, message: "הגעתם למכסת ההצעות היומית בקואליציה" };
+    throw e;
+  }
+  revalidatePath(`/g/${slug}`);
+  return { ok: true, marketId };
+}
+
+/**
+ * Clone a GLOBAL forecast into one of the caller's groups as a new group motion
+ * (non-destructive — the source market is untouched). Re-reads the source
+ * server-side (never trusts the client); rejects cloning a group motion.
+ */
+export async function cloneForecastToGroupAction({
+  groupId,
+  slug,
+  sourceMarketId,
+  proposedCloseAt,
+}: {
+  groupId: string;
+  slug: string;
+  sourceMarketId: string;
+  proposedCloseAt: string;
+}): Promise<MotionActionResult> {
+  const s = await getSession();
+  if (!s?.user) return { ok: false, message: "התחברו" };
+
+  const limit = checkRateLimit({ key: `group-motion:${s.user.id}`, max: 8, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) return { ok: false, message: "יותר מדי הצעות — נסו שוב מאוחר יותר" };
+
+  // Authoritative re-read — the question/outcomes/politicians come from the DB,
+  // not the client. A group motion can't be cloned globally.
+  const bundle = await getMarketBundle({ marketId: sourceMarketId });
+  if (!bundle || bundle.market.groupId) return { ok: false, message: "התחזית לא נמצאה" };
+
+  const isMulti = bundle.market.type === "multi";
+  let marketId: string;
+  try {
+    const res = await createGroupMotion({
+      userId: s.user.id,
+      groupId,
+      questionHe: bundle.market.questionHe,
+      category: bundle.market.category,
+      closeAt: new Date(proposedCloseAt),
+      outcomes: isMulti
+        ? bundle.outcomes.map((o) => ({ labelHe: o.labelHe, personId: o.personId ?? undefined }))
+        : null,
+      personIds: bundle.personIds,
+    });
+    marketId = res.marketId;
+  } catch (e) {
+    if (e instanceof NotGroupMemberError) return { ok: false, message: "רק חברי הקואליציה יכולים להביא תחזית" };
+    if (e instanceof SuggestionTooShortError) return { ok: false, message: "השאלה קצרה מדי" };
+    if (e instanceof SuggestionTooLongError) return { ok: false, message: "השאלה ארוכה מדי" };
+    if (e instanceof InvalidCategoryError) return { ok: false, message: "קטגוריה לא תקינה" };
+    if (e instanceof CloseRequiredError) return { ok: false, message: "בחרו תאריך הכרעה" };
+    if (e instanceof ClosePastError) return { ok: false, message: "תאריך ההכרעה חייב להיות בעתיד" };
+    if (e instanceof OutcomeCountError) return { ok: false, message: "אפשרויות התשובה אינן תקינות" };
+    if (e instanceof OutcomeLabelError) return { ok: false, message: "אפשרויות התשובה אינן תקינות" };
     if (e instanceof DailySuggestionLimitError) return { ok: false, message: "הגעתם למכסת ההצעות היומית בקואליציה" };
     throw e;
   }

@@ -5,7 +5,7 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 // markets/service imports push/service (resolveMarket path); mock the boundary.
 vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 
-import { users, markets, outcomes, bets, cardProgress } from "@/app/lib/schema";
+import { users, markets, outcomes, bets, cardProgress, marketPoliticians } from "@/app/lib/schema";
 import { createGroup, joinGroup, leaveGroup } from "./service";
 import { createGroupMotion, resolveGroupMotion } from "./motions";
 import { getGroupScoreboard, getGroupMotionPicks, listGroupMarkets, getMembership } from "./repo";
@@ -45,6 +45,26 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await h.close();
+});
+
+test("createGroupMotion carries personId-linked outcomes + featured MKs (clone gap)", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  const { marketId } = await createGroupMotion({
+    db: h.db, userId: "owner", groupId: g.id,
+    questionHe: "מי ירכיב את הממשלה הבאה?", category: "coalition",
+    closeAt: new Date(Date.now() + 86_400_000),
+    outcomes: [
+      { labelHe: "נתניהו", personId: 101 },
+      { labelHe: "גנץ", personId: 202 },
+      { labelHe: "אחר" },
+    ],
+    personIds: [303], // an extra featured MK not tied to an outcome
+  });
+  const outs = await h.db.select().from(outcomes).where(eq(outcomes.marketId, marketId)).orderBy(outcomes.ordinal);
+  expect(outs.map((o) => o.personId)).toEqual([101, 202, null]); // per-outcome personId preserved
+  const links = await h.db.select().from(marketPoliticians).where(eq(marketPoliticians.marketId, marketId));
+  expect(links.map((l) => l.personId).sort((a, b) => a - b)).toEqual([101, 202, 303]); // union, deduped
 });
 
 test("createGroupMotion: a member creates a live group-scoped market; a non-member can't", async () => {
