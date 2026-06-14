@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
@@ -98,6 +98,26 @@ export async function getMembership({
     .from(groupMembers)
     .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, requireUserId(userId))));
   return row ?? null;
+}
+
+/** Active members of a group whose handle is in `handles` — resolves @-mentions
+ *  to fellow members only (you can't mention a non-member into a group thread). */
+export async function getActiveMembersByHandles({
+  db = defaultDb,
+  groupId,
+  handles,
+}: {
+  db?: AppDb;
+  groupId: string;
+  handles: string[];
+}): Promise<{ userId: string; handle: string }[]> {
+  if (handles.length === 0) return [];
+  const rows = await db
+    .select({ userId: users.id, handle: users.handle })
+    .from(groupMembers)
+    .innerJoin(users, eq(users.id, groupMembers.userId))
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active"), inArray(users.handle, handles)));
+  return rows.filter((r): r is { userId: string; handle: string } => r.handle != null);
 }
 
 /** Active roster (for the members list); newest-joined last. */

@@ -444,6 +444,12 @@ export async function listManageableMarkets({
   }));
 }
 
+/** A single market row by id (light read; null if missing). */
+export async function getMarket({ db = defaultDb, marketId }: { db?: DB; marketId: string }): Promise<MarketRow | null> {
+  const [row] = await db.select().from(markets).where(eq(markets.id, marketId));
+  return row ?? null;
+}
+
 /** One market plus its ordered outcomes and featured politician personIds. */
 export async function getMarketBundle({
   db = defaultDb,
