@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBillById } from "@/app/lib/bills/repo";
 import { knessetBillUrl } from "@/app/lib/bills/external";
+import { getAnnouncedAgendaItemByBill } from "@/app/lib/agenda/read-repo";
+import { getAgendaStanceState } from "@/app/lib/agenda-stances/service";
+import { AgendaStanceWidget } from "@/components/agenda-stance-widget";
+import { getSession } from "@/lib/auth";
 import { ChevronForward, ArrowUpRight, Document } from "@/components/icons";
 import { formatDate } from "@/lib/time";
 import { BILL_CONTAINER } from "@/components/skeletons/containers";
@@ -9,8 +13,19 @@ import { BILL_CONTAINER } from "@/components/skeletons/containers";
 export default async function BillPage({ params }: { params: Promise<{ billId: string }> }) {
   const { billId: raw } = await params;
   const billId = Number(raw);
-  const bill = Number.isInteger(billId) ? await getBillById({ billId }) : null;
+  if (!Number.isInteger(billId)) notFound();
+  const [bill, agendaItem] = await Promise.all([
+    getBillById({ billId }),
+    getAnnouncedAgendaItemByBill({ billId }),
+  ]);
   if (!bill) notFound();
+
+  // Pre-vote widget: only when the bill has an announced agenda item (curated as
+  // approaching its decisive vote). Session/stance are loaded only then.
+  const session = agendaItem ? await getSession() : null;
+  const agendaState = agendaItem && session?.user
+    ? await getAgendaStanceState({ userId: session.user.id, agendaItemId: agendaItem.id })
+    : null;
 
   const meta: { label: string; value: string }[] = [];
   if (bill.subTypeDesc) meta.push({ label: "סוג", value: bill.subTypeDesc });
@@ -105,6 +120,19 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
             )}
             <span className="mt-1 block text-xs font-semibold text-primary">לצפייה בהצבעה ולקביעת עמדה ←</span>
           </Link>
+        </>
+      )}
+
+      {agendaItem && (
+        <>
+          <h2 className="mb-1 mt-8 font-display text-xl font-bold text-foreground">על סדר היום</h2>
+          <AgendaStanceWidget
+            agendaItemId={agendaItem.id}
+            billId={bill.billId}
+            initialStance={agendaState?.stance ?? null}
+            initialAggregate={agendaState?.aggregate ?? null}
+            loggedIn={Boolean(session?.user)}
+          />
         </>
       )}
 

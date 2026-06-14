@@ -4,6 +4,7 @@ import { HomeSkeleton } from "./home-skeleton";
 import { MyMatchSkeleton, VoteDetailSkeleton, VotesFeedSkeleton } from "./votes-skeletons";
 import { CollectionSkeleton, PoliticianSkeleton, PoliticiansSkeleton } from "./politician-skeletons";
 import { BillSkeleton } from "./bill-skeleton";
+import { AgendaSkeleton } from "./agenda-skeleton";
 import { MarketSkeleton, MarketsPageSkeleton, NotificationsSkeleton, ProfileSkeleton, SearchSkeleton } from "./misc-skeletons";
 
 // Every route skeleton, browsable side-by-side with the app. THE REVIEW RULE:
@@ -60,6 +61,11 @@ export const Politician: Story = {
 export const Bill: Story = {
   render: () => <BillSkeleton />,
   play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען הצעת חוק"),
+};
+
+export const Agenda: Story = {
+  render: () => <AgendaSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען את סדר היום"),
 };
 
 export const PoliticiansGallery: Story = {
