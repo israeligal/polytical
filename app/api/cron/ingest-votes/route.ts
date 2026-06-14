@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ingestRecentVotes } from "@/app/lib/votes/service";
+import { resolveAgendaItems } from "@/app/lib/agenda/resolve";
 import { logger } from "@/app/lib/logger";
 
 // Scheduled vote ingest (vercel.json: every 2h). Last-7-days incremental —
@@ -21,8 +22,11 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   try {
     const result = await ingestRecentVotes();
-    logger.info("cron.ingest_votes.done", { ...result });
-    return NextResponse.json({ ok: true, ...result });
+    // A freshly-landed decisive vote may close out a pre-voting agenda item —
+    // adopt its stances now so matching reflects them within the cron cadence.
+    const agenda = await resolveAgendaItems();
+    logger.info("cron.ingest_votes.done", { ...result, agenda });
+    return NextResponse.json({ ok: true, ...result, agenda });
   } catch (err) {
     // Surface a 500 so Vercel cron marks the run failed (visible in the dashboard).
     logger.error("cron.ingest_votes.failed", { err: String(err) });
