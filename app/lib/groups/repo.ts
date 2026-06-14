@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
@@ -193,7 +193,9 @@ export async function countGroupMotionsSince({
   const [row] = await db
     .select({ n: count() })
     .from(markets)
-    .where(and(eq(markets.groupId, groupId), eq(markets.createdBy, requireUserId(userId)), sql`${markets.createdAt} >= ${since}`));
+    // gte (not a raw sql`>= ${since}`) so the Date binds correctly on postgres-js
+    // (prod) as well as PGLite — mirrors suggestions.countSuggestionsSince.
+    .where(and(eq(markets.groupId, groupId), eq(markets.createdBy, requireUserId(userId)), gte(markets.createdAt, since)));
   return row?.n ?? 0;
 }
 
