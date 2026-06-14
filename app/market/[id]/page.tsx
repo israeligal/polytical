@@ -194,8 +194,8 @@ export default async function MarketPage({
                   questions={deckQuestions}
                   politicians={deckPoliticians}
                   loggedIn={isLoggedIn}
-                  feedHref="/markets"
-                  feedLabel="חזרה לתחזיות"
+                  feedHref={groupId ? `/g/by-id/${groupId}` : "/markets"}
+                  feedLabel={groupId ? "חזרה לקואליציה" : "חזרה לתחזיות"}
                 />
               </div>
             </>

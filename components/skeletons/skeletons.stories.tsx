@@ -6,6 +6,7 @@ import { CollectionSkeleton, PoliticianSkeleton, PoliticiansSkeleton } from "./p
 import { BillSkeleton } from "./bill-skeleton";
 import { AgendaSkeleton } from "./agenda-skeleton";
 import { MarketSkeleton, MarketsPageSkeleton, NotificationsSkeleton, ProfileSkeleton, SearchSkeleton } from "./misc-skeletons";
+import { GroupsListSkeleton, GroupHomeSkeleton, GroupFormSkeleton } from "./groups-skeleton";
 
 // Every route skeleton, browsable side-by-side with the app. THE REVIEW RULE:
 // when a page's sections change, open its story next to the real page — the
@@ -96,4 +97,19 @@ export const Notifications: Story = {
 export const MarketsFeed: Story = {
   render: () => <MarketsPageSkeleton />,
   play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען תחזיות"),
+};
+
+export const GroupsList: Story = {
+  render: () => <GroupsListSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען קואליציות"),
+};
+
+export const GroupHome: Story = {
+  render: () => <GroupHomeSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען קואליציה"),
+};
+
+export const GroupForm: Story = {
+  render: () => <GroupFormSkeleton />,
+  play: async ({ canvasElement }) => expectStatusRegion(canvasElement, "טוען טופס"),
 };
