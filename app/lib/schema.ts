@@ -1,7 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
   pgTable, text, timestamp, boolean, integer, bigint, jsonb, date, uuid, pgEnum, index, uniqueIndex, unique, primaryKey,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+// `groups` lives in ./schema-groups (also re-exported at the bottom). Imported
+// here only so markets.groupId / user.defaultGroupId can carry a real FK; the
+// `() => groups.id` thunks defer access past module-eval, so the import cycle
+// (schema ↔ schema-groups, same shape as schema ↔ schema-votes) is safe.
+import { groups } from "./schema-groups";
 
 // --- Better Auth tables ---
 // Canonical Better Auth Drizzle schema (pg). Generated/maintained to match
@@ -29,6 +35,12 @@ export const users = pgTable("user", {
   // none = all on). Gates web-push only — the in-app log always records the event.
   // Stored as text[] (the enum is declared later in this file); validated in the service.
   mutedPushTypes: text("mutedPushTypes").array().notNull().default(sql`'{}'::text[]`),
+  // --- Groups / קואליציה (Phase: groups) ---
+  // The user's "home" group: when set, login lands on /g/[slug] (proxy-driven,
+  // loop-guarded). Auto-set to a user's first group; cleared (set null) if that
+  // group is deleted. Must also be declared in lib/auth.ts additionalFields to
+  // surface on session.user for the proxy gate.
+  defaultGroupId: uuid("defaultGroupId").references((): AnyPgColumn => groups.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -310,9 +322,17 @@ export const markets = pgTable("markets", {
   // Set once when the closing-soon push has been sent for this market, so the
   // cron sweep is idempotent and never re-notifies the same bettors.
   closingSoonNotifiedAt: timestamp("closingSoonNotifiedAt"),
+  // Audience scope (Phase: groups). NULL = a global/public market (the default,
+  // every existing row). Set = a group-only הצעה, visible/predictable only to
+  // that group's members and SANDBOXED from all global feeds, the leaderboard,
+  // card progress, seasons, and the admin queue. The single spine of feed
+  // isolation: every GLOBAL market read filters `isNull(markets.groupId)`.
+  groupId: uuid("groupId").references((): AnyPgColumn => groups.id, { onDelete: "cascade" }),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [
   index("markets_searchtext_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
+  // Backs the per-group motions feed (listGroupMarkets).
+  index("markets_group_idx").on(t.groupId, t.status, t.createdAt),
 ]);
 
 export const outcomes = pgTable("outcomes", {
@@ -418,6 +438,11 @@ export const notificationType = pgEnum("notification_type", [
   "suggestion_rejected",
   "market_voided",       // a market the user predicted on was voided
   "market_closing_soon", // a market the user predicted on is about to close
+  // --- Groups / קואליציה ---
+  "group_motion_posted",   // a new הצעה went live in a group you're in
+  "group_motion_resolved", // a group motion you predicted resolved (your result)
+  "group_mention",         // you were @-mentioned in a מליאה thread
+  "group_member_joined",   // someone joined a group you're in
 ]);
 
 export const notifications = pgTable("notifications", {
@@ -429,6 +454,7 @@ export const notifications = pgTable("notifications", {
   refMarketId: uuid("refMarketId"),       // display-only links; no FK
   refBetId: uuid("refBetId"),
   refSuggestionId: uuid("refSuggestionId"),
+  refGroupId: uuid("refGroupId"),         // group notifications link to /g/[slug]
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [
@@ -530,3 +556,7 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 // ceiling). Re-exported here so `import * as schema` callers and drizzle() stay
 // whole; the `() => users.id` FK thunks make the import cycle safe.
 export * from "./schema-votes";
+
+// Groups / קואליציה domain — same split + cycle-safe FK-thunk pattern. Re-exported
+// so `import * as schema` and drizzle() include groups/group_members.
+export * from "./schema-groups";

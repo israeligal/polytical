@@ -204,6 +204,13 @@
       "when": 1781900000004,
       "tag": "0028_bill_details",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1781463899928,
+      "tag": "0029_groups_coalition",
+      "breakpoints": true
     }
   ]
 }

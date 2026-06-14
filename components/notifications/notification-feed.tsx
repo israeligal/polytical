@@ -3,27 +3,24 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markNotificationReadAction, markAllReadAction } from "@/app/actions/notifications";
+import type { NotificationType } from "@/app/lib/notifications/repo";
 import { EmptyState } from "@/components/empty-state";
 import { formatDateTime } from "@/lib/time";
 
 export interface FeedItem {
   id: string;
-  type:
-    | "bet_won"
-    | "market_resolved"
-    | "suggestion_approved"
-    | "suggestion_rejected"
-    | "market_voided"
-    | "market_closing_soon";
+  // Derived from the schema enum so it can never drift from notificationType.
+  type: NotificationType;
   titleHe: string;
   bodyHe: string;
   refMarketId: string | null;
+  refGroupId: string | null;
   read: boolean;
   createdAtIso: string;
 }
 
 // Left-accent color per type: correct-guesses/approvals mint, rejections coral,
-// resolved/voided neutral, closing-soon gold (call-to-action).
+// resolved/voided neutral, closing-soon/new-motion gold (call-to-action).
 const ACCENT: Record<FeedItem["type"], string> = {
   bet_won: "border-s-positive",
   suggestion_approved: "border-s-positive",
@@ -31,6 +28,10 @@ const ACCENT: Record<FeedItem["type"], string> = {
   market_resolved: "border-s-border",
   market_voided: "border-s-border",
   market_closing_soon: "border-s-accent",
+  group_motion_posted: "border-s-accent",
+  group_motion_resolved: "border-s-positive",
+  group_mention: "border-s-border",
+  group_member_joined: "border-s-border",
 };
 
 export function NotificationFeed({ items }: { items: FeedItem[] }) {
@@ -38,7 +39,14 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
   const [pending, startTransition] = useTransition();
 
   function open(item: FeedItem) {
-    const href = item.refMarketId ? `/market/${item.refMarketId}` : "/profile";
+    // Motion notifications carry a market → the (membership-gated) motion page.
+    // A memberless group event (e.g. someone joined) routes via the id→slug
+    // resolver (/g/by-id/[id]); otherwise fall back to the profile.
+    const href = item.refMarketId
+      ? `/market/${item.refMarketId}`
+      : item.refGroupId
+        ? `/g/by-id/${item.refGroupId}`
+        : "/profile";
     // Navigate first — marking-read is best-effort and must never block or abort
     // the navigation (a failed read-mark previously left the user stuck).
     if (!item.read) {
