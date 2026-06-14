@@ -1,6 +1,10 @@
-import { beforeEach, afterEach, expect, test } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { eq, and } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
+
+// joinGroup fans out group_member_joined pushes after commit — mock the boundary.
+vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
+
 import { users, groups, groupMembers } from "@/app/lib/schema";
 import {
   createGroup, joinGroup, leaveGroup, removeMember, getGroupForMember,

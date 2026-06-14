@@ -2,6 +2,9 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 import * as groupsRepo from "@/app/lib/groups/repo";
 import * as marketsRepo from "@/app/lib/markets/repo";
+import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { logger } from "@/app/lib/logger";
 import { CATEGORIES } from "@/lib/categories";
 import {
   MIN_SUGGESTION_LEN,
@@ -96,16 +99,40 @@ export async function createGroupMotion({
   });
   if (filedToday >= MAX_GROUP_MOTIONS_PER_DAY) throw new DailySuggestionLimitError();
 
-  return marketsRepo.createMarket({
-    db,
-    groupId,
-    questionHe: question,
-    category,
-    type: multi ? "multi" : "binary",
-    closeAt,
-    createdBy: userId,
-    outcomes: rows,
+  // Create the market + notify members in ONE tx (the motion and its "new
+  // motion" pings commit together); push fans out after commit.
+  let dispatched: NotificationEvent[] = [];
+  const result = await db.transaction(async (tx) => {
+    const created = await marketsRepo.createMarket({
+      tx,
+      groupId,
+      questionHe: question,
+      category,
+      type: multi ? "multi" : "binary",
+      closeAt,
+      createdBy: userId,
+      outcomes: rows,
+    });
+    const members = await groupsRepo.listActiveMembers({ db: tx, groupId });
+    const events: NotificationEvent[] = members
+      .filter((m) => m.userId !== userId)
+      .map((m) => ({
+        type: "group_motion_posted" as const,
+        userId: m.userId,
+        groupId,
+        marketId: created.marketId,
+        questionHe: question,
+      }));
+    await emitNotifications({ tx, events });
+    dispatched = events;
+    return created;
   });
+  try {
+    await dispatchPush({ db, events: dispatched });
+  } catch (e) {
+    logger.error("push.group_motion_posted_dispatch_failed", { groupId, err: String(e) });
+  }
+  return result;
 }
 
 /**
@@ -135,6 +162,7 @@ export async function resolveGroupMotion({
   if (!actor || actor.status !== "active") throw new NotGroupMemberError();
   if (actor.role !== "owner" && actor.role !== "admin") throw new InsufficientGroupRoleError();
 
+  let dispatched: NotificationEvent[] = [];
   await db.transaction(async (tx) => {
     const market = await marketsRepo.getMarketForUpdate({ tx, marketId }); // lock MARKET first
     if (!market || market.groupId !== groupId) throw new MarketNotFoundError();
@@ -144,10 +172,28 @@ export async function resolveGroupMotion({
     if (!outs.some((o) => o.id === winningOutcomeId)) throw new InvalidOutcomeError();
 
     const predictions = await marketsRepo.listPredictions({ tx, marketId });
+    const events: NotificationEvent[] = [];
     for (const p of predictions) {
-      await groupsRepo.bumpGroupStats({ tx, groupId, userId: p.userId, correct: p.outcomeId === winningOutcomeId });
+      const won = p.outcomeId === winningOutcomeId;
+      await groupsRepo.bumpGroupStats({ tx, groupId, userId: p.userId, correct: won });
+      events.push({
+        type: "group_motion_resolved",
+        userId: p.userId,
+        groupId,
+        marketId,
+        questionHe: market.questionHe,
+        won,
+      });
     }
     await marketsRepo.markResolved({ tx, marketId, winningOutcomeId, sourceUrl, note });
     // NOTE: deliberately NO bumpUserStats / card progress / seasons — sandbox.
+    await emitNotifications({ tx, events });
+    dispatched = events;
   });
+  try {
+    await dispatchPush({ db, events: dispatched });
+  } catch (e) {
+    logger.error("push.group_motion_resolved_dispatch_failed", { marketId, err: String(e) });
+  }
 }
+

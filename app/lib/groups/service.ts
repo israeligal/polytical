@@ -3,6 +3,9 @@ import type { AppDb } from "@/app/lib/db-utils";
 import * as repo from "@/app/lib/groups/repo";
 import type { GroupRow, GroupMemberRow } from "@/app/lib/groups/repo";
 import { createGroupSchema, type CreateGroupInput } from "@/app/lib/groups/schemas";
+import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { logger } from "@/app/lib/logger";
 import {
   GroupNotFoundError,
   NotGroupMemberError,
@@ -98,10 +101,30 @@ export async function joinGroup({
   if ((await repo.countActiveMemberships({ db, userId })) >= MAX_GROUPS_JOINED) throw new GroupCapError();
   if ((await repo.countActiveMembers({ db, groupId: group.id })) >= MAX_GROUP_MEMBERS) throw new GroupCapError();
 
+  let dispatched: NotificationEvent[] = [];
   await db.transaction(async (tx) => {
     await repo.addOrReactivateMember({ tx, groupId: group.id, userId, role: "member" });
     await repo.setDefaultGroupIfUnset({ tx, userId, groupId: group.id });
+    // Notify existing active members that someone joined (excluding the joiner).
+    const members = await repo.listActiveMembers({ db: tx, groupId: group.id });
+    const actorName = members.find((m) => m.userId === userId)?.name ?? "חבר/ה חדש/ה";
+    const events: NotificationEvent[] = members
+      .filter((m) => m.userId !== userId)
+      .map((m) => ({
+        type: "group_member_joined" as const,
+        userId: m.userId,
+        groupId: group.id,
+        groupNameHe: group.nameHe,
+        actorName,
+      }));
+    await emitNotifications({ tx, events });
+    dispatched = events;
   });
+  try {
+    await dispatchPush({ db, events: dispatched });
+  } catch (e) {
+    logger.error("push.group_join_dispatch_failed", { groupId: group.id, err: String(e) });
+  }
   return group;
 }
 
