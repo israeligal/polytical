@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, unique, primaryKey, check,
+  pgTable, text, timestamp, boolean, integer, date, uuid, pgEnum, index, uniqueIndex, unique, primaryKey, check,
 } from "drizzle-orm/pg-core";
 import { users } from "./schema";
 
@@ -239,17 +239,46 @@ export const voteItems = pgTable(
 // Upcoming/announced plenum items (v1: read-only list; admin-curated + future
 // ingest). Admin-authored rows have no Knesset itemId and carry
 // sourceDataset='admin' + the admin route as sourceUrl.
-export const agendaItems = pgTable("agenda_items", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  itemId: integer("itemId").unique(),                  // KNS item id; null for admin-added rows
-  titleHe: text("titleHe").notNull(),
-  expectedDate: date("expectedDate"),
-  billId: integer("billId"),                           // -> bills.billId (FK-by-value); UNWIRED until P1 pre-voting (spec P1)
-  status: agendaItemStatus("status").notNull().default("announced"),
-  addedBy: agendaItemSource("addedBy").notNull(),
-  linkedVoteId: integer("linkedVoteId"),               // -> knesset_votes.voteId; UNWIRED until P1 pre-voting (spec P1)
-  sourceDataset: text("sourceDataset").notNull(),
-  sourceUrl: text("sourceUrl").notNull(),
-  fetchedAt: timestamp("fetchedAt").notNull(),
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-});
+export const agendaItems = pgTable(
+  "agenda_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: integer("itemId").unique(),                  // KNS item id; null for admin-added rows
+    titleHe: text("titleHe").notNull(),
+    expectedDate: date("expectedDate"),
+    billId: integer("billId"),                           // -> bills.billId (FK-by-value); wired by the ingest curation sweep (pre-voting)
+    status: agendaItemStatus("status").notNull().default("announced"),
+    addedBy: agendaItemSource("addedBy").notNull(),
+    linkedVoteId: integer("linkedVoteId"),               // -> knesset_votes.voteId; set by the resolution sweep when the decisive vote lands (pre-voting)
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => [
+    // One agenda row per bill — lets the curation sweep upsert idempotently on
+    // billId (ON CONFLICT). Partial: admin-added rows with no bill are unaffected.
+    uniqueIndex("agenda_items_bill_uq").on(t.billId).where(sql`${t.billId} is not null`),
+  ],
+);
+
+// A user's pre-vote position (בעד/נגד) on an UPCOMING bill's agenda item — the
+// same civic stance as user_stances, but staked before the plenum vote exists.
+// On the decisive vote the resolution sweep adopts each row into user_stances
+// (keyed by linkedVoteId), after which the match engine sees it like any other
+// stance. Same privacy contract as user_stances: k-anon aggregates only,
+// direction never leaves the DB, cascade-deleted with the account and the item.
+export const agendaStances = pgTable(
+  "agenda_stances",
+  {
+    userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    agendaItemId: uuid("agendaItemId").notNull().references(() => agendaItems.id, { onDelete: "cascade" }),
+    stance: userStance("stance").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.agendaItemId] }),
+    index("agenda_stances_item_idx").on(t.agendaItemId),   // community-aggregate scans
+  ],
+);
