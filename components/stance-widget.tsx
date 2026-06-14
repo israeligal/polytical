@@ -10,8 +10,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { setStanceAction } from "@/app/actions/stances";
-
-type Stance = "for" | "against";
+import { StancePill, type Stance } from "@/components/stance-pill";
 
 interface Progress {
   scoreableCount: number;
@@ -74,32 +73,28 @@ export function StanceWidget({
     });
   }
 
-  const pill = (value: Stance, label: string, selectedCls: string) => (
-    <button
-      type="button"
-      onClick={() => cast(value)}
-      disabled={pending}
-      aria-pressed={stance === value}
-      className={`flex-1 rounded-full border-2 px-5 py-2.5 text-sm font-bold transition-all disabled:opacity-60 ${
-        stance === value
-          ? selectedCls
-          : value === "for"
-            ? "border-positive bg-positive-soft text-positive hover:-translate-y-0.5"
-            : "border-negative bg-negative-soft text-negative hover:-translate-y-0.5"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   const remaining = progress ? Math.max(0, progress.unlockThreshold - progress.scoreableCount) : null;
 
   return (
     <div className="mt-4 rounded-xl border border-border bg-card p-4">
       <p className="mb-3 text-sm font-semibold text-foreground">מה העמדה שלכם?</p>
       <div className="flex gap-3" role="group" aria-label="קביעת עמדה">
-        {pill("for", stance === "for" ? "בעד ✓" : "בעד", "border-positive bg-positive text-positive-foreground")}
-        {pill("against", stance === "against" ? "נגד ✓" : "נגד", "border-negative bg-negative text-negative-foreground")}
+        <StancePill
+          value="for"
+          label={stance === "for" ? "בעד ✓" : "בעד"}
+          pressed={stance === "for"}
+          disabled={pending}
+          selectedClassName="border-positive bg-positive text-positive-foreground"
+          onSelect={cast}
+        />
+        <StancePill
+          value="against"
+          label={stance === "against" ? "נגד ✓" : "נגד"}
+          pressed={stance === "against"}
+          disabled={pending}
+          selectedClassName="border-negative bg-negative text-negative-foreground"
+          onSelect={cast}
+        />
       </div>
       {stance != null && (
         <p className="mt-2 text-xs text-muted-foreground">לחיצה חוזרת על העמדה שבחרתם מוחקת אותה.</p>
