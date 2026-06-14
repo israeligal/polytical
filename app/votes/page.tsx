@@ -4,6 +4,7 @@ import {
   getAnnouncedAgendaItems, getFeaturedVotes, getVotesFeed, getVotesFreshness,
 } from "@/app/lib/votes/read-repo";
 import { VoteRow } from "@/components/vote-row";
+import { VoteHeroSpotlight } from "@/components/hero";
 import { EmptyState } from "@/components/empty-state";
 import { track } from "@/app/lib/track";
 import { getSession } from "@/lib/auth";
@@ -55,7 +56,23 @@ export default async function VotesPage({
     ? await getStancesForVotes({ userId: session.user.id, voteIds: allIds })
     : new Map<number, "for" | "against">();
 
+  // Hero: first admin-featured vote, or first feed vote on page 1 (not paginated views).
+  const heroVote = featured[0] ?? (!before ? (feed.votes[0] ?? null) : null);
+  const restFeatured = featured.slice(heroVote && heroVote === featured[0] ? 1 : 0);
+  const feedVotes = heroVote && !featured[0]
+    ? feed.votes.slice(1)
+    : feed.votes;
+
   return (
+    <>
+      {heroVote && (
+        <section className="border-b border-border bg-muted">
+          <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+            <VoteHeroSpotlight vote={heroVote} dateHe={formatDate(heroVote.voteDate)} />
+          </div>
+        </section>
+      )}
+
     <main className={VOTES_PAGE_CONTAINER}>
       <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -112,11 +129,11 @@ export default async function VotesPage({
         </div>
       )}
 
-      {featured.length > 0 && (
+      {restFeatured.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 font-display text-xl font-bold text-foreground">מצביעים על זה</h2>
           <div className="grid gap-3">
-            {featured.map((v) => (
+            {restFeatured.map((v) => (
               <VoteRow
                 key={v.voteId}
                 vote={{ ...v, siblingCount: 0 }}
@@ -130,7 +147,7 @@ export default async function VotesPage({
 
       <section className="min-h-[24rem]">
         {!before && <h2 className="mb-3 font-display text-xl font-bold text-foreground">הצבעות אחרונות</h2>}
-        {feed.votes.length === 0 ? (
+        {feedVotes.length === 0 ? (
           <EmptyState>
             {accepted !== undefined || withBreakdown
               ? "אין הצבעות תואמות לסינון הזה."
@@ -138,7 +155,7 @@ export default async function VotesPage({
           </EmptyState>
         ) : (
           <div className="grid gap-3">
-            {feed.votes.map((v) => (
+            {feedVotes.map((v) => (
               <VoteRow key={v.voteId} vote={v} dateHe={formatDate(v.voteDate)} userStance={myStances.get(v.voteId) ?? null} />
             ))}
           </div>
@@ -175,5 +192,6 @@ export default async function VotesPage({
 
       <KnessetSourceFooter />
     </main>
+    </>
   );
 }

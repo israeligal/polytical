@@ -1,10 +1,13 @@
 import Link from "next/link";
 import type { Market, Politician } from "@/lib/types";
+import type { KnessetVoteRow } from "@/app/lib/votes/read-repo";
 import { formatCount, pct, pctLabel, timeUntil } from "@/lib/format";
 import { catTint } from "@/lib/cat";
 import { CategoryBadge, HotBadge } from "@/components/badges";
 import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
+import { StatusChip } from "@/components/status-chip";
+import { VoteTotalsBar } from "@/components/vote-totals-bar";
 import { Clock, Flame, Users } from "@/components/icons";
 
 /**
@@ -149,5 +152,57 @@ export function HotRail({
         כל התחזיות
       </Link>
     </aside>
+  );
+}
+
+export function VoteHeroSpotlight({
+  vote,
+  dateHe,
+}: {
+  vote: KnessetVoteRow;
+  dateHe: string;
+}) {
+  return (
+    <Link
+      href={`/vote/${vote.voteId}`}
+      className="group flex flex-col rounded-card border border-border bg-card p-5 shadow-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-3 sm:p-6"
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 font-accent text-xs font-bold text-accent-foreground">
+          הצבעה מובלטת
+        </span>
+        {vote.isAccepted != null && (
+          <StatusChip tone={vote.isAccepted ? "positive" : "negative"}>
+            {vote.isAccepted ? "התקבל" : "נדחה"}
+          </StatusChip>
+        )}
+        <span className="ms-auto inline-flex items-center gap-1 text-sm text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
+          {dateHe}
+        </span>
+      </div>
+
+      <h2 className="mb-5 font-display text-2xl font-black leading-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+        {vote.titleHe}
+      </h2>
+
+      <VoteTotalsBar
+        totals={{ totalFor: vote.totalFor, totalAgainst: vote.totalAgainst, totalAbstain: vote.totalAbstain }}
+        className="h-12"
+      />
+
+      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+        <span className="text-sm text-muted-foreground">
+          {[vote.totalFor, vote.totalAgainst, vote.totalAbstain].reduce(
+            (s, n) => s + (n ?? 0),
+            0,
+          )}{" "}
+          ח״כים הצביעו
+        </span>
+        <span className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary-hover">
+          מי הצביע מה
+        </span>
+      </div>
+    </Link>
   );
 }
