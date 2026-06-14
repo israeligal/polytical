@@ -218,6 +218,13 @@
       "when": 1781471060485,
       "tag": "0030_groups_coalition",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1781479527427,
+      "tag": "0031_group_stance_consent",
+      "breakpoints": true
     }
   ]
 }

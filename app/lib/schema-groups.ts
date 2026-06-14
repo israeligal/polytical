@@ -66,3 +66,24 @@ export const groupMembers = pgTable(
     index("group_members_user_idx").on(t.userId),
   ],
 );
+
+// Phase 2 — per-member opt-in to SHARE their Knesset-vote stances inside ONE
+// group, for discussion (not scored). PRESENCE = opted-in, DELETE = opted-out.
+// This is the ONLY carve-out from the "stance direction never leaves the DB"
+// invariant: a direction is revealed to a fellow member only when BOTH that
+// member and the viewer have a consent row here AND both are active members
+// (see groups/stance-consent-repo getGroupVoteStances + docs/decisions/
+// groups-stances.md). Both FKs cascade — consent dies with the account AND the
+// group; an account/group delete revokes the waiver automatically.
+export const groupStanceConsent = pgTable(
+  "group_stance_consent",
+  {
+    groupId: uuid("groupId").notNull().references((): AnyPgColumn => groups.id, { onDelete: "cascade" }),
+    userId: text("userId").notNull().references((): AnyPgColumn => users.id, { onDelete: "cascade" }),
+    consentedAt: timestamp("consentedAt").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.groupId, t.userId] }),
+    index("group_stance_consent_user_idx").on(t.userId),
+  ],
+);
