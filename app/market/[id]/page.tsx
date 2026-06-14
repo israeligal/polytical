@@ -16,7 +16,7 @@ import { CaricatureCard } from "@/components/caricature-card";
 import { CategoryBadge, Countdown, HotBadge } from "@/components/badges";
 import { StatusChip } from "@/components/status-chip";
 import { CommentThread } from "@/components/comments/comment-thread";
-import { ChatBubble, ChevronForward, Users } from "@/components/icons";
+import { Ballot, ChatBubble, ChevronForward, Users } from "@/components/icons";
 import { MARKET_CONTAINER , MARKET_GRID } from "@/components/skeletons/containers";
 
 export default async function MarketPage({
@@ -98,9 +98,21 @@ export default async function MarketPage({
             {market.hot && <HotBadge />}
           </div>
 
-          <h1 className="font-display text-3xl font-black leading-tight text-foreground sm:text-4xl">
-            {market.question}
-          </h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-display text-3xl font-black leading-tight text-foreground sm:text-4xl">
+              {market.question}
+            </h1>
+            {/* In focus on this forecast — surface the CTA inline so mobile
+                doesn't need the hamburger to reach it (desktop already has
+                it in the header nav). */}
+            <Link
+              href="/suggest"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/50 bg-accent/10 px-3.5 py-1.5 text-sm font-bold text-gold transition-colors hover:border-accent hover:bg-accent/20 md:hidden"
+            >
+              <Ballot className="h-4 w-4" />
+              הצעה לסדר
+            </Link>
+          </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
