@@ -45,8 +45,8 @@ const BINARY_OUTCOMES = [
 ] as const;
 
 function buildOutcomeRows(
-  outcomes: { labelHe: string }[] | null | undefined,
-): { rows: { labelHe: string; ordinal: number }[]; multi: boolean } {
+  outcomes: { labelHe: string; personId?: number }[] | null | undefined,
+): { rows: { labelHe: string; ordinal: number; personId?: number }[]; multi: boolean } {
   if (!outcomes || outcomes.length === 0) return { rows: BINARY_OUTCOMES.map((o) => ({ ...o })), multi: false };
   if (outcomes.length < MIN_OUTCOMES || outcomes.length > MAX_OUTCOMES) throw new OutcomeCountError();
   const seen = new Set<string>();
@@ -54,7 +54,9 @@ function buildOutcomeRows(
     const labelHe = o.labelHe.trim();
     if (!labelHe || labelHe.length > MAX_OUTCOME_LABEL_LEN || seen.has(labelHe)) throw new OutcomeLabelError();
     seen.add(labelHe);
-    return { labelHe, ordinal: i };
+    // Carry the per-outcome politician link (a candidate IS the outcome) so a
+    // cloned multi motion keeps its MK portraits + resolve-time card scoping.
+    return { labelHe, ordinal: i, personId: o.personId };
   });
   return { rows, multi: true };
 }
@@ -73,6 +75,7 @@ export async function createGroupMotion({
   category,
   closeAt,
   outcomes,
+  personIds = [],
 }: {
   db?: AppDb;
   userId: string;
@@ -80,7 +83,9 @@ export async function createGroupMotion({
   questionHe: string;
   category: string;
   closeAt: Date;
-  outcomes?: { labelHe: string }[] | null;
+  outcomes?: { labelHe: string; personId?: number }[] | null;
+  /** Featured MKs (independent of per-outcome personId); unioned by createMarket. */
+  personIds?: number[];
 }): Promise<{ marketId: string }> {
   const membership = await groupsRepo.getMembership({ db, groupId, userId });
   if (!membership || membership.status !== "active") throw new NotGroupMemberError();
@@ -112,6 +117,7 @@ export async function createGroupMotion({
       closeAt,
       createdBy: userId,
       outcomes: rows,
+      personIds,
     });
     const members = await groupsRepo.listActiveMembers({ db: tx, groupId });
     const events: NotificationEvent[] = members
