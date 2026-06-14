@@ -2,14 +2,22 @@
 // to their bill's current status label, plus RAW community counts (the k-anon
 // gate is applied by the page, mirroring user_stances). Most-imminent-first.
 
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { agendaItems, agendaStances, billStatuses, bills } from "@/app/lib/schema";
+import { agendaItems, agendaStances, billSponsors, billStatuses, bills, politicians } from "@/app/lib/schema";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
+
+/** Full politician row of an MK who initiated the bill — for portraits on the
+ *  card (rendered through dbToCard, like every other portrait surface). */
+export type AgendaInitiator = typeof politicians.$inferSelect;
+
+// Portraits shown per card before the "+N" overflow chip — keeps even a
+// 30-sponsor bill's row to a tidy avatar cluster.
+const MAX_INITIATORS_PER_ITEM = 6;
 
 export interface AgendaFeedItem {
   id: string;
@@ -19,6 +27,11 @@ export interface AgendaFeedItem {
   statusDescHe: string | null;
   forCount: number;
   againstCount: number;
+  /** Proposing MKs (KNS_BillInitiator, isInitiator), ordinal order, capped to
+   *  MAX_INITIATORS_PER_ITEM for the avatar cluster. */
+  initiators: AgendaInitiator[];
+  /** True number of initiators (drives the "+N" overflow chip). */
+  initiatorCount: number;
 }
 
 /** The announced (still pre-vote) agenda item for a bill, if any — drives the
@@ -56,11 +69,23 @@ export async function getAgendaFeed({
 
   if (items.length === 0) return [];
 
-  const counts = await db
-    .select({ agendaItemId: agendaStances.agendaItemId, stance: agendaStances.stance, n: count() })
-    .from(agendaStances)
-    .where(inArray(agendaStances.agendaItemId, items.map((i) => i.id)))
-    .groupBy(agendaStances.agendaItemId, agendaStances.stance);
+  const billIds = [...new Set(items.map((i) => i.billId).filter((b): b is number => b != null))];
+
+  const [counts, sponsorRows] = await Promise.all([
+    db
+      .select({ agendaItemId: agendaStances.agendaItemId, stance: agendaStances.stance, n: count() })
+      .from(agendaStances)
+      .where(inArray(agendaStances.agendaItemId, items.map((i) => i.id)))
+      .groupBy(agendaStances.agendaItemId, agendaStances.stance),
+    billIds.length
+      ? db
+          .select({ billId: billSponsors.billId, p: politicians })
+          .from(billSponsors)
+          .innerJoin(politicians, eq(politicians.personId, billSponsors.personId))
+          .where(and(inArray(billSponsors.billId, billIds), eq(billSponsors.isInitiator, true)))
+          .orderBy(sql`${billSponsors.ordinal} asc nulls last`, asc(politicians.nameHe))
+      : Promise.resolve([] as { billId: number; p: AgendaInitiator }[]),
+  ]);
 
   const byItem = new Map<string, { forCount: number; againstCount: number }>();
   for (const c of counts) {
@@ -70,9 +95,23 @@ export async function getAgendaFeed({
     byItem.set(c.agendaItemId, e);
   }
 
-  return items.map((i) => ({
-    ...i,
-    forCount: byItem.get(i.id)?.forCount ?? 0,
-    againstCount: byItem.get(i.id)?.againstCount ?? 0,
-  }));
+  // Initiators grouped by bill (ordinal order preserved by the query). Keep the
+  // true total for the overflow chip; the visible array is capped at render.
+  const initiatorsByBill = new Map<number, AgendaInitiator[]>();
+  for (const { billId, p } of sponsorRows) {
+    const list = initiatorsByBill.get(billId) ?? [];
+    list.push(p);
+    initiatorsByBill.set(billId, list);
+  }
+
+  return items.map((i) => {
+    const all = i.billId != null ? (initiatorsByBill.get(i.billId) ?? []) : [];
+    return {
+      ...i,
+      forCount: byItem.get(i.id)?.forCount ?? 0,
+      againstCount: byItem.get(i.id)?.againstCount ?? 0,
+      initiators: all.slice(0, MAX_INITIATORS_PER_ITEM),
+      initiatorCount: all.length,
+    };
+  });
 }
