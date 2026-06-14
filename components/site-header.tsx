@@ -5,9 +5,11 @@ import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
 import { MobileMenu } from "@/components/mobile-menu";
+import { GroupSwitcher } from "@/components/groups/group-switcher";
 import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
+import { listMyGroups } from "@/app/lib/groups/service";
 
 // Deliberately minimal: the three product surfaces only. האוסף + עונה live on
 // /profile; פוליטיקאים is reachable from every card and the homepage section.
@@ -21,6 +23,9 @@ export async function SiteHeader() {
   const session = await getSession();
   const user = session?.user ?? null;
   const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
+  const myGroups = user ? await listMyGroups({ userId: user.id }) : [];
+  // Logged-in users get a "my groups" entry in the mobile menu.
+  const mobileNav = user ? [...NAV, { href: "/g", label: "הקואליציות שלי" }] : NAV;
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
   const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
 
@@ -60,6 +65,7 @@ export async function SiteHeader() {
             <ThemeToggle initial={theme} />
             {user ? (
               <>
+                <GroupSwitcher groups={myGroups.map((g) => ({ slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }))} />
                 <NotificationBell unreadCount={unread} />
                 <Link
                   href="/profile"
@@ -90,7 +96,7 @@ export async function SiteHeader() {
           {/* Mobile (<md): the bell stays one tap away; everything else folds into the menu. */}
           <div className="flex items-center gap-2 md:hidden">
             {user && <NotificationBell unreadCount={unread} />}
-            <MobileMenu nav={NAV} theme={theme} loggedIn={!!user} />
+            <MobileMenu nav={mobileNav} theme={theme} loggedIn={!!user} />
           </div>
         </div>
       </div>

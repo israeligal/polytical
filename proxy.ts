@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
 // Markets feed (/) and most pages are public. These require a session:
-const PROTECTED_ROUTES = ["/profile", "/admin", "/notifications", "/collection", "/onboarding", "/my-match"];
+const PROTECTED_ROUTES = ["/profile", "/admin", "/notifications", "/collection", "/onboarding", "/my-match", "/g"];
 const AUTH_ROUTES = ["/login", "/signup"];
 const ONBOARDING_ROUTE = "/onboarding";
 
@@ -64,6 +64,15 @@ export async function proxy(req: NextRequest) {
     }
     if (isOnboarded && path === ONBOARDING_ROUTE) {
       return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+    }
+    // Default-group landing: an onboarded member with a home group lands on it
+    // from the bare home. Loop-safe — fires ONLY on exactly "/" (the group route
+    // /g/* never matches), and `?view=general` escapes to the global home. We
+    // redirect via /g/by-id/<id> (resolves the slug) since the session carries
+    // the group id, not the slug.
+    const defaultGroupId = session?.user?.defaultGroupId;
+    if (isOnboarded && path === "/" && defaultGroupId && req.nextUrl.searchParams.get("view") !== "general") {
+      return NextResponse.redirect(new URL(`/g/by-id/${defaultGroupId}`, req.nextUrl.origin));
     }
   }
 
