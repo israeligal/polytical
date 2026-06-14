@@ -42,6 +42,7 @@ export async function listUnseenResolvedPredictions({
     eq(bets.userId, requireUserId(userId)),
     isNull(bets.seenAt),
     eq(markets.status, "resolved"),
+    isNull(markets.groupId), // group motions reveal via group_motion_resolved, not the global deck
   ];
   if (marketId) where.push(eq(bets.marketId, marketId));
   const rows = await db

@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 import * as schema from "@/app/lib/schema";
-import { groups, groupMembers, users } from "@/app/lib/schema";
+import { groups, groupMembers, users, markets, bets, outcomes } from "@/app/lib/schema";
+import type { MarketRow } from "@/app/lib/markets/repo";
 import { requireUserId } from "@/app/lib/errors";
 
 // Repository for the groups domain. Owns all Drizzle access; driver-agnostic
@@ -152,6 +153,27 @@ export async function countActiveMembers({ db = defaultDb, groupId }: { db?: App
     .select({ n: count() })
     .from(groupMembers)
     .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")));
+  return row?.n ?? 0;
+}
+
+/** How many motions `userId` posted in `groupId` since `since` — the per-(user,
+ *  group) daily-cap counter (DB-authoritative; the in-memory limiter only
+ *  guards bursts). */
+export async function countGroupMotionsSince({
+  db = defaultDb,
+  groupId,
+  userId,
+  since,
+}: {
+  db?: AppDb;
+  groupId: string;
+  userId: string;
+  since: Date;
+}): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(markets)
+    .where(and(eq(markets.groupId, groupId), eq(markets.createdBy, requireUserId(userId)), sql`${markets.createdAt} >= ${since}`));
   return row?.n ?? 0;
 }
 
@@ -321,6 +343,146 @@ export async function findSuccessor({
   const admin = others.find((r) => r.role === "admin");
   const heir = admin ?? others[0];
   return { userId: heir.userId, role: heir.role };
+}
+
+// --- group motions: scoreboard, feed, reveal-gated picks, sandboxed stat bump ---
+
+/** A ranked scoreboard line — the member's SANDBOXED group record. */
+export interface GroupScoreEntry {
+  rank: number;
+  userId: string;
+  name: string;
+  handle: string | null;
+  groupWins: number;
+  groupResolved: number;
+  accuracy: number; // 0–100, over group motions only
+}
+
+// Accuracy over the sandboxed group counters (mirrors leaderboard's accuracyExpr
+// but on group_members, not users).
+const groupAccuracyExpr = sql<number>`(
+  CASE WHEN ${groupMembers.groupResolved} > 0
+    THEN round(${groupMembers.groupWins} * 100.0 / ${groupMembers.groupResolved})
+    ELSE 0
+  END
+)::int`;
+
+/** The group scoreboard: active members ranked by group wins → accuracy →
+ *  tenure. Ranks ONLY this group's motions (sandboxed counters). */
+export async function getGroupScoreboard({ db = defaultDb, groupId }: { db?: AppDb; groupId: string }): Promise<GroupScoreEntry[]> {
+  const rows = await db
+    .select({
+      userId: groupMembers.userId,
+      name: users.name,
+      handle: users.handle,
+      groupWins: groupMembers.groupWins,
+      groupResolved: groupMembers.groupResolved,
+      accuracy: groupAccuracyExpr,
+    })
+    .from(groupMembers)
+    .innerJoin(users, eq(users.id, groupMembers.userId))
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")))
+    .orderBy(
+      desc(groupMembers.groupWins),
+      desc(groupAccuracyExpr),
+      asc(groupMembers.joinedAt),
+    );
+  return rows.map((r, i) => ({ rank: i + 1, ...r }));
+}
+
+/** This group's motions (markets carrying this groupId), newest first. */
+export async function listGroupMarkets({
+  db = defaultDb,
+  groupId,
+  status,
+}: {
+  db?: AppDb;
+  groupId: string;
+  status?: (typeof schema.marketStatus.enumValues)[number];
+}): Promise<MarketRow[]> {
+  const where = status
+    ? and(eq(markets.groupId, groupId), eq(markets.status, status))
+    : eq(markets.groupId, groupId);
+  return db.select().from(markets).where(where).orderBy(desc(markets.createdAt));
+}
+
+export interface GroupPick {
+  userId: string;
+  name: string;
+  handle: string | null;
+  outcomeId: string;
+  outcomeLabelHe: string;
+}
+export interface GroupMotionPicks {
+  /** Whether the viewer may see others' picks yet (they predicted, or it closed). */
+  revealed: boolean;
+  picks: GroupPick[];
+}
+
+/**
+ * Members' picks on a group motion — reveal-gated. A viewer sees others' picks
+ * only AFTER they have locked their own pick, or once the motion is no longer
+ * open (closed/resolved/voided, or past closeAt). Until then `revealed` is false
+ * and `picks` is empty (prevents copy-the-leader).
+ */
+export async function getGroupMotionPicks({
+  db = defaultDb,
+  marketId,
+  viewerId,
+}: {
+  db?: AppDb;
+  marketId: string;
+  viewerId: string;
+}): Promise<GroupMotionPicks> {
+  const [market] = await db.select().from(markets).where(eq(markets.id, marketId));
+  if (!market) return { revealed: false, picks: [] };
+
+  const [own] = await db
+    .select({ id: bets.id })
+    .from(bets)
+    .where(and(eq(bets.marketId, marketId), eq(bets.userId, requireUserId(viewerId))));
+  const closed = market.status !== "open" || market.closeAt.getTime() <= Date.now();
+  const revealed = Boolean(own) || closed;
+  if (!revealed) return { revealed: false, picks: [] };
+
+  const picks = await db
+    .select({
+      userId: bets.userId,
+      name: users.name,
+      handle: users.handle,
+      outcomeId: bets.outcomeId,
+      outcomeLabelHe: outcomes.labelHe,
+    })
+    .from(bets)
+    .innerJoin(users, eq(users.id, bets.userId))
+    .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
+    .where(eq(bets.marketId, marketId));
+  return { revealed: true, picks };
+}
+
+/** Sandboxed stat bump for a group motion resolve: +1 resolved, +1 win if
+ *  correct — on group_members only (NEVER users.totalWins). Rides the resolve tx. */
+export async function bumpGroupStats({
+  tx,
+  db = defaultDb,
+  groupId,
+  userId,
+  correct,
+}: {
+  tx?: Tx;
+  db?: AppDb;
+  groupId: string;
+  userId: string;
+  correct: boolean;
+}): Promise<void> {
+  const exec = tx ?? db;
+  await exec
+    .update(groupMembers)
+    .set({
+      groupResolved: sql`${groupMembers.groupResolved} + 1`,
+      groupWins: sql`${groupMembers.groupWins} + ${correct ? 1 : 0}`,
+    })
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)));
 }
 
 /** Sets the user's home group ONLY if they have none yet (auto-home on first

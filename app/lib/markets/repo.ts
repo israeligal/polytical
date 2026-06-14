@@ -278,6 +278,7 @@ export async function listMarketsClosingSoon({
     .where(
       and(
         eq(markets.status, "open"),
+        isNull(markets.groupId), // group motions don't use the global closing-soon cron
         isNull(markets.closingSoonNotifiedAt),
         gt(markets.closeAt, now),
         lte(markets.closeAt, horizon),
@@ -341,9 +342,10 @@ export async function listOpenMarkets({
   db?: DB;
   category?: string;
 } = {}): Promise<MarketRow[]> {
+  // isNull(groupId): global feed never shows group-only motions (feed isolation).
   const where = category
-    ? and(eq(markets.status, "open"), eq(markets.category, category))
-    : eq(markets.status, "open");
+    ? and(eq(markets.status, "open"), eq(markets.category, category), isNull(markets.groupId))
+    : and(eq(markets.status, "open"), isNull(markets.groupId));
   return db.select().from(markets).where(where).orderBy(sql`${markets.createdAt} desc`);
 }
 
@@ -372,6 +374,7 @@ export async function listUnpredictedOpenMarkets({
   const uid = requireUserId(userId);
   const conditions = [
     eq(markets.status, "open"),
+    isNull(markets.groupId), // global answer-deck never includes group motions
     gt(markets.closeAt, now),
     notExists(
       db
@@ -402,7 +405,7 @@ export async function getMarketOfTheDay({
     .select({ market: markets, betCount: sql<number>`count(${bets.id})::int` })
     .from(markets)
     .leftJoin(bets, eq(bets.marketId, markets.id))
-    .where(eq(markets.status, "open"))
+    .where(and(eq(markets.status, "open"), isNull(markets.groupId)))
     .groupBy(markets.id)
     .orderBy(desc(sql`count(${bets.id})`), desc(markets.createdAt))
     .limit(1);
@@ -421,7 +424,8 @@ export async function listManageableMarkets({
   const rows = await db
     .select()
     .from(markets)
-    .where(inArray(markets.status, ["open", "closed", "voided"]))
+    // Group motions are owner-resolved in-group; never in the platform admin queue.
+    .where(and(inArray(markets.status, ["open", "closed", "voided"]), isNull(markets.groupId)))
     .orderBy(desc(markets.createdAt));
   if (rows.length === 0) return [];
   const outs = await db
@@ -548,7 +552,8 @@ export async function getUserPredictions({
     .from(bets)
     .innerJoin(markets, eq(markets.id, bets.marketId))
     .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
-    .where(eq(bets.userId, userId))
+    // Global profile portfolio excludes sandboxed group-motion picks.
+    .where(and(eq(bets.userId, userId), isNull(markets.groupId)))
     .orderBy(desc(bets.createdAt));
 }
 
@@ -564,6 +569,7 @@ export async function createMarket({
   hot = false,
   closeAt,
   createdBy,
+  groupId,
   outcomes: outcomeInputs,
   personIds = [],
 }: {
@@ -576,6 +582,8 @@ export async function createMarket({
   hot?: boolean;
   closeAt: Date;
   createdBy?: string;
+  /** Set for a group-only motion (audience scope); omitted = global market. */
+  groupId?: string | null;
   outcomes: { labelHe: string; cat?: number; ordinal: number; personId?: number }[];
   personIds?: number[];
 }): Promise<{ marketId: string }> {
@@ -595,6 +603,7 @@ export async function createMarket({
         hot,
         closeAt,
         createdBy,
+        groupId: groupId ?? null,
         searchText: normalizeSearchName(questionHe),
       })
       .returning({ id: markets.id });
@@ -657,7 +666,7 @@ export async function getMarketsForPolitician({
     db
       .select()
       .from(markets)
-      .where(and(inArray(markets.id, ids), eq(markets.status, "open")))
+      .where(and(inArray(markets.id, ids), eq(markets.status, "open"), isNull(markets.groupId)))
       .orderBy(desc(markets.createdAt)),
     db.select().from(outcomes).where(inArray(outcomes.marketId, ids)).orderBy(asc(outcomes.ordinal)),
     db.select().from(marketPoliticians).where(inArray(marketPoliticians.marketId, ids)),
@@ -694,6 +703,7 @@ export async function searchMarkets({
     .where(
       and(
         inArray(markets.status, ["open", "closed", "resolved"]),
+        isNull(markets.groupId), // group motions are never globally searchable
         sql`${markets.searchText} ILIKE ${"%" + needle + "%"}`,
       ),
     )

@@ -7,12 +7,14 @@ import { emitNotifications, type NotificationEvent } from "@/app/lib/notificatio
 import { dispatchPush } from "@/app/lib/push/service";
 import { logger } from "@/app/lib/logger";
 import { unlockThreshold } from "@/lib/rarity";
+import { getMembership } from "@/app/lib/groups/repo";
 import * as schema from "@/app/lib/schema";
 import {
   AlreadyResolvedError,
   InvalidOutcomeError,
   MarketClosedError,
   MarketNotFoundError,
+  NotGroupMemberError,
 } from "@/app/lib/errors";
 
 // Driver-agnostic DB handle (postgres-js in prod, PGlite in tests). Mirrors the
@@ -47,6 +49,11 @@ export async function makePrediction({
     if (!market) throw new MarketNotFoundError();
     if (market.status !== "open" || market.closeAt.getTime() <= Date.now())
       throw new MarketClosedError();
+    // Group motions are member-only: a non-member can't predict on one.
+    if (market.groupId) {
+      const membership = await getMembership({ db: tx, groupId: market.groupId, userId });
+      if (!membership || membership.status !== "active") throw new NotGroupMemberError();
+    }
     const outcome = await repo.getOutcome({ tx, outcomeId, marketId });
     if (!outcome) throw new InvalidOutcomeError();
     const prediction = await repo.upsertPrediction({ tx, userId, marketId, outcomeId });
