@@ -32,6 +32,11 @@ toggle away.
 | **Active group** | **URL-driven** (`/g/[slug]`) + an **optional persisted `user.defaultGroupId`** for the login landing. |
 | **On leave/removal** | **Freeze history, drop from active board** (`group_members.status = 'left'`, counters retained; rejoin restores). |
 | **Group cadence** | **All-time** only (no rounds/seasons in v1). |
+| **Group URL** | **Short random opaque slug** (`/g/x7k2qa`); the Hebrew name is display-only. |
+| **Owner leaves** | **Auto-promote** longest-tenured admin → else longest-tenured member → else archive the group. |
+| **מליאה mentions** | **`@handle` autocomplete picker**; notify the mentioned member **and** the motion author. |
+| **Auto-home** | Creating/joining your **first** group auto-sets `user.defaultGroupId` (changeable/clearable later). |
+| **Switcher / landing** | Switcher in `SiteHeader`; login redirect lives in `proxy.ts` (loop-guarded, `?view=general` escape). |
 
 ## Concepts & surfaces
 
@@ -143,14 +148,16 @@ first thing in every repo where-clause; every group read is membership-gated.
 ## Key flows
 
 ### 1. Create group
-`createGroupAction` (auth) → `createGroup`: check soft caps (§11) → generate `slug` + `inviteCode`
-(url-safe random) → insert `groups` + an `owner` `group_members` row in one tx → redirect `/g/[slug]`.
+`createGroupAction` (auth) → `createGroup`: check soft caps (§11) → generate a **random url-safe `slug`**
+(retry on the rare unique collision) + `inviteCode` → insert `groups` + an `owner` `group_members` row in
+one tx → **auto-home** (set `user.defaultGroupId` if null) → redirect `/g/[slug]`.
 
 ### 2. Join via invite
 `/g/join/[code]` (RSC) renders the **preview** from `getGroupPreview({inviteCode})` (name, member
 count, a few recent motions) + a Join button. `joinGroupAction` → `addMember` (idempotent;
 `status='active'`; rejoin flips a `left` row back to `active`, restoring frozen counters) → check
-"joined" cap → redirect `/g/[slug]`. Emits `group_member_joined` to existing members.
+"joined" cap → **auto-home** (set `user.defaultGroupId` if null — i.e. their first group) → redirect
+`/g/[slug]`. Emits `group_member_joined` to existing members.
 
 ### 3. Post a motion (any member, auto-publish)
 `createGroupMotionAction` (membership-gated, rate-limited like suggestions ~10/24h/group) →
@@ -179,14 +186,29 @@ leaderboard stays purely global.
 
 ### 7. מליאה
 Reuse `comments` (keyed by `marketId`) on group motions; rebrand the UI label to **מליאה**. Visibility
-is inherited from the (membership-gated) market page. Add **`@handle` mention parsing** in `postComment`
-→ resolve handle → emit `group_mention` (handles are unique on `user`). Nested replies stay out of v1
-(comments are flat); "reply" is surfaced via mention.
+is inherited from the (membership-gated) market page. The comment composer gets an **`@handle`
+autocomplete picker** sourced from the group roster; on submit, `postComment` resolves mentioned
+handles (unique on `user`) and emits **`group_mention`** to each, **plus** notifies the motion's author
+(`createdBy`) of new activity. Nested replies stay out of v1 (comments are flat); "reply" is surfaced
+via mention.
 
 ### 8. Default view & switcher
 - `SiteHeader` renders the switcher from `listMyGroups({userId})`; links to `/g/[slug]` and `/` (general).
-- **Login landing:** after onboarding, if `user.defaultGroupId` is set → redirect to that group; else `/`.
-  A "הפוך לבית שלי" toggle on the group page sets/clears `defaultGroupId`. "Switch to general" = navigate to `/`.
+- **Auto-home:** creating a group, or joining your **first** group, auto-sets `user.defaultGroupId` (only
+  when it's currently null — never overrides an existing choice).
+- **Login landing:** redirect lives in `proxy.ts` (already the onboarding gate). After onboarding, if
+  `user.defaultGroupId` is set and the request is for `/`, redirect to that group — **loop-guarded** (only
+  rewrites bare `/`, and a `?view=general` query escapes it). A "הפוך לבית שלי" / "חזרה לכללי" toggle on the
+  group page sets/clears `defaultGroupId`. "Switch to general" = navigate to `/?view=general`.
+
+### 9. Leave / remove / owner handoff / delete
+- **Leave / remove:** `setMemberStatus(... 'left')` — counters frozen, dropped from the active board (§"On
+  leave"); rejoin restores. Owner/admin can remove a member; anyone can remove themselves.
+- **Owner leaves:** auto-promote the longest-tenured `admin`, else longest-tenured active `member`, then
+  proceed with the leave. If the owner is the **sole** member, the group is **archived** (cascade).
+- **Delete:** owner-only; cascades (`groups` FKs are `onDelete: cascade`, so `group_members` and group
+  `markets`/`bets`/`comments` go with it). Any member whose `defaultGroupId` pointed here is reset to null
+  (`onDelete: set null`) → they fall back to the general landing.
 
 ## Invariants
 
@@ -252,14 +274,15 @@ friends' picks · מליאה (rebranded comments + @-mentions) · feed isolation
 - **Caps:** owned/joined/member caps and the motion daily cap enforced.
 - **Scoreboard:** ranks active members by wins→accuracy→joinedAt; `left` members excluded.
 
-## Open implementation questions (for the plan)
+## Resolved implementation decisions (nothing open)
 
-1. **Slug generation** — short random base62 vs derived-from-name-with-collision-suffix (Hebrew can't go in the URL).
-2. **Login-landing redirect site** — extend `proxy.ts` (which already gates onboarding) vs resolve in the `/` RSC vs the login `callbackUrl`.
-3. **Switcher placement** — shared in `SiteHeader` (one source) given `/` and `/markets` duplicate hero/rail logic.
-4. **@-mention UX** — autocomplete vs raw `@handle`; how aggressively to notify (mention only, or also notify the motion author on any new comment).
-5. **Owner lifecycle** — owner leaving: block, force transfer, or auto-promote oldest admin; group delete = cascade (FKs already cascade).
-6. **Group market in `/market/[id]`** — confirm the existing page cleanly hides global-only chrome (global leaderboard nudges, card-unlock hints) when `groupId` is set.
+1. **Slug** — short **random url-safe code** (e.g. base62, ~6 chars), uniqueness-checked on insert with retry. Hebrew `nameHe` is display-only; never in the URL.
+2. **Login-landing redirect** — lives in **`proxy.ts`** (the existing onboarding gate). Loop-guarded: rewrites only bare `/` → `/g/[slug]` when `defaultGroupId` is set, and `?view=general` escapes. Healed in the proxy, never in an RSC (avoids the cookieCache redirect-loop class of bug).
+3. **Switcher placement** — shared in **`SiteHeader`** (single source; `/` and `/markets` already duplicate hero/rail logic).
+4. **@-mentions** — **autocomplete picker** sourced from the group roster; notify the **mentioned member(s) AND the motion author** (`group_mention`).
+5. **Owner lifecycle** — owner leaving **auto-promotes** the longest-tenured `admin`, else the longest-tenured `member`, else (sole member) the group is **archived** (soft-delete/cascade). Group delete is owner-only and cascades (FKs already `onDelete: cascade`).
+6. **Group market in `/market/[id]`** — when `market.groupId` is set, the page is membership-gated and hides global-only chrome (global-leaderboard nudges, card-unlock hints); the group crowd-split + friends'-picks block replaces the global split, behind the reveal gate.
+7. **Auto-home** — `createGroup` and the **first** successful `joinGroup` set `user.defaultGroupId` **only when it is currently null** (never override an explicit later choice).
 
 ## Success metrics (for /write-spec → PRD framing)
 
