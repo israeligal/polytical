@@ -10,6 +10,8 @@ export type AnalyticsEvent =
   | "feed_viewed"
   | "motion_viewed"
   | "stance_cast"
+  | "agenda_stance_cast"
+  | "agenda_viewed"
   | "match_unlocked"
   | "match_viewed";
 
