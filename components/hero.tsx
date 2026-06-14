@@ -190,7 +190,7 @@ export function VoteHeroSpotlight({
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-5">
         <span className="text-sm text-muted-foreground">
-          {[vote.totalFor, vote.totalAgainst, vote.totalAbstain].reduce(
+          {[vote.totalFor, vote.totalAgainst, vote.totalAbstain].reduce<number>(
             (s, n) => s + (n ?? 0),
             0,
           )}{" "}

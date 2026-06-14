@@ -11,13 +11,15 @@ beforeEach(async () => {
   // MK 100: stored K25 bills/queries, but NO activity-count columns yet (pre-ingest state).
   await h.db.insert(politicians).values({ personId: 100, nameHe: "פלוני אלמוני", searchName: "ploni", ...prov });
   await h.db.insert(bills).values([
-    { billId: 1, nameHe: "חוק א", ...prov },
-    { billId: 2, nameHe: "חוק ב", ...prov },
+    { billId: 1, knessetNum: 25, nameHe: "חוק א", ...prov },
+    { billId: 2, knessetNum: 25, nameHe: "חוק ב", ...prov },
+    { billId: 3, knessetNum: 24, nameHe: "חוק ישן", ...prov },
   ]);
   await h.db.insert(billSponsors).values([
     { billInitiatorId: 10, billId: 1, personId: 100, isInitiator: true, ...prov },
     { billInitiatorId: 11, billId: 2, personId: 100, isInitiator: false, ...prov },
-    { billInitiatorId: 12, billId: 1, personId: 999, isInitiator: true, ...prov }, // a different MK
+    { billInitiatorId: 13, billId: 3, personId: 100, isInitiator: true, ...prov },
+    { billInitiatorId: 12, billId: 1, personId: 999, isInitiator: true, ...prov },
   ]);
   await h.db.insert(queries).values([
     { queryId: 1, personId: 100, ...prov },
@@ -33,8 +35,9 @@ test("before the activity-counts ingest, falls back to the stored-bill join for 
   const a = await getPoliticianActivity({ db: h.db, personId: 100 });
   expect(a.current).toEqual({ bills: 2, queries: 2 }); // distinct K25 bills + only this MK's queries
   expect(a.lifetime).toBeNull(); // counts not ingested yet — never a bogus 0
-  expect(a.recentBills.map((b) => b.billId).sort()).toEqual([1, 2]);
-  expect(a.recentBills.find((b) => b.billId === 2)?.nameHe).toBe("חוק ב");
+  expect(a.recentBills.current.map((b) => b.billId).sort()).toEqual([1, 2]);
+  expect(a.recentBills.earlier.map((b) => b.billId)).toEqual([3]);
+  expect(a.recentBills.current.find((b) => b.billId === 2)?.nameHe).toBe("חוק ב");
 });
 
 test("with populated count columns, reports current + lifetime from the official totals (not the join)", async () => {
@@ -48,7 +51,7 @@ test("with populated count columns, reports current + lifetime from the official
   const a = await getPoliticianActivity({ db: h.db, personId: 200 });
   expect(a.current).toEqual({ bills: 2, queries: 0 });
   expect(a.lifetime).toEqual({ bills: 213, queries: 11 });
-  expect(a.recentBills).toEqual([]); // no stored bills for this MK
+  expect(a.recentBills).toEqual({ current: [], earlier: [] }); // no stored bills for this MK
 });
 
 test("a sponsor row pointing at a bill we don't store is excluded from the fallback count", async () => {
@@ -58,10 +61,10 @@ test("a sponsor row pointing at a bill we don't store is excluded from the fallb
   });
   const a = await getPoliticianActivity({ db: h.db, personId: 100 });
   expect(a.current.bills).toBe(2); // still just bills 1 + 2 — orphan 777 ignored
-  expect(a.recentBills.map((b) => b.billId).sort()).toEqual([1, 2]);
+  expect(a.recentBills.current.map((b) => b.billId).sort()).toEqual([1, 2]);
 });
 
 test("an unknown MK returns zero current activity and no lifetime", async () => {
   const a = await getPoliticianActivity({ db: h.db, personId: 12345 });
-  expect(a).toEqual({ current: { bills: 0, queries: 0 }, lifetime: null, recentBills: [] });
+  expect(a).toEqual({ current: { bills: 0, queries: 0 }, lifetime: null, recentBills: { current: [], earlier: [] } });
 });

@@ -1,9 +1,10 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { bills, billSponsors, politicians, queries } from "@/app/lib/schema";
+import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 
 // Read-side repo for the politician UI. The `politicians` table is the system
 // of record (120 current MKs, ingested from official Knesset OData). Markets
@@ -145,10 +146,11 @@ export async function getPoliticianByPersonId({
 }
 
 export type ActivityCounts = { bills: number; queries: number };
+export type RecentBill = { billId: number; nameHe: string; knessetNum: number | null };
 export type PoliticianActivity = {
   current: ActivityCounts;          // the current Knesset
   lifetime: ActivityCounts | null;  // all Knessets — null until the activity-counts ingest runs
-  recentBills: { billId: number; nameHe: string }[];
+  recentBills: { current: RecentBill[]; earlier: RecentBill[] };
 };
 
 /**
@@ -183,15 +185,25 @@ export async function getPoliticianActivity({
     .where(eq(politicians.personId, personId))
     .limit(1);
 
-  // Recent bills: distinct stored (K25) bills this MK sponsored. Join to `bills` so a
-  // stray sponsor row pointing at a bill outside our set never appears.
-  const recentBills = await db
-    .selectDistinct({ billId: bills.billId, nameHe: bills.nameHe })
+  // Recent bills, grouped current-Knesset vs earlier — the page shows them in two
+  // labeled sections. innerJoin so a sponsor row pointing outside our bill set never
+  // surfaces. Lifetime backfill (ingestLifetimeBills) populates earlier Knessets.
+  const RECENT_PER_GROUP = 5;
+  const recentCurrent = await db
+    .selectDistinct({ billId: bills.billId, nameHe: bills.nameHe, knessetNum: bills.knessetNum })
     .from(billSponsors)
     .innerJoin(bills, eq(bills.billId, billSponsors.billId))
-    .where(eq(billSponsors.personId, personId))
+    .where(and(eq(billSponsors.personId, personId), eq(bills.knessetNum, CURRENT_KNESSET)))
     .orderBy(desc(bills.billId))
-    .limit(6);
+    .limit(RECENT_PER_GROUP);
+  const recentEarlier = await db
+    .selectDistinct({ billId: bills.billId, nameHe: bills.nameHe, knessetNum: bills.knessetNum })
+    .from(billSponsors)
+    .innerJoin(bills, eq(bills.billId, billSponsors.billId))
+    .where(and(eq(billSponsors.personId, personId), ne(bills.knessetNum, CURRENT_KNESSET)))
+    .orderBy(desc(bills.knessetNum), desc(bills.billId))
+    .limit(RECENT_PER_GROUP);
+  const recentBills = { current: recentCurrent, earlier: recentEarlier };
 
   // Gate on activityCountsFetchedAt — the marker that the activity-counts ingest has run
   // for this MK — NOT on any single count value (a real count can be 0). Until it runs (or
@@ -202,7 +214,7 @@ export async function getPoliticianActivity({
       .select({ n: sql<number>`count(distinct ${billSponsors.billId})::int` })
       .from(billSponsors)
       .innerJoin(bills, eq(bills.billId, billSponsors.billId))
-      .where(eq(billSponsors.personId, personId));
+      .where(and(eq(billSponsors.personId, personId), eq(bills.knessetNum, CURRENT_KNESSET)));
     const [qc] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(queries)

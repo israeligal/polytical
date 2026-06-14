@@ -51,16 +51,24 @@ export interface KnsBill {
   BillID: number;
   KnessetNum: number | null;
   Name: string;
+  SubTypeID: number | null;
   SubTypeDesc: string | null;
+  PrivateNumber: number | null;
+  CommitteeID: number | null;
+  Number: number | null;
   StatusID: number | null;
+  PublicationDate: string | null;
   /** Official plain-Hebrew summary — populated mostly on enacted laws
    *  (488/7,434 K25 bills as of 2026-06-12); null for everything else. */
   SummaryLaw: string | null;
+  IsContinuationBill: boolean | null;
+  PublicationSeriesDesc: string | null;
   LastUpdatedDate: string | null;
 }
 
 /** Shared shape of the KNS_Document* entities (KNS_DocumentBill / KNS_DocumentAgenda).
- *  PK ids are Int64 → serialized as JSON STRINGS (verified live, test-payloads-items.ts). */
+ *  PK ids are Int64 → serialized as JSON STRINGS (verified live, test-payloads-items.ts).
+ *  Used by both the votes vote-item enrichment and the bill-pages nested $expand. */
 export interface KnsDocumentBill {
   DocumentBillID: string;
   BillID: number;
@@ -98,6 +106,13 @@ export interface KnsDocumentAgenda {
   LastUpdatedDate: string | null;
 }
 
+export interface KnsStatus {
+  StatusID: number;
+  Desc: string | null;          // a few rows (e.g. 6015–6017) carry a null Desc
+  TypeID: number | null;
+  TypeDesc: string | null;
+}
+
 export interface KnsBillInitiator {
   BillInitiatorID: number;
   BillID: number;
@@ -105,6 +120,12 @@ export interface KnsBillInitiator {
   IsInitiator: boolean | null;
   Ordinal: number | null;
   LastUpdatedDate: string | null;
+}
+
+/** Shape returned by `KNS_BillInitiator?$expand=KNS_Bill/KNS_DocumentBills`:
+ *  each initiator carries its bill inline, and the bill carries its documents. */
+export interface KnsBillInitiatorExpanded extends KnsBillInitiator {
+  KNS_Bill?: (KnsBill & { KNS_DocumentBills?: KnsDocumentBill[] }) | null;
 }
 
 export interface KnsQuery {

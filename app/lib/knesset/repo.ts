@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { chunk, sqlExcluded, type AppDb } from "@/app/lib/db-utils";
 import {
-  politicians, factions, bills, billSponsors, queries, committees, committeeMemberships, factionStints,
+  politicians, factions, bills, billSponsors, billDocuments, billStatuses, queries, committees, committeeMemberships, factionStints,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import type {
-  MemberRow, FactionRow, BillRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow, FactionStintRow,
+  MemberRow, FactionRow, BillRow, BillDocumentRow, BillStatusRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow, FactionStintRow,
 } from "./normalize";
 
 export type KnessetDb = AppDb;
@@ -97,14 +97,54 @@ export async function upsertBills({ db, rows }: { db: DB; rows: BillRow[] }): Pr
     await db.insert(bills).values(batch).onConflictDoUpdate({
       target: bills.billId,
       set: {
-        knessetNum: sqlExcluded("knessetNum"), nameHe: sqlExcluded("nameHe"), subTypeDesc: sqlExcluded("subTypeDesc"),
-        statusId: sqlExcluded("statusId"), sourceDataset: sqlExcluded("sourceDataset"),
-        sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+        knessetNum: sqlExcluded("knessetNum"), nameHe: sqlExcluded("nameHe"),
+        subTypeId: sqlExcluded("subTypeId"), subTypeDesc: sqlExcluded("subTypeDesc"),
+        privateNumber: sqlExcluded("privateNumber"), committeeId: sqlExcluded("committeeId"),
+        number: sqlExcluded("number"), statusId: sqlExcluded("statusId"),
+        publicationDate: sqlExcluded("publicationDate"), summaryLaw: sqlExcluded("summaryLaw"),
+        isContinuationBill: sqlExcluded("isContinuationBill"),
+        publicationSeriesDesc: sqlExcluded("publicationSeriesDesc"),
+        lastUpdatedDate: sqlExcluded("lastUpdatedDate"),
+        sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
       },
     });
     n += batch.length;
   }
   logger.info("knesset.repo.upsert", { entity: "bills", rows: n });
+  return n;
+}
+
+export async function upsertBillDocuments({ db, rows }: { db: DB; rows: BillDocumentRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(billDocuments).values(batch).onConflictDoUpdate({
+      target: [billDocuments.documentBillId, billDocuments.format],
+      set: {
+        billId: sqlExcluded("billId"), groupTypeId: sqlExcluded("groupTypeId"),
+        groupTypeDesc: sqlExcluded("groupTypeDesc"), filePath: sqlExcluded("filePath"),
+        lastUpdatedDate: sqlExcluded("lastUpdatedDate"),
+        sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "bill_documents", rows: n });
+  return n;
+}
+
+export async function upsertBillStatuses({ db, rows }: { db: DB; rows: BillStatusRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(billStatuses).values(batch).onConflictDoUpdate({
+      target: billStatuses.statusId,
+      set: {
+        descHe: sqlExcluded("descHe"),
+        sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "bill_statuses", rows: n });
   return n;
 }
 

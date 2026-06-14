@@ -22,12 +22,14 @@ export type KnsEntity =
   | "KNS_Query"
   | "KNS_Committee"
   | "KNS_DocumentBill"
+  | "KNS_Status"
   | "KNS_Agenda"
   | "KNS_DocumentAgenda";
 
 interface BuildUrlArgs {
   entity: KnsEntity;
   filter?: string;          // raw OData $filter (Hebrew + operators) — we encode it
+  expand?: string;          // raw OData $expand path, e.g. "KNS_Bill/KNS_DocumentBills"
   top?: number;
   skip?: number;
   base?: string;
@@ -40,9 +42,10 @@ interface BuildUrlArgs {
  * the OData service expects "%20"), so the "$" sigils and Hebrew filter
  * literals come back percent-encoded and spaces stay as %20.
  */
-export function buildODataUrl({ entity, filter, top, skip, base = PARLIAMENT_BASE }: BuildUrlArgs): string {
+export function buildODataUrl({ entity, filter, expand, top, skip, base = PARLIAMENT_BASE }: BuildUrlArgs): string {
   const pairs: [string, string][] = [["$format", "json"]];
   if (filter) pairs.push(["$filter", filter]);
+  if (expand) pairs.push(["$expand", expand]);
   if (typeof top === "number") pairs.push(["$top", String(top)]);
   if (typeof skip === "number") pairs.push(["$skip", String(skip)]);
   const query = pairs
@@ -54,6 +57,7 @@ export function buildODataUrl({ entity, filter, top, skip, base = PARLIAMENT_BAS
 interface FetchAllArgs {
   entity: KnsEntity;
   filter?: string;
+  expand?: string;          // raw OData $expand path, e.g. "KNS_Bill/KNS_DocumentBills"
   top?: number;             // requested page size (default ALL_TOP — see below)
   throttleMs?: number;      // self-throttle between pages (default 250)
   retries?: number;         // retry attempts per page (default 2)
@@ -109,11 +113,11 @@ function pageNextLink(page: ODataPage<unknown>, base: string): string | undefine
  * pages. Generic T is the row type from odata-types.
  */
 export async function fetchAll<T>({
-  entity, filter, top = ALL_TOP, throttleMs = 250, retries = 2, retryDelayMs = 500,
+  entity, filter, expand, top = ALL_TOP, throttleMs = 250, retries = 2, retryDelayMs = 500,
   base = PARLIAMENT_BASE, maxPages = 10000,
 }: FetchAllArgs): Promise<T[]> {
   const out: T[] = [];
-  let url: string | undefined = buildODataUrl({ entity, filter, top, base });
+  let url: string | undefined = buildODataUrl({ entity, filter, expand, top, base });
   let pages = 0;
   while (url && pages < maxPages) {
     const page = await fetchPage(url, retries, retryDelayMs);

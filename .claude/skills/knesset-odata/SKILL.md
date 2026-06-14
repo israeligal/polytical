@@ -147,6 +147,33 @@ Verified navigation properties (from `$metadata`): `KNS_Person` → `KNS_BillIni
 `KNS_Queries`; `KNS_BillInitiator` → `KNS_Bill`, `KNS_Person`; `KNS_Query` → `KNS_Person`,
 `KNS_GovMinistry`, `KNS_Status`, `KNS_DocumentQueries`.
 
+## Bill detail: documents, status, and the public page (verified live 2026-06-13)
+
+For a full bill page you want the bill **plus its document links plus its status text**. A
+single **nested `$expand`** gets bill + documents inline, per MK:
+```
+KNS_BillInitiator?$filter=PersonID eq <id>&$expand=KNS_Bill/KNS_DocumentBills
+```
+- **Nested `$expand` works**, and the `/` survives percent-encoded as `%2F` — `buildODataUrl`'s
+  `encodeURIComponent` emits `KNS_Bill%2FKNS_DocumentBills` and the server returns the bill
+  inline with a `KNS_DocumentBills` array. `fetchAll` now takes an `expand` arg.
+- **`KNS_DocumentBill`** = `{DocumentBillID, BillID, GroupTypeID/Desc, ApplicationID,
+  ApplicationDesc ("PDF"|"DOC"), FilePath, LastUpdatedDate}`. `DocumentBillID` is Int64 in
+  `$metadata` but **serializes as a JSON number** (~1e7, JS-safe) — *not* a string. One
+  `DocumentBillID` yields one row **per format** (PDF + DOC). **`FilePath` → `fs.knesset.gov.il`**
+  is a plain file host (HTTP 200, real PDF/DOCX, **NOT** WAF'd) — but the API sometimes emits a
+  leading **double slash** (`https://fs.knesset.gov.il//25/law/…`); it still resolves, store
+  verbatim. Corpus-wide: **0** docs with a null `FilePath`.
+- **`KNS_Status`** (81 rows; bill/query/committee status lookup) = `{StatusID, Desc, TypeID,
+  TypeDesc}`; `StatusID` is unique across the 81. **Gotcha: some rows have a `null` `Desc`**
+  (observed 6015/6016/6017) — coalesce to `""` (or skip) before writing a NOT-NULL column, or the
+  whole batch upsert aborts. Also **0** `KNS_Bill` rows have a null `Name`.
+- **Public bill page (outbound link):** `https://main.knesset.gov.il/apps/legislation/main/bills/<BillID>`
+  (canonical; legacy `…/LawBill.aspx?t=lawsuggestionssearch&lawitemid=<BillID>` 301-redirects to
+  it). **`main.knesset.gov.il` is behind a Reblaze WAF** — curl/headless gets a ~477-byte
+  `kramericaindustries` JS challenge (status "247"), so you can't scrape it; a real browser
+  passes. (`fs.knesset.gov.il` is a separate host, not WAF'd.)
+
 ## Wiring counts into Polytical (the card use-case)
 
 The card's "פעילות פרלמנטרית" comes from `getPoliticianActivity()`
@@ -175,6 +202,14 @@ async function odataCount({ entity, filter }: { entity: string; filter: string }
 }
 ```
 
+> **Update (2026-06-13): shipped + scope change.** The four count columns AND the
+> **bill-pages feature** are now live. Beyond counts, the bill-pages backfill stores lifetime
+> bill **rows** per current MK (via the nested `$expand` above) into `bills`/`bill_sponsors`,
+> plus new `bill_documents` + `bill_statuses` tables. **The `bills` table is therefore no longer
+> K25-scoped — it spans every Knesset for current MKs.** Any reader that assumed K25-only MUST
+> filter by `knessetNum` (fixed sites: `scripts/ingest-knesset.ts` `loadK25BillIds`, votes
+> `loadAttributionContext`, and `getPoliticianActivity`'s fallback bill count).
+
 ## Provenance / re-verification
 
 | Claim | How verified (2026-06-11) |
@@ -185,6 +220,9 @@ async function odataCount({ entity, filter }: { entity: string; filter: string }
 | `KNS_BillInitiator` has no `KnessetNum`; `$expand=KNS_Bill` carries it | live sample row keys |
 | Knesset 25 current | `KNS_Bill KnessetNum eq 26` → 0 rows |
 | name collision 30300 vs 585 | live `KNS_Person LastName eq 'אוחנה'` |
+| nested `$expand=KNS_Bill/KNS_DocumentBills` returns docs inline (`/`→`%2F`) | live, PersonID 30300 (2026-06-13) |
+| `fs.knesset.gov.il` PDF/DOCX reachable (not WAF'd); `main.knesset.gov.il` WAF'd | live HTTP 200 PDF; LawBill.aspx → 477-byte JS challenge (2026-06-13) |
+| `KNS_Status` 6015–6017 have null `Desc`; 0 null `KNS_Bill.Name`; 0 null doc `FilePath` | live `$inlinecount` (2026-06-13) |
 
 If any number here ever looks off, **re-run the script before believing the doc** — the
 Knesset publishes continuously and the current-Knesset number will change when the 26th is

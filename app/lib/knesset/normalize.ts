@@ -1,5 +1,5 @@
 import type {
-  KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsBill, KnsBillInitiator, KnsQuery, KnsCommittee,
+  KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsBill, KnsBillInitiator, KnsDocumentBill, KnsStatus, KnsBillInitiatorExpanded, KnsQuery, KnsCommittee,
 } from "./odata-types";
 import { normalizeSearchName } from "./search-name";
 import { logger } from "@/app/lib/logger";
@@ -341,13 +341,23 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
 // --- straight per-entity mappers (1:1, provenance-stamped) ---
 
 export interface BillRow {
-  billId: number; knessetNum: number | null; nameHe: string; subTypeDesc: string | null;
-  statusId: number | null; sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+  billId: number; knessetNum: number | null; nameHe: string;
+  subTypeId: number | null; subTypeDesc: string | null; privateNumber: number | null;
+  committeeId: number | null; number: number | null; statusId: number | null;
+  publicationDate: Date | null; summaryLaw: string | null; isContinuationBill: boolean | null;
+  publicationSeriesDesc: string | null; lastUpdatedDate: Date | null;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
 }
 export function normalizeBills(raw: KnsBill[], prov: Prov): BillRow[] {
   return raw.map((b) => ({
     billId: b.BillID, knessetNum: b.KnessetNum ?? null, nameHe: b.Name,
-    subTypeDesc: b.SubTypeDesc ?? null, statusId: b.StatusID ?? null,
+    subTypeId: b.SubTypeID ?? null, subTypeDesc: b.SubTypeDesc ?? null,
+    privateNumber: b.PrivateNumber ?? null, committeeId: b.CommitteeID ?? null,
+    number: b.Number ?? null, statusId: b.StatusID ?? null,
+    publicationDate: parseODataDate(b.PublicationDate),
+    summaryLaw: b.SummaryLaw ?? null, isContinuationBill: b.IsContinuationBill ?? null,
+    publicationSeriesDesc: b.PublicationSeriesDesc ?? null,
+    lastUpdatedDate: parseODataDate(b.LastUpdatedDate),
     sourceDataset: "KNS_Bill", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
   }));
 }
@@ -375,6 +385,59 @@ export function normalizeBillSponsors(
     isInitiator: r.IsInitiator ?? false, ordinal: r.Ordinal ?? null,
     sourceDataset: "KNS_BillInitiator", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
   }));
+}
+
+export interface BillDocumentRow {
+  documentBillId: number; billId: number; groupTypeId: number | null; groupTypeDesc: string | null;
+  format: string | null; filePath: string; lastUpdatedDate: Date | null;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+export function normalizeBillDocuments(raw: KnsDocumentBill[], prov: Prov): BillDocumentRow[] {
+  return raw.map((d) => ({
+    documentBillId: Number(d.DocumentBillID), billId: d.BillID, // DocumentBillID is an Int64 JSON string
+    groupTypeId: d.GroupTypeID ?? null, groupTypeDesc: d.GroupTypeDesc ?? null,
+    format: d.ApplicationDesc ?? null, filePath: d.FilePath,
+    lastUpdatedDate: parseODataDate(d.LastUpdatedDate),
+    sourceDataset: "KNS_DocumentBill", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+  }));
+}
+
+export interface BillStatusRow {
+  statusId: number; descHe: string; sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+export function normalizeBillStatuses(raw: KnsStatus[], prov: Prov): BillStatusRow[] {
+  return raw.map((s) => ({
+    // KNS_Status has a handful of rows with a null Desc (e.g. 6015–6017); descHe is
+    // NOT NULL, so coalesce to "" — readers treat empty as "no status" (falsy).
+    statusId: s.StatusID, descHe: s.Desc ?? "",
+    sourceDataset: "KNS_Status", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+  }));
+}
+
+/** Flattens `$expand=KNS_Bill/KNS_DocumentBills` rows into the three raw arrays
+ *  the upserts need: bills (deduped by BillID), sponsors (every initiator row),
+ *  documents (deduped by DocumentBillID+ApplicationDesc). Pure — caller normalizes. */
+export function splitExpandedInitiators(raw: KnsBillInitiatorExpanded[]): {
+  bills: KnsBill[]; sponsors: KnsBillInitiator[]; documents: KnsDocumentBill[];
+} {
+  const billsById = new Map<number, KnsBill>();
+  const documentsByKey = new Map<string, KnsDocumentBill>();
+  const sponsors: KnsBillInitiator[] = [];
+  for (const r of raw) {
+    sponsors.push({
+      BillInitiatorID: r.BillInitiatorID, BillID: r.BillID, PersonID: r.PersonID,
+      IsInitiator: r.IsInitiator ?? null, Ordinal: r.Ordinal ?? null, LastUpdatedDate: r.LastUpdatedDate ?? null,
+    });
+    const b = r.KNS_Bill;
+    if (!b) continue;
+    // Store the bill once; its nested KNS_DocumentBills (collected separately below)
+    // is ignored by normalizeBills, so no need to strip it.
+    if (!billsById.has(b.BillID)) billsById.set(b.BillID, b);
+    for (const d of b.KNS_DocumentBills ?? []) {
+      documentsByKey.set(`${d.DocumentBillID}:${d.ApplicationDesc ?? ""}`, d);
+    }
+  }
+  return { bills: [...billsById.values()], sponsors, documents: [...documentsByKey.values()] };
 }
 
 export interface QueryRow {
