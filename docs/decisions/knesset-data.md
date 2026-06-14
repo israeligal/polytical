@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-06-15 — OData survey: split-bill genealogy, a topic taxonomy (laws only), and the untapped-entity menu
+
+**Context.** The agenda hero/cards feature surfaced that only **5 of 75** announced agenda items carry an
+MK initiator. Probed the live OData (`ParliamentInfo.svc`, all numbers verified 2026-06-15) to explain it
+and to inventory what else the service exposes that we don't ingest.
+
+**Findings (verified):**
+- **Split/government bills have 0 MK initiators by design.** Most "על סדר היום" items are budget bills
+  split into child bills (`SubTypeDesc = ממשלתית`); `KNS_BillInitiator` returns 0 for them (BillID 2227233
+  → 0). A split child's lineage + initiators live on the **parent**: `KNS_BillSplit.SplitBillID → MainBillID`
+  (2204244 → 2203821). Only `פרטית` bills carry MK initiators (2233112 → 3). **So the agenda UI showing
+  no portraits for most items is correct, not an ingest bug.** Bill genealogy: `KNS_BillSplit` (881 rows),
+  `KNS_BillUnion` (1622), `KNS_BillHistoryInitiator` (2273 K25, former initiators).
+- **A real topic taxonomy exists — but for enacted laws only.** `KNS_IsraelLawClassificiation` (2902 rows,
+  ~38 Hebrew tags: ביטחון/בריאות/חינוך/מיסוי/…) tags `KNS_IsraelLaw` (106 K25 enacted laws). This does
+  **not** lift the votes/bills-feed "no topic taxonomy" limitation (`votes-discovery.md`) — most votes/bills
+  never become law, and the bill→law join (`KNS_IsraelLawName`/`Binding`, a separate `LawID` space) is
+  indirect and was not end-to-end verified. Treat law-topic tagging as a spike.
+- **Other untapped, verified:** `KNS_CommitteeSession` (10,453 K25) + `KNS_CmtSessionItem` (80,182) →
+  per-bill committee-discussion timelines (no per-MK attendance — sessions carry no PersonID);
+  `KNS_DocumentPlenumSession` (75,959) → plenum transcripts ("דברי הכנסת" Hansard).
+
+**Decision.** Documentation-only — no ingest change. Promoted these entities to VERIFIED and added an
+**"Untapped data & feature opportunities"** menu to the OData catalog (`api-catalog.md`) so the next
+feature can pull from a grounded list. The split-bill gotcha is now in the `knesset-odata` SKILL.
+
+---
+
 ## 2026-06-12 — MK attendance: plenum presence unavailable; ship a vote-participation proxy
 
 **Decision.** Politician cards show **vote participation** ("השתתפות בהצבעות") derived from our own

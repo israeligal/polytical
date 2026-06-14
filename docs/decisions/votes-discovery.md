@@ -1,5 +1,12 @@
 # Key Decisions: votes discovery — detail-page rail + feed filters
 
+### Topic taxonomy — a third option found, still not a feed filter (2026-06-15)
+OData survey (verified 2026-06-15, see `knesset-data.md`) found `KNS_IsraelLawClassificiation` — a real
+~38-tag topic taxonomy (ביטחון/בריאות/חינוך/…). BUT it tags **enacted laws only** (106 K25), and the
+bill→law join is an indirect, separate-id-space hop. So it can't tag a votes feed where most items never
+become law — the "no topic taxonomy for votes" conclusion below stands. Committee-as-topic (next entry)
+remains the honest path for a votes/bills feed; law-classification could tag a future *enacted-laws* surface.
+
 ### Vote page gets a "הצבעות אחרונות" rail, not a bottom strip (2026-06-11)
 `/vote/[id]` became a two-column desktop layout (`VOTE_PAGE_GRID`, mirroring `MARKET_GRID`; container widened max-w-3xl→5xl) with a HotRail-styled aside — 5 recent decisive votes (current vote + same-item siblings excluded), each with title, date, and the feed's התקבל/נדחה chip, footer → `/votes`. In RTL the aside lands on the visual LEFT, which is what Gal asked for; on mobile it stacks below the content. Data comes from the existing `getVotesFeed({limit: 8})` call (filtered + sliced in the page) — no new repo query.
 
