@@ -4,6 +4,42 @@
 
 ---
 
+## 2026-06-12 — MK attendance: plenum presence unavailable; ship a vote-participation proxy
+
+**Decision.** Politician cards show **vote participation** ("השתתפות בהצבעות") derived from our own
+`mk_votes` — votes attended vs missed + plenum vote-days present, tenure-scoped via `faction_stints`
+(`app/lib/votes/participation.ts`, `getMkParticipation`). It is a roll-call-presence **proxy**, labelled
+as such (disclaimer: "מבוסס על הצבעות שמיות במליאה … לא כולל הצבעות חשאיות והצבעות בהרמת יד"),
+**never "ימי נוכחות"** — the sourcing rule forbids dressing a proxy as official attendance.
+
+**Why not real attendance.** Live-verified 2026-06-12 (three independent probes): there is **no usable
+current per-MK plenum-attendance source**. OData has no person↔session entity; the Knesset website API
+has no presence endpoint (exhaustive 404/empty-204); the official `presence/` page is 500/JS-SPA; Open
+Knesset `members/presence` CSV is 0-bytes and its raw log ends 2024-02-18. Full probe table:
+`.claude/skills/knesset-odata/references/api-catalog.md` → "Attendance / presence — availability".
+
+**Deferred (not built).** Open Knesset `people/committees/meeting-attendees/kns_committeesession.csv`
+(`attended_mk_individual_ids`, live, K25) is the only usable presence source but is **committee-only**,
+NLP-parsed from protocols (incomplete), ~160 MB. Revisit if committee-attendance becomes a priority.
+
+---
+
+## 2026-06-11 — Politician roles come from `DutyDesc`; non-MK ministers are admitted
+
+**Decision.** The card "tafkid" (role) and the gallery roster are derived **entirely inside `normalizeK25Members`** (`app/lib/knesset/normalize.ts`), refreshed by the **canonical** `pnpm ingest:knesset --only=members`. Do NOT write a parallel minister/role script — extend the normalizer so every consumer benefits. (Spec: `docs/superpowers/specs/2026-06-11-politician-roles-and-ministers.md`.)
+
+**Rules (all from official OData, verified 2026-06-11):**
+- **Role label = `DutyDesc`, not `KNS_Position.Description`.** Pos 39 Description is the generic "שר"; the real portfolio ("שר הביטחון") is in `DutyDesc`. Seniority: PM(45) > minister(39/57, DutyDesc) > deputy(40/59) > Speaker(122) > Deputy Speaker(70) > faction-chair(48) > committee chair > plain MK. Multi-portfolio → first `DutyDesc` not starting "שר נוסף". Bare/blank minister DutyDesc → "שר ללא תיק".
+- **Roster = current office-holders.** Include anyone with a current seat (43/61) **or** current ministry (39/45) → `active=true`. The members fetch already returns minister rows (`KnessetNum=25`), so this is a normalize-only change. People who held office this term but hold none now → `active=false`, role suffixed " לשעבר", faction empty.
+- **Norwegian-law ministers** (current minister, no current seat — e.g. Sa'ar/שר החוץ, Smotrich/שר האוצר): `active=true`, flagged `facts.isNorwegianMinister=true` → the card shows a "נורבגי" chip + ⓘ. No new column — the flag rides `facts` JSONB.
+- **Party = current faction only.** No current Pos-54 faction → `party`/`factionId` null (empty on the card); never back-fill a past stint.
+
+**Why.** Two sessions independently built "admit ministers" against the shared prod DB, one with generic "שר". Consolidating into the canonical normalizer (this entry) prevents recurrence. Role classification for rarity (`lib/rarity.ts` `isMinisterRole`) already regex-matches "שר…", so specific titles keep their tier.
+
+**Caricatures.** A role-text change can stale the baked caricature PNG; `scripts/list-role-changes.ts` emits the regenerate list (new ministers + changed roles). Art is a separate manual `caricature-cards` pass.
+
+---
+
 ## 2026-06-10 — SUPERSEDES "votes deferred to P1": live K25 votes ship via the website API
 
 **Decision.** The 2026-05-31 deferral below is superseded. K25 per-MK roll-call votes ARE available — not via OData `Votes.svc` (still frozen at K24, re-verified) but via the Knesset **website API** (`knesset.gov.il/WebSiteApi/knessetapi/Votes/GetVotesHeaders` + `GetVoteDetails/{id}`), live through the previous day's plenum. Ingested into `knesset_votes`/`mk_votes`/`mk_votes_raw` with the same stable-id + provenance invariants; identity resolved through the human-verified `mk_name_mappings` (names only in the source — see `docs/decisions/knesset-votes.md` for the full decision set). Roster extended to all K25-tenured MKs (148 incl. 28 departed) with `faction_stints` intervals for faction-at-vote-time.

@@ -4,7 +4,7 @@
 // engagement surface).
 
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
-import { MY_MATCH_CONTAINER, VOTES_PAGE_CONTAINER, VOTE_PAGE_CONTAINER } from "./containers";
+import { MY_MATCH_CONTAINER, VOTES_PAGE_CONTAINER, VOTE_PAGE_CONTAINER, VOTE_PAGE_GRID } from "./containers";
 
 /** app/votes — flex header w/ freshness stamp, featured rail, feed rows. */
 export function VotesFeedSkeleton() {
@@ -24,63 +24,91 @@ export function VotesFeedSkeleton() {
       <Skeleton className="mb-3 h-6 w-32" />
       <div className="mb-8 grid gap-3">
         {Array.from({ length: 2 }, (_, i) => (
-          <SkeletonCard key={i} className="h-28" />
+          <SkeletonCard key={i} className="h-32" />
         ))}
       </div>
 
       <Skeleton className="mb-3 h-6 w-36" />
       <div className="grid gap-3">
+        {/* h-32 (was h-28) — rows now carry an optional one-line description teaser */}
         {Array.from({ length: 6 }, (_, i) => (
-          <SkeletonCard key={i} className="h-28" />
+          <SkeletonCard key={i} className="h-32" />
         ))}
       </div>
     </main>
   );
 }
 
-/** app/vote/[id] — title+chip flex row, meta, STANCE WIDGET, totals card,
- *  faction breakdown cards (tall, 2-col member grids), siblings list. */
+/** app/vote/[id] — back-link, then two-column grid: main content (title+chip,
+ *  meta, stance widget, totals card, faction breakdown, siblings) + aside rail
+ *  (recent votes discovery). Grid mirrors VOTE_PAGE_GRID so shape can't drift. */
 export function VoteDetailSkeleton() {
   return (
     <main role="status" aria-busy="true" aria-label="טוען הצבעה" className={VOTE_PAGE_CONTAINER}>
       <span className="sr-only">טוען…</span>
+
+      {/* back-link spans full width, above the grid */}
       <Skeleton className="mb-5 h-4 w-24" />
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Skeleton className="h-8 w-full max-w-lg" />
-          <Skeleton className="mt-2 h-8 w-2/3" />
-        </div>
-        <Skeleton className="h-7 w-16 rounded-full" />
-      </div>
-      <Skeleton className="mt-3 h-4 w-72" />
 
-      {/* stance widget (decisive votes — the common case from the feed) */}
-      <SkeletonCard className="mt-4 h-32" />
-
-      {/* totals card */}
-      <SkeletonCard className="mt-6 h-28 rounded-2xl" />
-
-      {/* faction breakdown — tall cards with 2-col member rows inside */}
-      <Skeleton className="mt-8 mb-3 h-6 w-32" />
-      <div className="grid gap-4">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-4">
-            <Skeleton className="mb-3 h-4 w-40" />
-            <div className="grid gap-2 sm:grid-cols-2">
-              {Array.from({ length: 6 }, (_, j) => (
-                <Skeleton key={j} className="h-11 rounded-lg" />
-              ))}
+      <div className={VOTE_PAGE_GRID}>
+        {/* ── main column ── */}
+        <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-8 w-full max-w-lg" />
+              <Skeleton className="mt-2 h-8 w-2/3" />
             </div>
+            <Skeleton className="h-7 w-16 rounded-full" />
           </div>
-        ))}
-      </div>
+          <Skeleton className="mt-3 h-4 w-72" />
 
-      {/* sibling votes */}
-      <Skeleton className="mt-8 mb-3 h-6 w-56" />
-      <div className="grid gap-2">
-        {Array.from({ length: 2 }, (_, i) => (
-          <SkeletonCard key={i} className="h-10 rounded-lg" />
-        ))}
+          {/* official description + law links card (enriched items only) */}
+          <SkeletonCard className="mt-4 h-12" />
+
+          {/* stance widget (decisive votes — the common case from the feed) */}
+          <SkeletonCard className="mt-4 h-32" />
+
+          {/* totals card */}
+          <SkeletonCard className="mt-6 h-28 rounded-2xl" />
+
+          {/* faction breakdown — tall cards with 2-col member rows inside */}
+          <Skeleton className="mt-8 mb-3 h-6 w-32" />
+          <div className="grid gap-4">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card p-4">
+                <Skeleton className="mb-3 h-4 w-40" />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {Array.from({ length: 6 }, (_, j) => (
+                    <Skeleton key={j} className="h-11 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* sibling votes */}
+          <Skeleton className="mt-8 mb-3 h-6 w-56" />
+          <div className="grid gap-2">
+            {Array.from({ length: 2 }, (_, i) => (
+              <SkeletonCard key={i} className="h-10 rounded-lg" />
+            ))}
+          </div>
+        </div>
+
+        {/* ── recent-votes aside rail ── */}
+        <div className="rounded-card border border-border bg-card shadow-2">
+          <Skeleton className="m-3 h-5 w-32" />
+          <div className="grid gap-0">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="border-b border-border px-4 py-3 last:border-b-0">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="mt-1.5 h-4 w-3/4" />
+                <Skeleton className="mt-1 h-3 w-20" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="m-3 h-4 w-28" />
+        </div>
       </div>
     </main>
   );

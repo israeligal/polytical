@@ -1,4 +1,5 @@
 import { logger } from "@/app/lib/logger";
+import { fetchWithRetry, sleep } from "@/app/lib/http/fetch-retry";
 import type { ODataPage } from "./odata-types";
 
 /** System of record. ParliamentInfo.svc — NOT Votes.svc (frozen at K24, deferred). */
@@ -21,7 +22,9 @@ export type KnsEntity =
   | "KNS_Query"
   | "KNS_Committee"
   | "KNS_DocumentBill"
-  | "KNS_Status";
+  | "KNS_Status"
+  | "KNS_Agenda"
+  | "KNS_DocumentAgenda";
 
 interface BuildUrlArgs {
   entity: KnsEntity;
@@ -74,26 +77,15 @@ interface FetchAllArgs {
  */
 const ALL_TOP = 100000;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 async function fetchPage(url: string, retries: number, retryDelayMs: number): Promise<ODataPage<unknown>> {
-  let attempt = 0;
-  for (;;) {
-    try {
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return (await res.json()) as ODataPage<unknown>;
-    } catch (err) {
-      if (attempt >= retries) {
-        logger.error("knesset.odata.fetch_failed", { url, attempt, err: String(err) });
-        throw err;
-      }
-      const backoff = retryDelayMs * Math.pow(2, attempt);
-      logger.warn("knesset.odata.retry", { url, attempt, backoff, err: String(err) });
-      await sleep(backoff);
-      attempt += 1;
-    }
-  }
+  return fetchWithRetry<ODataPage<unknown>>({
+    url,
+    label: "knesset.odata",
+    retries,
+    retryDelayMs,
+    init: { headers: { Accept: "application/json" } },
+    parse: async (res) => (await res.json()) as ODataPage<unknown>,
+  });
 }
 
 /** Rows from either dialect: v4 `value` or v3 `d.results`. */
@@ -210,21 +202,16 @@ export async function fetchOknessetCsv(
   { retries = 2, retryDelayMs = 500 }: { retries?: number; retryDelayMs?: number } = {},
 ): Promise<{ rows: Record<string, string>[]; url: string }> {
   const url = `${OKNESSET_BASE}${relativePath}`;
-  let attempt = 0;
-  for (;;) {
-    try {
-      const res = await fetch(url, { headers: { Accept: "text/csv" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return fetchWithRetry({
+    url,
+    label: "knesset.oknesset",
+    retries,
+    retryDelayMs,
+    init: { headers: { Accept: "text/csv" } },
+    parse: async (res) => {
       const rows = parseCsv(await res.text());
       logger.info("knesset.oknesset.fetched", { url, rows: rows.length });
       return { rows, url };
-    } catch (err) {
-      if (attempt >= retries) {
-        logger.error("knesset.oknesset.fetch_failed", { url, attempt, err: String(err) });
-        throw err;
-      }
-      await sleep(retryDelayMs * Math.pow(2, attempt));
-      attempt += 1;
-    }
-  }
+    },
+  });
 }

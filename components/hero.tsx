@@ -147,7 +147,7 @@ export function HotRail({
       </ul>
       <Link
         href="/markets"
-        className="border-t border-border px-4 py-3 text-center text-sm font-bold text-primary transition-colors hover:bg-raised"
+        className="rounded-b-card border-t border-border px-4 py-3 text-center text-sm font-bold text-primary transition-colors hover:bg-raised"
       >
         כל התחזיות
       </Link>
@@ -190,7 +190,7 @@ export function VoteHeroSpotlight({
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-5">
         <span className="text-sm text-muted-foreground">
-          {[vote.totalFor, vote.totalAgainst, vote.totalAbstain].reduce(
+          {[vote.totalFor, vote.totalAgainst, vote.totalAbstain].reduce<number>(
             (s, n) => s + (n ?? 0),
             0,
           )}{" "}

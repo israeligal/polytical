@@ -67,8 +67,15 @@ export function normalizeVoteHeader(h: WsVoteHeader, prov: Prov): KnessetVoteIns
   };
 }
 
+// KNS_ItemType ids we enrich (vote_items): the OData tables behind FK_ItemID.
+// NOT a closed map — other ids (3=no-confidence, 9 observed on secret votes)
+// are stored raw on the vote and simply never enriched.
+export const ITEM_TYPE_BILL = 2;
+export const ITEM_TYPE_AGENDA = 4;
+
 export interface VoteDetailsPatch {
   itemId: number | null;
+  itemTypeId: number | null;
   decisionHe: string | null;
   isAccepted: boolean | null;
   totalFor: number | null;
@@ -90,6 +97,7 @@ export function normalizeVoteDetails(
   const header = d.VoteHeader?.[0];
   const patch: VoteDetailsPatch = {
     itemId: header?.FK_ItemID ?? null,
+    itemTypeId: header?.LU_ItemType ?? null,
     decisionHe: header?.Decision ?? null,
     isAccepted: header?.IsForAccepted ?? null,
     totalFor: null,

@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
 import {
-  factionStints, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, politicians, unmappedMkNames, users,
+  factionStints, ingestHeartbeats, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, politicians, unmappedMkNames, users,
 } from "@/app/lib/schema";
 import { eq } from "drizzle-orm";
 import type { WsVoteDetailsResponse, WsVoteHeader } from "./website-types";
@@ -15,6 +15,16 @@ vi.mock("./website-api", async (importOriginal) => {
   const mod = await importOriginal<typeof import("./website-api")>();
   return { ...mod, fetchVoteHeaders: vi.fn(), fetchVoteDetails: vi.fn(), fetchMksDropdown: vi.fn() };
 });
+// ingestVotes now runs enrichVoteItems as a post-pass (step 2.5) — mock the
+// SAME external boundaries as enrich.integration.test.ts so this suite stays
+// offline. fetchAll → [] means enrichment finds nothing per item (failed,
+// per-item-isolated) and never reaches fetchBinaryFile in practice; mocking
+// it too guards against any path that would otherwise hit the network.
+vi.mock("@/app/lib/knesset/odata", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@/app/lib/knesset/odata")>();
+  return { ...mod, fetchAll: vi.fn(async () => []) };
+});
+vi.mock("./files-api", () => ({ fetchBinaryFile: vi.fn(async () => { throw new Error("offline"); }) }));
 import { fetchVoteDetails, fetchVoteHeaders } from "./website-api";
 import { ingestVotes } from "./service";
 import { dismissUnmappedName, loadAttributionContext, resolveUnmappedName } from "./repo";
@@ -38,18 +48,19 @@ function headerRow(over: Partial<WsVoteHeader> & Pick<WsVoteHeader, "VoteId">): 
 }
 
 function detailResponse({
-  voteId, itemId = 999, decision = "לקבל בקריאה שנייה", accepted = true,
+  voteId, itemId = 999, itemTypeId = 2, decision = "לקבל בקריאה שנייה", accepted = true,
   voters = [], counters,
 }: {
-  voteId: number; itemId?: number | null; decision?: string | null; accepted?: boolean | null;
+  voteId: number; itemId?: number | null; itemTypeId?: number | null;
+  decision?: string | null; accepted?: boolean | null;
   voters?: { name: string; faction?: string; resultId: number; title: string }[];
   counters?: { Title: string; countOfResult: number }[];
 }): WsVoteDetailsResponse {
   return {
     VoteHeader: [{
       VoteId: voteId, VoteProtocolNo: 1, VoteDate: "2026-06-09T19:00:00", VoteType: "הצבעה אלקטרונית",
-      VoteTypeId: 1, ItemTitle: "חוק לדוגמה", FK_ItemID: itemId, FK_Knesset: 25, Decision: decision,
-      ChairmanName: null, IsForAccepted: accepted, AcceptedText: null, SessionNumber: 1,
+      VoteTypeId: 1, ItemTitle: "חוק לדוגמה", FK_ItemID: itemId, LU_ItemType: itemTypeId, FK_Knesset: 25,
+      Decision: decision, ChairmanName: null, IsForAccepted: accepted, AcceptedText: null, SessionNumber: 1,
     }],
     VoteCounters: (counters ?? [{ Title: "בעד", countOfResult: voters.length }]).map((c, i) => ({ ...c, rn: i + 1 })),
     VoteDetails: voters.map((v) => ({
@@ -95,6 +106,13 @@ test("ingest is idempotent and the admin `featured` flag survives re-ingest", as
 
   const r1 = await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10" });
   expect(r1.attributed).toBe(1);
+  // enrichment is offline (mocked fetchAll → []) so the single bill item (999)
+  // FAILS per-item — yet the run still completes and the heartbeat is stamped,
+  // proving enrichment failures never break ingest.
+  expect(r1.itemsFailed).toBe(1);
+  expect(r1.itemsEnriched).toBe(0);
+  const [heartbeat] = await h.db.select().from(ingestHeartbeats).where(eq(ingestHeartbeats.job, "votes"));
+  expect(heartbeat).toBeDefined();
 
   await h.db.update(knessetVotes).set({ featured: true }).where(eq(knessetVotes.voteId, 1001));
   await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10", refetchDetails: true });
@@ -124,6 +142,24 @@ test("a failed detail fetch leaves pending_details and the next run completes it
   expect(r2.detailsFetched).toBe(1);
   [vote] = await h.db.select().from(knessetVotes).where(eq(knessetVotes.voteId, 1002));
   expect(vote.detailsStatus).toBe("complete");
+});
+
+test("a refetch with a NULL LU_ItemType never clobbers a classified itemTypeId/billId", async () => {
+  // First ingest classifies the vote as a bill (itemTypeId 2 → billId set).
+  mockHeaders.mockResolvedValue([headerRow({ VoteId: 1010 })]);
+  mockDetails.mockResolvedValue(detailResponse({ voteId: 1010, itemId: 555, itemTypeId: 2 }));
+  await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10" });
+  let [vote] = await h.db.select().from(knessetVotes).where(eq(knessetVotes.voteId, 1010));
+  expect(vote.itemTypeId).toBe(2);
+  expect(vote.billId).toBe(555);
+
+  // A later refetch returns LU_ItemType: null (no information) — must NOT erase
+  // the prior classification (the open-domain null-signal carve-out).
+  mockDetails.mockResolvedValue(detailResponse({ voteId: 1010, itemId: 555, itemTypeId: null }));
+  await ingestVotes({ db: h.db, fromDate: "2026-06-01", toDate: "2026-06-10", refetchDetails: true });
+  [vote] = await h.db.select().from(knessetVotes).where(eq(knessetVotes.voteId, 1010));
+  expect(vote.itemTypeId).toBe(2);
+  expect(vote.billId).toBe(555);
 });
 
 test("hand votes store counters and never produce per-MK rows", async () => {
@@ -251,6 +287,37 @@ test("feed pagination never drops same-timestamp votes across a page boundary (c
   // garbage cursor → first page, never a crash
   const garbage = await getVotesFeed({ db: h.db, limit: 2, before: "not-a-cursor" });
   expect(garbage.votes).toHaveLength(2);
+});
+
+test("feed filters: outcome + with-breakdown apply on first AND cursor pages; NULL outcomes excluded", async () => {
+  const { getVotesFeed } = await import("./read-repo");
+  const base = {
+    knessetNum: 25, isDecisive: true, detailsStatus: "complete" as const,
+    sourceDataset: "test", sourceUrl: "https://example.test",
+  };
+  const day = (d: number) => new Date(`2026-06-0${d}T12:00:00Z`);
+  await h.db.insert(knessetVotes).values([
+    { ...base, voteId: 9101, titleHe: "התקבלה", voteDate: day(5), fetchedAt: day(5), voteType: "electronic", isAccepted: true },
+    { ...base, voteId: 9102, titleHe: "נדחתה", voteDate: day(4), fetchedAt: day(4), voteType: "roll_call", isAccepted: false },
+    { ...base, voteId: 9103, titleHe: "ללא תוצאה", voteDate: day(3), fetchedAt: day(3), voteType: "electronic", isAccepted: null },
+    { ...base, voteId: 9104, titleHe: "הרמת ידיים", voteDate: day(2), fetchedAt: day(2), voteType: "hand", isAccepted: true },
+    { ...base, voteId: 9105, titleHe: "התקבלה ישנה", voteDate: day(1), fetchedAt: day(1), voteType: "electronic", isAccepted: true },
+  ]);
+
+  const acceptedPage = await getVotesFeed({ db: h.db, filter: { accepted: true } });
+  expect(acceptedPage.votes.map((v) => v.voteId)).toEqual([9101, 9104, 9105]); // NULL (9103) and rejected (9102) excluded
+
+  const rejected = await getVotesFeed({ db: h.db, filter: { accepted: false } });
+  expect(rejected.votes.map((v) => v.voteId)).toEqual([9102]);
+
+  const breakdown = await getVotesFeed({ db: h.db, filter: { withBreakdown: true } });
+  expect(breakdown.votes.map((v) => v.voteId)).toEqual([9101, 9102, 9103, 9105]); // hand vote (9104) excluded
+
+  // The filter must survive cursor pagination — a filtered page-2 stays filtered.
+  const page1 = await getVotesFeed({ db: h.db, limit: 2, filter: { accepted: true } });
+  expect(page1.votes.map((v) => v.voteId)).toEqual([9101, 9104]);
+  const page2 = await getVotesFeed({ db: h.db, limit: 2, before: page1.nextBefore!, filter: { accepted: true } });
+  expect(page2.votes.map((v) => v.voteId)).toEqual([9105]);
 });
 
 test("pickDecisiveVoteId: hand/secret-only items fall back to the latest vote (feed spine, never scored)", () => {

@@ -1,12 +1,13 @@
 import type { CatColor, Politician, PoliticianFact } from "@/lib/types";
+import type { Gender } from "@/lib/gender";
+import { mkTitle } from "@/lib/gender";
 import type { PoliticianRow } from "./repo";
 
 // Maps a `politicians` DB row → the existing front-end `Politician` shape,
 // WITHOUT changing lib/types or components/caricature-card.tsx. This keeps the
 // mock-driven market detail stable while the cards themselves run on real data.
 
-const NO_PARTY = "ללא סיעה";
-const DEFAULT_ROLE = "חבר/ת הכנסת";
+
 
 const CAT_SLOTS = 8;
 
@@ -42,14 +43,24 @@ function knessetSinceYear(value: string | null): string | undefined {
 }
 
 export function dbToCard(row: PoliticianRow): Politician {
-  const party = row.party?.trim() || NO_PARTY;
-  const role = row.roleHe?.trim() || DEFAULT_ROLE;
+  const hasParty = !!row.party?.trim();
+  const party = hasParty ? row.party!.trim() : ""; // empty (no faction) — NOT "ללא סיעה"
+  const gender = (row.gender ?? null) as Gender;
+  // roleHe from OData may be empty/null for a rank-and-file MK — fall back to
+  // the gendered MK title ("חבר הכנסת" / "חברת הכנסת" / "חבר/ת הכנסת") so the
+  // card shows the correct form rather than a generic slash.
+  const role = row.roleHe?.trim() || mkTitle({ gender });
   const sinceYear = knessetSinceYear(row.inKnessetSince);
+  const isNorwegianMinister =
+    (row.facts as { isNorwegianMinister?: boolean })?.isNorwegianMinister === true;
 
   const facts: PoliticianFact[] = [
-    { label: "סיעה", value: party },
+    ...(hasParty ? [{ label: "סיעה", value: party }] : []),
     { label: "תפקיד", value: role },
-    ...(sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
+    // "בסיעה מאז" only makes sense alongside a current faction — omit it for
+    // partyless cards (Norwegian-law ministers, departed MKs) even if a past
+    // stint gives a year.
+    ...(hasParty && sinceYear ? [{ label: "בסיעה מאז", value: sinceYear }] : []),
   ];
 
   return {
@@ -61,5 +72,7 @@ export function dbToCard(row: PoliticianRow): Politician {
     tagline: row.roleHe?.trim() ?? "",
     facts,
     imageUrl: row.imageUrl ?? undefined,
+    isNorwegianMinister,
+    gender: gender ?? undefined,
   };
 }

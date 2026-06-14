@@ -101,6 +101,9 @@ export const politicians = pgTable(
     dob: date("dob"),                                  // NULL — not in OData; editorial-sourced later
     facts: jsonb("facts").notNull().default({}),       // roles[], ministries[], counts, etc. (see normalize)
     imageUrl: text("imageUrl"),                        // AI caricature path (e.g. /caricatures/<personId>.png); null → styled fallback
+    // Gender sourced from KNS_Person.GenderDesc ("זכר"→"male", "נקבה"→"female").
+    // Nullable: unknown gender → neutral copy everywhere (never guessed).
+    gender: text("gender").$type<"male" | "female">(),
     active: boolean("active").notNull().default(true),
     searchName: text("searchName").notNull().default(""), // unaccent(lower(nameHe)), niqqud/finals/particles normalized
     // Parliamentary-activity counts, official OData `$inlinecount` totals (NOT a join

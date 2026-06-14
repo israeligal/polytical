@@ -18,6 +18,55 @@ export const GOV_POSITIONS = new Set([39, 40, 45, 50, 57, 59]);
 export const FACTION_MEMBER_POSITION = 54;
 export const SENTINEL_FACTION_ID = 911;
 
+// Government office positions (let a person hold office without a Knesset seat).
+export const PM_POSITIONS = new Set([45, 51, 73]);        // PM / acting / alternate
+export const MINISTER_POSITIONS = new Set([39, 57]);      // שר / שרה
+export const DEPUTY_MINISTER_POSITIONS = new Set([40, 59]);
+const SPEAKER = 122, DEPUTY_SPEAKER = 70, FACTION_CHAIR = 48;
+// "additional minister at X" qualifier (masc. "שר נוסף" — final pe ף; fem. "שרה נוספת" —
+// regular pe פ) — secondary, never the primary portfolio.
+const SECONDARY_MINISTER_RE = /^שר(ה)? נוס[פף]/;
+
+/** Specific minister title from DutyDesc; bare/blank → "שר ללא תיק" (no portfolio). */
+function ministerTitle(rows: KnsPersonToPosition[]): string | null {
+  const mins = rows.filter((r) => MINISTER_POSITIONS.has(r.PositionID));
+  if (!mins.length) return null;
+  const titles = mins.map((r) => (r.DutyDesc ?? "").trim()).filter(Boolean);
+  const primary = titles.find((t) => !SECONDARY_MINISTER_RE.test(t)) ?? titles[0];
+  if (!primary || primary === "שר" || primary === "שרה") {
+    const femaleOnly = mins.every((r) => r.PositionID === 57);
+    return femaleOnly ? "שרה ללא תיק" : "שר ללא תיק";
+  }
+  return primary;
+}
+
+/**
+ * The headline role label, by seniority: PM > minister (DutyDesc) > deputy minister >
+ * Speaker > Deputy Speaker > faction chair > any other titled role > null (plain MK,
+ * which the adapter renders as the default "חבר/ת הכנסת"). NO "לשעבר" suffix here —
+ * the caller adds it for inactive people.
+ */
+export function resolveRoleLabel({
+  rows, positionLabels,
+}: { rows: KnsPersonToPosition[]; positionLabels: Map<number, string> }): string | null {
+  const pm = rows.find((r) => PM_POSITIONS.has(r.PositionID));
+  if (pm) return positionLabels.get(pm.PositionID) ?? "ראש הממשלה";
+  const minister = ministerTitle(rows);
+  if (minister) return minister;
+  const deputy = rows.find((r) => DEPUTY_MINISTER_POSITIONS.has(r.PositionID));
+  if (deputy) return (deputy.DutyDesc ?? "").trim() || positionLabels.get(deputy.PositionID) || null;
+  for (const pid of [SPEAKER, DEPUTY_SPEAKER, FACTION_CHAIR]) {
+    if (rows.some((r) => r.PositionID === pid)) {
+      const label = positionLabels.get(pid);
+      if (label) return label;
+    }
+  }
+  const other = rows.find(
+    (r) => !MK_POSITIONS.has(r.PositionID) && r.PositionID !== FACTION_MEMBER_POSITION && positionLabels.get(r.PositionID),
+  );
+  return other ? positionLabels.get(other.PositionID)! : null;
+}
+
 /** Parses OData v3 "/Date(ms)/" or an ISO string into a Date (naive, as-stored). */
 export function parseODataDate(v: string | null | undefined): Date | null {
   if (!v) return null;
@@ -62,6 +111,17 @@ export function buildPositionLabelMap(rows: KnsPosition[]): Map<number, string> 
   return m;
 }
 
+/**
+ * Maps KNS_Person.GenderDesc to a typed literal.
+ * "זכר" → "male", "נקבה" → "female", anything else (null / unknown text) → null.
+ * Null is authoritative: it means "unknown — use neutral copy everywhere".
+ */
+export function parseGender({ genderDesc }: { genderDesc: string | null | undefined }): "male" | "female" | null {
+  if (genderDesc === "זכר") return "male";
+  if (genderDesc === "נקבה") return "female";
+  return null;
+}
+
 export interface FactionRow {
   factionId: number; nameHe: string; knessetNum: number | null; isCurrent: boolean;
   sourceDataset: string; sourceUrl: string; fetchedAt: Date;
@@ -85,6 +145,7 @@ export interface MemberRow {
   personId: number; nameHe: string; nameEn: string | null; party: string | null;
   factionId: number | null; roleHe: string | null; inKnessetSince: string | null;
   dob: string | null; facts: Record<string, unknown>; active: boolean; searchName: string;
+  gender: "male" | "female" | null;
   sourceDataset: string; sourceUrl: string; fetchedAt: Date;
 }
 
@@ -117,9 +178,12 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
     byPersonAll.set(r.PersonID, list);
   }
   const nameByPerson = new Map<number, string>();
+  const genderByPerson = new Map<number, "male" | "female">();
   for (const p of persons) {
     const he = [p.FirstName, p.LastName].filter(Boolean).join(" ").trim();
     if (he) nameByPerson.set(p.PersonID, he);
+    const g = parseGender({ genderDesc: p.GenderDesc });
+    if (g) genderByPerson.set(p.PersonID, g);
   }
 
   const out: MemberRow[] = [];
@@ -132,14 +196,13 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
     // Actives keep the proven current-rows recipe; departed use their K25 history.
     const rows = active ? allRows.filter((r) => r.IsCurrent === true) : allRows;
 
-    const factionRows = allRows.filter((r) => r.PositionID === FACTION_MEMBER_POSITION);
-    const factionCandidates = factionRows.filter((r) => r.FactionID != null && r.FactionID !== SENTINEL_FACTION_ID);
+    // Faction: CURRENT membership only — no fall-back to a past stint (spec: empty when
+    // not currently in a faction; covers seat-less ministers and departed MKs alike).
     const factionRow =
-      factionCandidates.find((r) => r.IsCurrent === true) ??
-      factionCandidates
-        .slice()
-        .sort((a, b) => (toDateOnly(b.StartDate) ?? "").localeCompare(toDateOnly(a.StartDate) ?? ""))[0] ??
-      null;
+      allRows.find(
+        (r) => r.PositionID === FACTION_MEMBER_POSITION && r.IsCurrent === true &&
+          r.FactionID != null && r.FactionID !== SENTINEL_FACTION_ID,
+      ) ?? null;
     const factionId = factionRow?.FactionID ?? null;
     let party: string | null = null;
     if (factionId != null) {
@@ -151,13 +214,25 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
       party = joined ?? inline;
     }
 
-    const startDates = factionRows.map((r) => toDateOnly(r.StartDate)).filter((d): d is string => !!d);
-    const inKnessetSince = startDates.length ? startDates.sort()[0] : null; // MIN
+    // Tenure: MIN(StartDate) across ALL faction stints (kept for departed too).
+    const startDates = allRows
+      .filter((r) => r.PositionID === FACTION_MEMBER_POSITION)
+      .map((r) => toDateOnly(r.StartDate))
+      .filter((d): d is string => !!d);
+    const inKnessetSince = startDates.length ? startDates.sort()[0] : null;
+
+    // Norwegian-law minister: currently a minister/PM but holds NO current seat.
+    const currentSeat = allRows.some((r) => MK_POSITIONS.has(r.PositionID) && r.IsCurrent === true);
+    const currentMinister = allRows.some(
+      (r) => (MINISTER_POSITIONS.has(r.PositionID) || PM_POSITIONS.has(r.PositionID)) && r.IsCurrent === true,
+    );
+    const isNorwegianMinister = active && currentMinister && !currentSeat;
+
+    let roleHe = resolveRoleLabel({ rows, positionLabels });
+    if (!active) roleHe = `${roleHe ?? "חבר/ת הכנסת"} לשעבר`;
 
     const roleRows = rows.filter((r) => !MK_POSITIONS.has(r.PositionID) && r.PositionID !== FACTION_MEMBER_POSITION);
-    const roles = roleRows
-      .map((r) => positionLabels.get(r.PositionID))
-      .filter((l): l is string => !!l);
+    const roles = roleRows.map((r) => positionLabels.get(r.PositionID)).filter((l): l is string => !!l);
     const ministries = roleRows.map((r) => r.GovMinistryName).filter((m): m is string => !!m);
     const committeesNamed = roleRows.map((r) => r.CommitteeName).filter((c): c is string => !!c);
 
@@ -168,11 +243,12 @@ export function normalizeK25Members({ p2p, positionLabels, prov, persons = [], f
       nameEn: null,
       party,
       factionId,
-      roleHe: roles[0] ?? null,
+      roleHe,
       inKnessetSince,
       dob: null,
-      facts: { roles, ministries, committees: committeesNamed },
+      facts: { roles, ministries, committees: committeesNamed, isNorwegianMinister },
       active,
+      gender: genderByPerson.get(personId) ?? null,
       searchName: normalizeSearchName(nameHe),
       sourceDataset: "KNS_PersonToPosition",
       sourceUrl: prov.sourceUrl,
@@ -197,9 +273,12 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
     byPerson.set(r.PersonID, list);
   }
   const nameByPerson = new Map<number, string>();
+  const genderByPerson = new Map<number, "male" | "female">();
   for (const p of persons) {
     const he = [p.FirstName, p.LastName].filter(Boolean).join(" ").trim();
     if (he) nameByPerson.set(p.PersonID, he);
+    const g = parseGender({ genderDesc: p.GenderDesc });
+    if (g) genderByPerson.set(p.PersonID, g);
   }
 
   const out: MemberRow[] = [];
@@ -249,6 +328,7 @@ export function normalizeCurrentMembers({ p2p, positionLabels, prov, persons = [
       dob: null,    // not in OData
       facts: { roles, ministries, committees: committeesNamed },
       active: true,
+      gender: genderByPerson.get(personId) ?? null,
       searchName: normalizeSearchName(nameHe),
       sourceDataset: "KNS_PersonToPosition",
       sourceUrl: prov.sourceUrl,
@@ -314,7 +394,7 @@ export interface BillDocumentRow {
 }
 export function normalizeBillDocuments(raw: KnsDocumentBill[], prov: Prov): BillDocumentRow[] {
   return raw.map((d) => ({
-    documentBillId: d.DocumentBillID, billId: d.BillID,
+    documentBillId: Number(d.DocumentBillID), billId: d.BillID, // DocumentBillID is an Int64 JSON string
     groupTypeId: d.GroupTypeID ?? null, groupTypeDesc: d.GroupTypeDesc ?? null,
     format: d.ApplicationDesc ?? null, filePath: d.FilePath,
     lastUpdatedDate: parseODataDate(d.LastUpdatedDate),

@@ -34,6 +34,9 @@ export interface WsVoteDetailHeader {
   ItemTitle: string;
   /** The OData item id; equals KNS_Bill.BillID for bill votes (verified live). */
   FK_ItemID: number | null;
+  /** KNS_ItemType id of FK_ItemID (2=KNS_Bill, 4=KNS_Agenda, 3=no-confidence).
+   *  OPEN domain — 9 observed live on a secret vote; store raw, never map closed. */
+  LU_ItemType: number | null;
   FK_Knesset: number;
   Decision: string | null;
   ChairmanName: string | null;

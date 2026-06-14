@@ -2,22 +2,27 @@
 // spine is "primary" votes: isDecisive (one per item — see pickDecisiveVoteId)
 // plus standalone votes with no itemId. ~2.3k primaries over 6,979 votes.
 
-import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt, notExists, or, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import {
   agendaItems, factions, ingestHeartbeats, knessetVotes, mkVotes, mkVotesRaw, politicians, unmappedMkNames,
+  userStances, voteItems,
 } from "@/app/lib/schema";
 import type { VotesDb } from "./repo";
 import { jerusalemWeekday } from "@/lib/time";
+import { requireUserId } from "@/app/lib/errors";
 
 type DB = VotesDb;
 
 export type KnessetVoteRow = typeof knessetVotes.$inferSelect;
 export type AgendaItemRow = typeof agendaItems.$inferSelect;
+export type VoteItemRow = typeof voteItems.$inferSelect;
 
 export interface FeedVote extends KnessetVoteRow {
   /** Other votes on the same item (readings/reservations) — 0 for standalones. */
   siblingCount: number;
+  /** First 280 chars of the item's official description — null until enriched. */
+  descriptionTeaser: string | null;
 }
 
 export interface VotesFeedPage {
@@ -43,33 +48,55 @@ function parseCursor(before: string | undefined): { date: Date; voteId: number }
   return { date, voteId };
 }
 
+/** One-line feed teaser, truncated in SQL so list queries never ship the
+ *  multi-KB official text. Shared by the feed and the featured rail —
+ *  one definition, one truncation length. */
+const TEASER_SELECT = sql<string | null>`left(${voteItems.descriptionHe}, 280)`;
+
+/** Official facets only — the website API carries no topic taxonomy, so the
+ *  feed filters are outcome + has-per-MK-rows (see docs/decisions/votes-discovery.md).
+ *  `accepted` filters stored IsForAccepted (NULL = outcome unknown — excluded
+ *  by both directions); `withBreakdown` keeps electronic/roll-call only. */
+export interface VotesFeedFilter {
+  accepted?: boolean;
+  withBreakdown?: boolean;
+}
+
 /** Newest-first keyset pagination over primary votes. */
 export async function getVotesFeed({
   db = defaultDb,
   before,
   limit = 30,
-}: { db?: DB; before?: string; limit?: number } = {}): Promise<VotesFeedPage> {
+  filter,
+}: { db?: DB; before?: string; limit?: number; filter?: VotesFeedFilter } = {}): Promise<VotesFeedPage> {
   const cursor = parseCursor(before);
-  const where = cursor
-    ? and(
-        FEED_PRIMARY,
-        or(
-          lt(knessetVotes.voteDate, cursor.date),
-          and(eq(knessetVotes.voteDate, cursor.date), lt(knessetVotes.voteId, cursor.voteId)),
-        ),
-      )
-    : FEED_PRIMARY;
+  const conditions = [FEED_PRIMARY];
+  if (filter?.accepted !== undefined) conditions.push(eq(knessetVotes.isAccepted, filter.accepted));
+  if (filter?.withBreakdown)
+    conditions.push(inArray(knessetVotes.voteType, ["electronic", "roll_call"]));
+  if (cursor)
+    conditions.push(
+      or(
+        lt(knessetVotes.voteDate, cursor.date),
+        and(eq(knessetVotes.voteDate, cursor.date), lt(knessetVotes.voteId, cursor.voteId)),
+      ),
+    );
+  const where = and(...conditions);
   const rows = await db
-    .select()
+    .select({
+      vote: knessetVotes,
+      teaser: TEASER_SELECT,
+    })
     .from(knessetVotes)
+    .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
     .where(where)
     .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId))
     .limit(limit + 1);
   const page = rows.slice(0, limit);
   const last = page[page.length - 1];
-  const nextBefore = rows.length > limit ? `${last.voteDate.toISOString()}_${last.voteId}` : null;
+  const nextBefore = rows.length > limit ? `${last.vote.voteDate.toISOString()}_${last.vote.voteId}` : null;
 
-  const itemIds = [...new Set(page.map((v) => v.itemId).filter((i): i is number => i != null))];
+  const itemIds = [...new Set(page.map((r) => r.vote.itemId).filter((i): i is number => i != null))];
   const siblingCounts = new Map<number, number>();
   if (itemIds.length) {
     const counts = await db
@@ -80,8 +107,9 @@ export async function getVotesFeed({
     for (const c of counts) if (c.itemId != null) siblingCounts.set(c.itemId, Number(c.n));
   }
   return {
-    votes: page.map((v) => ({
+    votes: page.map(({ vote: v, teaser }) => ({
       ...v,
+      descriptionTeaser: teaser,
       siblingCount: v.itemId != null ? Math.max(0, (siblingCounts.get(v.itemId) ?? 1) - 1) : 0,
     })),
     nextBefore,
@@ -93,14 +121,16 @@ export async function getFeaturedVotes({
   db = defaultDb,
   sinceDays = 31,
   limit = 6,
-}: { db?: DB; sinceDays?: number; limit?: number } = {}): Promise<KnessetVoteRow[]> {
+}: { db?: DB; sinceDays?: number; limit?: number } = {}): Promise<(KnessetVoteRow & { descriptionTeaser: string | null })[]> {
   const since = new Date(Date.now() - sinceDays * 864e5);
-  return db
-    .select()
+  const rows = await db
+    .select({ vote: knessetVotes, teaser: TEASER_SELECT })
     .from(knessetVotes)
+    .leftJoin(voteItems, eq(voteItems.itemId, knessetVotes.itemId))
     .where(and(eq(knessetVotes.featured, true), gte(knessetVotes.voteDate, since)))
     .orderBy(desc(knessetVotes.voteDate))
     .limit(limit);
+  return rows.map(({ vote, teaser }) => ({ ...vote, descriptionTeaser: teaser }));
 }
 
 export interface MkVoteWithPolitician {
@@ -111,6 +141,12 @@ export interface MkVoteWithPolitician {
   politician: typeof politicians.$inferSelect | null;
 }
 
+export interface VoteItemDetail {
+  item: VoteItemRow;
+  /** The agenda motion's proposing MK, when we know them. */
+  initiator: typeof politicians.$inferSelect | null;
+}
+
 export interface VoteDetail {
   vote: KnessetVoteRow;
   /** Per-MK breakdown with the politician row + faction-at-vote-time name. */
@@ -119,6 +155,8 @@ export interface VoteDetail {
   withheldCount: number;
   /** The item's other votes, newest first (readings/reservations context). */
   siblings: KnessetVoteRow[];
+  /** Enriched item context (official description + law links) — null until enriched. */
+  item: VoteItemDetail | null;
 }
 
 export async function getVoteDetail({
@@ -128,7 +166,7 @@ export async function getVoteDetail({
   const [vote] = await db.select().from(knessetVotes).where(eq(knessetVotes.voteId, voteId)).limit(1);
   if (!vote) return null;
 
-  const [breakdownRows, [rawCount], siblings] = await Promise.all([
+  const [breakdownRows, [rawCount], siblings, item] = await Promise.all([
     db
       .select({
         personId: mkVotes.personId,
@@ -149,12 +187,22 @@ export async function getVoteDetail({
           .from(knessetVotes)
           .where(and(eq(knessetVotes.itemId, vote.itemId), sql`${knessetVotes.voteId} <> ${voteId}`))
           .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId)),
+    vote.itemId == null
+      ? Promise.resolve(null)
+      : db
+          .select({ item: voteItems, initiator: politicians })
+          .from(voteItems)
+          .leftJoin(politicians, eq(politicians.personId, voteItems.initiatorPersonId))
+          .where(eq(voteItems.itemId, vote.itemId))
+          .limit(1)
+          .then((rows): VoteItemDetail | null => rows[0] ?? null),
   ]);
   return {
     vote,
     breakdown: breakdownRows,
     withheldCount: Math.max(0, Number(rawCount?.n ?? 0) - breakdownRows.length),
     siblings,
+    item,
   };
 }
 
@@ -249,6 +297,62 @@ export async function getAnnouncedAgendaItems({
     .from(agendaItems)
     .where(eq(agendaItems.status, "announced"))
     .orderBy(sql`${agendaItems.expectedDate} asc nulls last`, desc(agendaItems.createdAt))
+    .limit(limit);
+}
+
+// --- deck reads ---
+
+/** Minimal vote shape needed to render an "answer deck" card. */
+export interface DeckVote {
+  voteId: number;
+  titleHe: string;
+  voteDate: Date;
+  isAccepted: boolean | null;
+  voteType: typeof knessetVotes.$inferSelect.voteType;
+}
+
+/**
+ * Recent decisive votes the user has NOT yet taken a stance on — the source
+ * list for the "answer deck" feature. Only `isDecisive = true` votes are
+ * answerable (stances attach only to decisive votes, per the service invariant).
+ * The anti-join is done via NOT EXISTS so the filter is a single index scan on
+ * the (userId, voteId) primary key of user_stances, not a full table hash.
+ *
+ * Ordering: voteDate DESC, voteId DESC (same tie-safe ordering as the feed).
+ */
+export async function getUnansweredDeckVotes({
+  db = defaultDb,
+  userId,
+  excludeVoteId,
+  limit = 8,
+}: {
+  db?: DB;
+  userId: string;
+  excludeVoteId?: number;
+  limit?: number;
+}): Promise<DeckVote[]> {
+  const uid = requireUserId(userId);
+  const conditions = [
+    eq(knessetVotes.isDecisive, true),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(userStances)
+        .where(and(eq(userStances.userId, uid), eq(userStances.voteId, knessetVotes.voteId))),
+    ),
+  ];
+  if (excludeVoteId != null) conditions.push(sql`${knessetVotes.voteId} <> ${excludeVoteId}`);
+  return db
+    .select({
+      voteId: knessetVotes.voteId,
+      titleHe: knessetVotes.titleHe,
+      voteDate: knessetVotes.voteDate,
+      isAccepted: knessetVotes.isAccepted,
+      voteType: knessetVotes.voteType,
+    })
+    .from(knessetVotes)
+    .where(and(...conditions))
+    .orderBy(desc(knessetVotes.voteDate), desc(knessetVotes.voteId))
     .limit(limit);
 }
 

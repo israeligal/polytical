@@ -51,12 +51,14 @@ export const PARTY_LEADER_PERSON_IDS = new Set<number>([
 
 /** The SITTING PM (not deputy / acting / alternate). */
 function isSittingPmRole(role: string): boolean {
+  if (/לשעבר/.test(role)) return false; // "ראש הממשלה לשעבר" — a former PM is not sitting
   if (/סגן|ממלא|חליפי/.test(role)) return false; // deputy / acting / alternate
   return /ראש הממשלה/.test(role);
 }
 
-/** A serving government minister or Knesset Speaker (NOT a deputy). */
+/** A serving government minister or Knesset Speaker (NOT a deputy, NOT a former office-holder). */
 function isMinisterRole(role: string): boolean {
+  if (/לשעבר/.test(role)) return false; // "שר X לשעבר" — a former minister holds no current office
   // Exclude deputies — both masculine "סגן" (final nun ן) and feminine/plural
   // "סגנית"/"סגני" (regular nun נ). `/סגן/` alone misses "סגנית".
   if (/סג[ןנ]/.test(role)) return false; // deputy minister / deputy speaker

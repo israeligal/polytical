@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { suggestMarketAction } from "@/app/actions/suggestions";
+import { suggestMarketAction, searchPoliticiansSuggestAction } from "@/app/actions/suggestions";
+import { PoliticianCombobox } from "@/components/politician-combobox";
+import type { PoliticianOption } from "@/lib/types";
 import { nowLocalInput } from "@/lib/time";
 import { useHydrated } from "@/lib/use-hydrated";
+import { SelectField } from "@/components/select-field";
 
 // Inlined to keep the server (which pulls the db driver) out of the client
 // bundle — mirrors comment-form.tsx. The service is the real authority.
@@ -19,32 +22,34 @@ const LABEL = "mb-1 block text-sm font-bold text-foreground";
 
 interface OutcomeDraft {
   labelHe: string;
-  personId: string; // "" = unlinked
+  politician: PoliticianOption | null;
+  /** True while labelHe was auto-filled from the politician name (not hand-typed). */
+  wasAuto: boolean;
 }
 
 /**
  * Public form for proposing a market — Polymarket-style: a SHORT decisive
  * question, then either the default כן/לא or a structured outcome set where
  * each row may BE a politician (picking one auto-fills the label).
+ * `defaultPolitician` pre-selects a politician in binary mode when arriving
+ * from a politician card page.
  */
 export function SuggestMarketForm({
   categories,
-  politicians,
-  defaultPersonId,
+  defaultPolitician,
 }: {
   categories: { key: string; he: string }[];
-  politicians: { personId: number; name: string }[];
-  defaultPersonId?: number;
+  defaultPolitician?: PoliticianOption | null;
 }) {
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState(categories[0]?.key ?? "");
-  const [personId, setPersonId] = useState<string>(defaultPersonId ? String(defaultPersonId) : "");
+  const [politician, setPolitician] = useState<PoliticianOption | null>(defaultPolitician ?? null);
   const [closeAt, setCloseAt] = useState("");
   const [source, setSource] = useState("");
   const [isMulti, setIsMulti] = useState(false);
   const [outcomes, setOutcomes] = useState<OutcomeDraft[]>([
-    { labelHe: "", personId: "" },
-    { labelHe: "", personId: "" },
+    { labelHe: "", politician: null, wasAuto: false },
+    { labelHe: "", politician: null, wasAuto: false },
   ]);
   // min must be the BROWSER's clock — computing it during SSR shifts it by the
   // server timezone and trips a hydration mismatch, so it's derived post-hydration.
@@ -54,21 +59,34 @@ export function SuggestMarketForm({
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const nameByPersonId = new Map(politicians.map((p) => [String(p.personId), p.name]));
-
-  function setOutcome(i: number, patch: Partial<OutcomeDraft>) {
+  function setOutcomePolitician(i: number, p: PoliticianOption | null) {
     setOutcomes((prev) =>
       prev.map((o, j) => {
         if (j !== i) return o;
-        const next = { ...o, ...patch };
-        // Picking a politician auto-fills an empty/auto label — the candidate
-        // IS the outcome (the Polymarket pattern). A hand-typed label survives.
-        if (patch.personId !== undefined && patch.personId) {
-          const name = nameByPersonId.get(patch.personId) ?? "";
-          const wasAuto = !o.labelHe || o.labelHe === nameByPersonId.get(o.personId);
-          if (wasAuto && name) next.labelHe = name.slice(0, MAX_OUTCOME_LABEL_LEN);
+        if (p) {
+          const autoLabel = p.nameHe.slice(0, MAX_OUTCOME_LABEL_LEN);
+          // Picking a politician auto-fills an empty or previously-auto label.
+          const shouldFill = !o.labelHe || o.wasAuto;
+          return {
+            ...o,
+            politician: p,
+            labelHe: shouldFill ? autoLabel : o.labelHe,
+            wasAuto: shouldFill,
+          };
         }
-        return next;
+        return { ...o, politician: null };
+      }),
+    );
+  }
+
+  function setOutcomeLabel(i: number, text: string) {
+    setOutcomes((prev) =>
+      prev.map((o, j) => {
+        if (j !== i) return o;
+        // Once the user types manually, the label is no longer auto-managed —
+        // a later politician re-pick must not clobber it (clearing the label
+        // re-arms auto-fill via the !labelHe branch in setOutcomePolitician).
+        return { ...o, labelHe: text, wasAuto: false };
       }),
     );
   }
@@ -86,11 +104,12 @@ export function SuggestMarketForm({
         const res = await suggestMarketAction({
           questionHe: question,
           category,
-          personId: personId ? Number(personId) : null,
+          // In multi mode, politicians live per-outcome; no top-level personId.
+          personId: isMulti ? null : (politician?.personId ?? null),
           outcomes: isMulti
             ? validOutcomes.map((o) => ({
                 labelHe: o.labelHe.trim(),
-                personId: o.personId ? Number(o.personId) : null,
+                personId: o.politician?.personId ?? null,
               }))
             : null,
           proposedCloseAt: new Date(closeAt).toISOString(),
@@ -100,13 +119,13 @@ export function SuggestMarketForm({
         setMessage(res.message ?? (res.ok ? "נשלח" : "שגיאה"));
         if (res.ok) {
           setQuestion("");
-          setPersonId("");
+          setPolitician(null);
           setCloseAt("");
           setSource("");
           setIsMulti(false);
           setOutcomes([
-            { labelHe: "", personId: "" },
-            { labelHe: "", personId: "" },
+            { labelHe: "", politician: null, wasAuto: false },
+            { labelHe: "", politician: null, wasAuto: false },
           ]);
         }
       } catch {
@@ -120,6 +139,7 @@ export function SuggestMarketForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      {/* 1. שאלת התחזית */}
       <div>
         <label className={LABEL} htmlFor="question">
           שאלת התחזית
@@ -137,7 +157,7 @@ export function SuggestMarketForm({
         </p>
       </div>
 
-      {/* Outcome structure — the selected pill is filled (outcome-pill pattern) */}
+      {/* 2. אפשרויות התשובה toggle */}
       <div>
         <span className={LABEL}>אפשרויות התשובה</span>
         <div className="flex gap-2" role="group" aria-label="סוג התחזית">
@@ -167,37 +187,40 @@ export function SuggestMarketForm({
           </button>
         </div>
 
+        {/* 3. Multi outcome rows — one line per answer: label first, searchable
+            politician picker beside it. Picking a politician auto-fills the
+            label, so most rows never need typing. Wraps on narrow screens. */}
         {isMulti && (
           <div className="mt-3 space-y-2">
             {outcomes.map((o, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="nums w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{i + 1}</span>
-                <input
-                  value={o.labelHe}
-                  onChange={(e) => setOutcome(i, { labelHe: e.target.value.slice(0, MAX_OUTCOME_LABEL_LEN) })}
-                  className={FIELD}
-                  placeholder="תשובה (או בחרו פוליטיקאי ←)"
-                  aria-label={`תשובה ${i + 1}`}
-                />
-                <select
-                  value={o.personId}
-                  onChange={(e) => setOutcome(i, { personId: e.target.value })}
-                  className={`${FIELD} max-w-44 shrink-0`}
-                  aria-label={`פוליטיקאי לתשובה ${i + 1}`}
-                >
-                  <option value="">ללא פוליטיקאי</option>
-                  {politicians.map((p) => (
-                    <option key={p.personId} value={p.personId}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+              <div key={i} className="flex items-start gap-2">
+                <span className="nums mt-2.5 w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">
+                  {i + 1}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                  <input
+                    value={o.labelHe}
+                    onChange={(e) => setOutcomeLabel(i, e.target.value.slice(0, MAX_OUTCOME_LABEL_LEN))}
+                    className={`${FIELD} min-w-40 flex-1`}
+                    placeholder="תשובה (או בחרו פוליטיקאי ←)"
+                    aria-label={`תשובה ${i + 1}`}
+                  />
+                  <div className="min-w-44 flex-1 sm:max-w-56">
+                    <PoliticianCombobox
+                      value={o.politician}
+                      onChange={(p) => setOutcomePolitician(i, p)}
+                      search={searchPoliticiansSuggestAction}
+                      placeholder="פוליטיקאי (אופציונלי)"
+                      label={`פוליטיקאי לתשובה ${i + 1}`}
+                    />
+                  </div>
+                </div>
                 {outcomes.length > MIN_OUTCOMES && (
                   <button
                     type="button"
                     onClick={() => setOutcomes((prev) => prev.filter((_, j) => j !== i))}
                     aria-label={`הסרת תשובה ${i + 1}`}
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-negative hover:text-negative"
+                    className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-negative hover:text-negative"
                   >
                     ✕
                   </button>
@@ -207,7 +230,9 @@ export function SuggestMarketForm({
             {outcomes.length < MAX_OUTCOMES && (
               <button
                 type="button"
-                onClick={() => setOutcomes((prev) => [...prev, { labelHe: "", personId: "" }])}
+                onClick={() =>
+                  setOutcomes((prev) => [...prev, { labelHe: "", politician: null, wasAuto: false }])
+                }
                 className="w-full rounded-lg border border-dashed border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
               >
                 + הוסיפו תשובה
@@ -221,12 +246,13 @@ export function SuggestMarketForm({
         )}
       </div>
 
+      {/* 4. Details grid: קטגוריה + מתי השאלה תוכרע */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={LABEL} htmlFor="category">
             קטגוריה
           </label>
-          <select
+          <SelectField
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -237,7 +263,7 @@ export function SuggestMarketForm({
                 {c.he}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
         <div>
           <label className={LABEL} htmlFor="closeAt">
@@ -254,38 +280,37 @@ export function SuggestMarketForm({
             className={FIELD}
           />
         </div>
-        <div>
-          <label className={LABEL} htmlFor="personId">
-            פוליטיקאי קשור (לא חובה)
-          </label>
-          <select
-            id="personId"
-            value={personId}
-            onChange={(e) => setPersonId(e.target.value)}
-            className={FIELD}
-          >
-            <option value="">ללא</option>
-            {politicians.map((p) => (
-              <option key={p.personId} value={p.personId}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={LABEL} htmlFor="source">
-            מקור הכרעה (לא חובה)
-          </label>
-          <input
-            id="source"
-            value={source}
-            onChange={(e) => setSource(e.target.value.slice(0, MAX_SOURCE_NOTE_LEN))}
-            className={FIELD}
-            placeholder="למשל: אתר הכנסת, פרסום ברשומות, הודעה רשמית…"
-          />
-        </div>
       </div>
 
+      {/* 5. פוליטיקאי קשור — binary mode only (in multi, politicians live per-outcome) */}
+      {!isMulti && (
+        <div>
+          <span className={LABEL}>פוליטיקאי קשור (לא חובה)</span>
+          <PoliticianCombobox
+            value={politician}
+            onChange={setPolitician}
+            search={searchPoliticiansSuggestAction}
+            placeholder="חפשו פוליטיקאי…"
+            label="פוליטיקאי קשור"
+          />
+        </div>
+      )}
+
+      {/* 6. מקור הכרעה */}
+      <div>
+        <label className={LABEL} htmlFor="source">
+          מקור הכרעה (לא חובה)
+        </label>
+        <input
+          id="source"
+          value={source}
+          onChange={(e) => setSource(e.target.value.slice(0, MAX_SOURCE_NOTE_LEN))}
+          className={FIELD}
+          placeholder="למשל: אתר הכנסת, פרסום ברשומות, הודעה רשמית…"
+        />
+      </div>
+
+      {/* 7. Submit */}
       <div className="flex items-center gap-3">
         <button
           type="submit"

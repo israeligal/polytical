@@ -58,19 +58,51 @@ export interface KnsBill {
   Number: number | null;
   StatusID: number | null;
   PublicationDate: string | null;
+  /** Official plain-Hebrew summary — populated mostly on enacted laws
+   *  (488/7,434 K25 bills as of 2026-06-12); null for everything else. */
   SummaryLaw: string | null;
   IsContinuationBill: boolean | null;
   PublicationSeriesDesc: string | null;
   LastUpdatedDate: string | null;
 }
 
+/** Shared shape of the KNS_Document* entities (KNS_DocumentBill / KNS_DocumentAgenda).
+ *  PK ids are Int64 → serialized as JSON STRINGS (verified live, test-payloads-items.ts).
+ *  Used by both the votes vote-item enrichment and the bill-pages nested $expand. */
 export interface KnsDocumentBill {
-  DocumentBillID: number;       // Int64 in OData; values observed ~10^7, safe as JS number
+  DocumentBillID: string;
   BillID: number;
-  GroupTypeID: number | null;
+  /** 1=הצעת חוק לדיון מוקדם (DOC+PDF), 2=לקריאה הראשונה, 4=לקריאה השנייה והשלישית,
+   *  9=חוק - פרסום ברשומות, 59=חומר רקע (2/4/9/59 are PDF-only). */
+  GroupTypeID: number;
   GroupTypeDesc: string | null;
-  ApplicationDesc: string | null; // "PDF" | "DOC"
-  FilePath: string;               // fs.knesset.gov.il URL (may contain a double slash — verbatim)
+  /** "DOC" | "PDF" (ApplicationID 1 | 4). */
+  ApplicationDesc: string | null;
+  /** fs.knesset.gov.il URL — may contain BACKSLASHES (normalize before use). */
+  FilePath: string;
+  LastUpdatedDate: string | null;
+}
+
+export interface KnsAgenda {
+  AgendaID: number;
+  KnessetNum: number | null;
+  Name: string | null;
+  SubTypeDesc: string | null;
+  StatusID: number | null;
+  /** OData PersonID of the proposing MK — joins politicians.personId. */
+  InitiatorPersonID: number | null;
+  LastUpdatedDate: string | null;
+}
+
+export interface KnsDocumentAgenda {
+  DocumentAgendaID: string;
+  AgendaID: number;
+  /** 16=נוסח הצעה לסדר היום (DOC+PDF) — verified live. */
+  GroupTypeID: number;
+  GroupTypeDesc: string | null;
+  ApplicationDesc: string | null;
+  /** fs.knesset.gov.il URL — observed WITH backslashes (normalize before use). */
+  FilePath: string;
   LastUpdatedDate: string | null;
 }
 

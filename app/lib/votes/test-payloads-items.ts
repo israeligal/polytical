@@ -1,0 +1,41 @@
+// VERBATIM captures from the live Knesset OData service + fs.knesset.gov.il
+// (2026-06-12) for the vote-items enrichment pipeline. These ground the
+// enrichment tests in real shapes — refresh with the curl commands below if
+// the service shape ever drifts. Do not hand-edit values.
+//
+//   base="https://knesset.gov.il/Odata/ParliamentInfo.svc"
+//   curl -sG "$base/KNS_Bill"           --data-urlencode "$filter=BillID eq 2229413"   --data-urlencode "$format=json"   # CAPTURED_BILL_WITH_SUMMARY
+//   curl -sG "$base/KNS_Bill"           --data-urlencode "$filter=BillID eq 2233112"   --data-urlencode "$format=json"   # CAPTURED_BILL_WITHOUT_SUMMARY
+//   curl -sG "$base/KNS_DocumentBill"   --data-urlencode "$filter=BillID eq 2220111"   --data-urlencode "$format=json"   # CAPTURED_BILL_DOCS_MULTISTAGE
+//   curl -sG "$base/KNS_DocumentBill"   --data-urlencode "$filter=BillID eq 2233112"   --data-urlencode "$format=json"   # CAPTURED_BILL_DOCS_PRELIMINARY
+//   curl -sG "$base/KNS_Agenda"         --data-urlencode "$filter=AgendaID eq 2243980" --data-urlencode "$format=json"   # CAPTURED_AGENDA
+//   curl -sG "$base/KNS_DocumentAgenda" --data-urlencode "$filter=AgendaID eq 2243980" --data-urlencode "$format=json"   # CAPTURED_AGENDA_DOCS
+//   curl -s  "https://fs.knesset.gov.il/25/law/25_lst_7584510.docx" -o fixtures/25_lst_7584510.docx                      # the preliminary-reading DOCX (דברי הסבר source)
+//   curl -s  "https://fs.knesset.gov.il/25/agendasuggestion/25_as_13440018.docx" -o fixtures/25_as_13440018.docx          # the agenda motion-text DOCX
+//
+// Shape facts these captures pin down (do not "fix" them):
+//  - Document PK ids (DocumentBillID / DocumentAgendaID) are Int64 → serialized as JSON STRINGS.
+//  - KNS_DocumentAgenda FilePath uses BACKSLASHES — normalizeDocPath() must handle them.
+//  - Bill docs: GroupTypeID 1 = הצעת חוק לדיון מוקדם (DOC+PDF), 2 = קריאה ראשונה (PDF only),
+//    4 = קריאה שנייה ושלישית (PDF only), 9 = חוק - פרסום ברשומות (PDF only), 59 = חומר רקע.
+//  - Agenda docs: GroupTypeID 16 = נוסח הצעה לסדר היום (DOC+PDF).
+//  - SummaryLaw is null for most bills (488/7,434 K25 bills populated as of 2026-06-12).
+import type { KnsAgenda, KnsBill, KnsDocumentAgenda, KnsDocumentBill, ODataPage } from "../knesset/odata-types";
+
+/** KNS_Bill 2229413 — enacted law (StatusID 118) WITH SummaryLaw. */
+export const CAPTURED_BILL_WITH_SUMMARY = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_Bill","value":[{"BillID":2229413,"KnessetNum":25,"Name":"חוק הכרה בשפת הסימנים הישראלית, התשפ\"ו-2026","SubTypeID":54,"SubTypeDesc":"פרטית","PrivateNumber":5693,"CommitteeID":4192,"StatusID":118,"Number":1182,"PostponementReasonID":null,"PostponementReasonDesc":null,"PublicationDate":"2026-06-09T00:00:00","MagazineNumber":3533,"PageNumber":612,"IsContinuationBill":null,"SummaryLaw":"מטרת החוק היא להכיר בשפת הסימנים הישראלית, על ידי הסמכת האקדמיה ללשון העברית לשמר, לפתח ולקדם את שפת הסימנים הישראלית. שר התרבות והספורט ממונה על ביצוע החוק.","PublicationSeriesID":6071,"PublicationSeriesDesc":"ספר החוקים","PublicationSeriesFirstCall":"הצעות חוק הכנסת - 1182 ,מיום 16:00:00","LastUpdatedDate":"2026-06-11T13:13:17.44"}]} as unknown as ODataPage<KnsBill>;
+
+/** KNS_Bill 2233112 — fresh private bill, SummaryLaw null. */
+export const CAPTURED_BILL_WITHOUT_SUMMARY = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_Bill","value":[{"BillID":2233112,"KnessetNum":25,"Name":"הצעת חוק זכויות נפגעי עבירה (תיקון - העברת ערכות דגימה), התשפ\"ה-2025","SubTypeID":54,"SubTypeDesc":"פרטית","PrivateNumber":5970,"CommitteeID":4191,"StatusID":108,"Number":null,"PostponementReasonID":null,"PostponementReasonDesc":null,"PublicationDate":null,"MagazineNumber":null,"PageNumber":null,"IsContinuationBill":null,"SummaryLaw":null,"PublicationSeriesID":null,"PublicationSeriesDesc":null,"PublicationSeriesFirstCall":null,"LastUpdatedDate":"2026-06-10T18:00:35.81"}]} as unknown as ODataPage<KnsBill>;
+
+/** KNS_DocumentBill for 2220111 — all stages (GroupTypeID 1 DOC+PDF, 2/4/9/59 PDF). */
+export const CAPTURED_BILL_DOCS_MULTISTAGE = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_DocumentBill","value":[{"DocumentBillID":"4403933","BillID":2220111,"GroupTypeID":1,"GroupTypeDesc":"הצעת חוק לדיון מוקדם","ApplicationID":1,"ApplicationDesc":"DOC","FilePath":"https://fs.knesset.gov.il/25/law/25_lst_4707310.docx","LastUpdatedDate":"2024-07-22T08:28:42.133"},{"DocumentBillID":"4403933","BillID":2220111,"GroupTypeID":1,"GroupTypeDesc":"הצעת חוק לדיון מוקדם","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_lst_4707310.pdf","LastUpdatedDate":"2024-07-22T08:28:42.133"},{"DocumentBillID":"5952529","BillID":2220111,"GroupTypeID":2,"GroupTypeDesc":"הצעת חוק לקריאה הראשונה","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_ls1_6674683.pdf","LastUpdatedDate":"2025-05-05T15:50:15.677"},{"DocumentBillID":"9668849","BillID":2220111,"GroupTypeID":59,"GroupTypeDesc":"חומר רקע","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_ls_bk_10913392.pdf","LastUpdatedDate":"2026-01-18T14:32:12.627"},{"DocumentBillID":"9928927","BillID":2220111,"GroupTypeID":4,"GroupTypeDesc":"הצעת חוק לקריאה השנייה והשלישית","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_ls2_11195228.pdf","LastUpdatedDate":"2026-02-02T15:10:12.25"},{"DocumentBillID":"12030083","BillID":2220111,"GroupTypeID":9,"GroupTypeDesc":"חוק - פרסום ברשומות","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_lsr_13479239.pdf","LastUpdatedDate":"2026-06-10T16:34:11.017"}]} as unknown as ODataPage<KnsDocumentBill>;
+
+/** KNS_DocumentBill for 2233112 — preliminary stage only (GroupTypeID 1, DOC+PDF). */
+export const CAPTURED_BILL_DOCS_PRELIMINARY = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_DocumentBill","value":[{"DocumentBillID":"6772840","BillID":2233112,"GroupTypeID":1,"GroupTypeDesc":"הצעת חוק לדיון מוקדם","ApplicationID":1,"ApplicationDesc":"DOC","FilePath":"https://fs.knesset.gov.il/25/law/25_lst_7584510.docx","LastUpdatedDate":"2025-07-07T15:50:53.903"},{"DocumentBillID":"6772840","BillID":2233112,"GroupTypeID":1,"GroupTypeDesc":"הצעת חוק לדיון מוקדם","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25/law/25_lst_7584510.pdf","LastUpdatedDate":"2025-07-07T15:50:53.903"}]} as unknown as ODataPage<KnsDocumentBill>;
+
+/** KNS_Agenda 2243980 — the הצעה לסדר היום behind vote 46083 (InitiatorPersonID = OData PersonID). */
+export const CAPTURED_AGENDA = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_Agenda","value":[{"AgendaID":2243980,"Number":7153,"ClassificationID":165,"ClassificationDesc":"עצמאית","LeadingAgendaID":null,"KnessetNum":25,"Name":"הצעה רגילה לסדר היום בנושא: \"אמהות וקריירה - פערי השכר בין נשים לגברים בישראל ובייחוד על רקע מצבי החירום\"","SubTypeID":57,"SubTypeDesc":"רגילה","StatusID":305,"InitiatorPersonID":30895,"GovRecommendationID":null,"GovRecommendationDesc":null,"PresidentDecisionDate":null,"PostopenmentReasonID":null,"PostopenmentReasonDesc":null,"CommitteeID":null,"RecommendCommitteeID":null,"MinisterPersonID":null,"LastUpdatedDate":"2026-06-08T12:42:57.993"}]} as unknown as ODataPage<KnsAgenda>;
+
+/** KNS_DocumentAgenda for 2243980 — GroupTypeID 16 נוסח הצעה, backslash FilePath. */
+export const CAPTURED_AGENDA_DOCS = {"odata.metadata":"https://knesset.gov.il/Odata/ParliamentInfo.svc/$metadata#KNS_DocumentAgenda","value":[{"DocumentAgendaID":"11993992","AgendaID":2243980,"GroupTypeID":16,"GroupTypeDesc":"נוסח הצעה לסדר היום","ApplicationID":1,"ApplicationDesc":"DOC","FilePath":"https://fs.knesset.gov.il/25\\agendasuggestion\\25_as_13440018.docx","LastUpdatedDate":"2026-06-08T12:44:10.82"},{"DocumentAgendaID":"11993992","AgendaID":2243980,"GroupTypeID":16,"GroupTypeDesc":"נוסח הצעה לסדר היום","ApplicationID":4,"ApplicationDesc":"PDF","FilePath":"https://fs.knesset.gov.il/25\\agendasuggestion\\25_as_13440018.pdf","LastUpdatedDate":"2026-06-08T12:44:10.82"}]} as unknown as ODataPage<KnsDocumentAgenda>;

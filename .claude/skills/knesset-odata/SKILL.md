@@ -106,6 +106,23 @@ curl -sG "https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_Person" \
 In the Polytical DB the PersonID is `politicians.personId` (the route id) — prefer reading
 it there over re-querying by name.
 
+## An MK's role / job title (and ministers)
+
+A person's positions live in `KNS_PersonToPosition` (`PositionID`, `IsCurrent`, `DutyDesc`,
+`FactionID`). **The real minister title is in `DutyDesc`, NOT `KNS_Position.Description`** —
+Description for Pos 39 is the generic "שר"; `DutyDesc` is "שר הביטחון" / "שר החוץ".
+
+Verified `PositionID` map: **45** ראש הממשלה · **39/57** שר/שרה · **40/59** סגן/סגנית שר ·
+**122** יו״ר הכנסת · **70** סגן יו״ר · **48** יו״ר סיעה · **43/61** חבר/ת הכנסת · **54** חבר/ת סיעה (party).
+
+**Norwegian Law:** a minister can hold office without a Knesset seat — current Pos 39 but no
+current 43/61 (e.g. Sa'ar=שר החוץ, Smotrich=שר האוצר). Minister rows are tagged
+`KnessetNum=25`, so the standard roster fetch already returns them.
+
+In Polytical, **all of this is computed in `normalizeK25Members` and refreshed by the
+canonical `pnpm ingest:knesset --only=members`** — do not write a parallel role/minister
+script. Full rules + rationale: `docs/decisions/knesset-data.md` (2026-06-11 entry).
+
 ## Which Knesset is current?
 
 Verified method (no guessing): a Knesset is current if it has bills and the next one does

@@ -14,6 +14,7 @@ import {
 } from "./repo";
 import { normalizeVoteDetails, normalizeVoteHeader } from "./normalize";
 import { fetchVoteDetails, fetchVoteHeaders } from "./website-api";
+import { enrichVoteItems } from "./enrich";
 import type { WsVoteHeader } from "./website-types";
 
 type DB = VotesDb;
@@ -52,6 +53,8 @@ export interface IngestVotesResult {
   detailsFailed: number;
   attributed: number;
   queued: number;
+  itemsEnriched: number;
+  itemsFailed: number;
 }
 
 /**
@@ -146,7 +149,23 @@ export async function ingestVotes({
     .values({ job: "votes", lastSuccessAt: new Date() })
     .onConflictDoUpdate({ target: schema.ingestHeartbeats.job, set: { lastSuccessAt: new Date() } });
 
-  const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued };
+  // 5) enrich the items behind the swept votes (official description + law
+  // links → vote_items). Deliberately AFTER the heartbeat: enrichment is
+  // context, not vote data — many sequential OData/doc fetches could push a
+  // backlog-heavy cron run into the function timeout, and a kill here must
+  // not read as a stale votes pipeline. Failure-isolated per run AND per item;
+  // unfinished items simply remain candidates for the next run.
+  let itemsEnriched = 0;
+  let itemsFailed = 0;
+  try {
+    const er = await enrichVoteItems({ db });
+    itemsEnriched = er.enriched;
+    itemsFailed = er.failed;
+  } catch (err) {
+    logger.error("votes.enrich.run_failed", { err: String(err) });
+  }
+
+  const result = { headers: headerRows.length, detailsFetched, detailsFailed, attributed, queued, itemsEnriched, itemsFailed };
   logger.info("votes.ingest.done", { fromDate, toDate, refetchDetails, ...result });
   return result;
 }

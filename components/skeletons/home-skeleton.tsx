@@ -40,7 +40,7 @@ export function HomeSkeleton() {
         <Skeleton className="mt-6 mb-6 h-10 w-full max-w-lg rounded-full" />
         <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 4 }, (_, i) => (
-            <SkeletonCard key={i} className="h-44 rounded-card" />
+            <SkeletonCard key={i} className="h-52 rounded-card" />
           ))}
         </div>
       </section>

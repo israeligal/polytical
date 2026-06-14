@@ -111,15 +111,16 @@ export function MarketsPageSkeleton() {
       {/* 3-col card grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
-          <SkeletonCard key={i} className="h-44 rounded-card" />
+          <SkeletonCard key={i} className="h-52 rounded-card" />
         ))}
       </div>
     </main>
   );
 }
 
-/** app/market/[id] — head column + sticky aside; binary markets show ONE
- *  full-width odds card (the old skeleton's 2-up outcome grid never exists). */
+/** app/market/[id] — head column + sticky aside; open markets show an odds
+ *  bar + the QuestionDeck below it in the main column; the aside carries the
+ *  how-it-works explainer (or resolution panel for settled markets). */
 export function MarketSkeleton() {
   return (
     <main role="status" aria-busy="true" aria-label="טוען תחזית" className={MARKET_CONTAINER}>
@@ -130,10 +131,14 @@ export function MarketSkeleton() {
           <Skeleton className="h-4 w-20" />
           <Skeleton className="mt-3 h-10 w-full max-w-lg" />
           <Skeleton className="mt-2 h-4 w-56" />
-          <SkeletonCard className="mt-6 h-32 rounded-2xl" />
+          {/* odds bar */}
+          <SkeletonCard className="mt-6 h-20 rounded-2xl" />
+          {/* question deck */}
+          <SkeletonCard className="mt-6 h-52 rounded-card" />
         </div>
         <aside className="min-w-0">
-          <SkeletonCard className="h-80 rounded-2xl" />
+          {/* explainer / resolution panel — shorter than the old BetPanel */}
+          <SkeletonCard className="h-36 rounded-2xl" />
         </aside>
         <div className="min-w-0 lg:col-start-1">
           <Skeleton className="mb-3 h-6 w-44" />

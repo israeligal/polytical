@@ -5,7 +5,7 @@
 // detailsStatus) are EXCLUDED from the header upsert SET — the dob carve-out
 // pattern: re-ingest must never clobber them.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import * as schema from "@/app/lib/schema";
@@ -14,9 +14,10 @@ import {
   factionStints, knessetVotes, mkNameMappings, mkVotes, mkVotesRaw, unmappedMkNames,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
-import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
+import { upsertBills } from "@/app/lib/knesset/repo";
+import type { BillRow } from "@/app/lib/knesset/normalize";
 import type { KnessetVoteInsert, MkVoteRawInsert, MkVoteResultValue, VoteDetailsPatch } from "./normalize";
-import { WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
+import { ITEM_TYPE_AGENDA, ITEM_TYPE_BILL, WEBSITE_RESULT_BY_ID, pickDecisiveVoteId } from "./normalize";
 
 export type VotesDb = AppDb;
 type DB = VotesDb;
@@ -80,19 +81,13 @@ export interface AttributionContext {
   stintsByPerson: Map<number, { factionId: number; startDate: Date; finishDate: Date | null }[]>;
   /** nameKeys already dismissed by an admin — never re-queued */
   dismissedKeys: Set<string>;
-  /** K25 bill ids we store — itemId membership sets billId */
-  validBillIds: Set<number>;
 }
 
 export async function loadAttributionContext({ db }: { db: DB }): Promise<AttributionContext & { unverifiedCount: number }> {
-  const [mappingRows, stintRows, queueRows, billRows] = await Promise.all([
+  const [mappingRows, stintRows, queueRows] = await Promise.all([
     db.select().from(mkNameMappings),
     db.select().from(factionStints),
     db.select({ nameKey: unmappedMkNames.nameKey, status: unmappedMkNames.status }).from(unmappedMkNames),
-    // K25 only: a K25 vote's FK_ItemID can only reference a K25 bill, and since the
-    // lifetime-bills backfill the bills table spans every Knesset — an unfiltered read
-    // would let an itemId coincidentally collide with a stored pre-K25 BillID.
-    db.select({ billId: schema.bills.billId }).from(schema.bills).where(eq(schema.bills.knessetNum, CURRENT_KNESSET)),
   ]);
   const unverifiedCount = mappingRows.filter((m) => m.verifiedAt == null).length;
   const mappings = new Map(mappingRows.filter((m) => m.verifiedAt != null).map((m) => [m.nameKey, m.personId]));
@@ -104,8 +99,7 @@ export async function loadAttributionContext({ db }: { db: DB }): Promise<Attrib
   }
   for (const list of stintsByPerson.values()) list.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
   const dismissedKeys = new Set(queueRows.filter((q) => q.status === "dismissed").map((q) => q.nameKey));
-  const validBillIds = new Set(billRows.map((b) => b.billId));
-  return { mappings, stintsByPerson, dismissedKeys, validBillIds, unverifiedCount };
+  return { mappings, stintsByPerson, dismissedKeys, unverifiedCount };
 }
 
 /** Minimal attribution context for a single-person backfill (admin resolve):
@@ -119,7 +113,6 @@ export async function loadStintsContext({ db, personId }: { db: DB; personId: nu
     mappings: new Map(),
     stintsByPerson: new Map([[personId, stints]]),
     dismissedKeys: new Set(),
-    validBillIds: new Set(),
   };
 }
 
@@ -163,7 +156,14 @@ export async function applyVoteDetails({
       .update(knessetVotes)
       .set({
         itemId: patch.itemId,
-        billId: patch.itemId != null && ctx.validBillIds.has(patch.itemId) ? patch.itemId : null,
+        // The header's own type signal is authoritative — no bills-table
+        // membership check (which missed bills newer than the manual ingest).
+        // A NULL signal means "no information", not "no type": it must never
+        // clobber a previously classified itemTypeId/billId (e.g. legacy rows
+        // classified by scripts/enrich-vote-items.ts, then --refetch'd).
+        ...(patch.itemTypeId != null
+          ? { itemTypeId: patch.itemTypeId, billId: patch.itemTypeId === ITEM_TYPE_BILL ? patch.itemId : null }
+          : {}),
         decisionHe: patch.decisionHe,
         isAccepted: patch.isAccepted,
         totalFor: patch.totalFor,
@@ -352,4 +352,61 @@ export async function setAgendaItemStatus({
   db, id, status,
 }: { db: DB; id: string; status: "announced" | "voted" | "dropped" }): Promise<void> {
   await db.update(schema.agendaItems).set({ status }).where(eq(schema.agendaItems.id, id));
+}
+
+// --- vote-item enrichment (official description + law links) ---
+
+export type VoteItemInsert = typeof schema.voteItems.$inferInsert;
+
+/**
+ * Items (bills/agenda motions) seen on votes but not yet enriched — newest
+ * vote first. Row-ABSENCE in vote_items IS the pending state (terminal-state-
+ * by-existence): fetch failures leave no row and retry next run; a written
+ * row (even links-only) is terminal and never re-fetched.
+ */
+export async function listEnrichmentCandidates({
+  db, limit,
+}: { db: DB; limit: number }): Promise<{ itemId: number; itemTypeId: number }[]> {
+  // Group by itemId ALONE (not itemId+itemTypeId): vote_items is keyed by
+  // itemId, so each item must yield exactly ONE candidate. Grouping by both
+  // would emit two candidates for one item if sibling votes ever disagreed on
+  // itemTypeId — wasting a fetch + a slot, the second upsert clobbering the
+  // first. max() collapses to a single (stable) type; an item is a bill XOR an
+  // agenda in practice, so the value is unambiguous.
+  const rows = await db
+    .select({ itemId: knessetVotes.itemId, itemTypeId: sql<number>`max(${knessetVotes.itemTypeId})` })
+    .from(knessetVotes)
+    .leftJoin(schema.voteItems, eq(schema.voteItems.itemId, knessetVotes.itemId))
+    .where(and(
+      inArray(knessetVotes.itemTypeId, [ITEM_TYPE_BILL, ITEM_TYPE_AGENDA]),
+      isNull(schema.voteItems.itemId),
+    ))
+    .groupBy(knessetVotes.itemId)
+    .orderBy(sql`max(${knessetVotes.voteDate}) desc`)
+    .limit(limit);
+  return rows
+    .filter((r): r is { itemId: number; itemTypeId: number } => r.itemId != null && r.itemTypeId != null);
+}
+
+/**
+ * Terminal write of one enriched item. The bills row (when given) lands FIRST
+ * via the existing upsertBills helper — idempotent and harmless alone, and it
+ * keeps billId FK-by-value resolvable for bills newer than the manual knesset
+ * ingest. Then the vote_items row (upsert: re-running a backfill refreshes).
+ */
+export async function upsertVoteItem({
+  db, row, bill,
+}: { db: DB; row: VoteItemInsert; bill?: BillRow }): Promise<void> {
+  if (bill) await upsertBills({ db, rows: [bill] });
+  await db.insert(schema.voteItems).values(row).onConflictDoUpdate({
+    target: schema.voteItems.itemId,
+    set: {
+      itemTypeId: sqlExcluded("itemTypeId"),
+      descriptionHe: sqlExcluded("descriptionHe"), descriptionSource: sqlExcluded("descriptionSource"),
+      legislationUrl: sqlExcluded("legislationUrl"), docUrl: sqlExcluded("docUrl"),
+      docTypeDescHe: sqlExcluded("docTypeDescHe"), initiatorPersonId: sqlExcluded("initiatorPersonId"),
+      sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"),
+      fetchedAt: sqlExcluded("fetchedAt"),
+    },
+  });
 }
