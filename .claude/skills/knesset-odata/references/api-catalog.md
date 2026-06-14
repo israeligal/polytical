@@ -369,7 +369,7 @@ https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_CommitteeSession?$filter=Com
 
 ### KNS_CmtSessionItem
 
-**Status: DOCUMENTED-ONLY** — fields from `$metadata`; not row-probed.
+**Status: VERIFIED** (2026-06-15) — `KNS_CmtSessionItem?$top=2&$inlinecount=allpages` → CmtSessionItemID 28006, `odata.count "80182"`; `Ordinal`/`StatusID` came back `null`, `ItemTypeID 11`, `Name` "שינויים בתקציב לשנת 2003".
 
 Purpose: agenda items within a committee session — each row links a session to a bill/query/other item.
 
@@ -592,8 +592,10 @@ https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_KnessetDates?$filter=IsCurre
 
 ## Appendix — remaining EntityTypes (DOCUMENTED-ONLY)
 
-All 38 EntityTypes are present in `$metadata`. The 19 below were **not** live-probed; fields/keys are
-copied verbatim from `$metadata` (fetched 2026-06-11). Document entities all share the same shape:
+All 38 EntityTypes are present in `$metadata`. The rows below were originally copied verbatim from
+`$metadata` (fetched 2026-06-11); several were **live-verified on 2026-06-15** (marked **✓verified** with
+counts) — see [Untapped data & feature opportunities](#untapped-data--feature-opportunities-verified-2026-06-15)
+for what they can power. The rest remain DOCUMENTED-ONLY. Document entities all share the same shape:
 `{<Pk>Id (Int64), <parent>ID (Int32), GroupTypeID (Byte), GroupTypeDesc, ApplicationID (Byte),
 ApplicationDesc, FilePath, LastUpdatedDate}`. Their `FilePath` points at `fs.knesset.gov.il`; some use
 backslashes — normalize before use. Note Document PK ids are **Int64** (likely serialize as JSON strings,
@@ -601,22 +603,22 @@ like `KNS_MkSiteCode.MKSiteCode` — confirm on first use).
 
 | Entity | Key | Notable fields (from `$metadata`) | Purpose (1 line) |
 |---|---|---|---|
-| `KNS_BillHistoryInitiator` | `BillHistoryInitiatorID` | `BillID`, `PersonID`, `IsInitiator`, `StartDate`, `EndDate`, `ReasonID`, `ReasonDesc` | Former initiators who left a bill (e.g. MK departed mid-term) |
+| `KNS_BillHistoryInitiator` **✓verified** | `BillHistoryInitiatorID` | `BillID`, `PersonID`, `IsInitiator`, `StartDate`, `EndDate`, `ReasonID`, `ReasonDesc` | Former initiators who left a bill (e.g. MK departed mid-term) — **2273 K25 rows** |
 | `KNS_BillName` | `BillNameID` | `BillID`, `Name`, `NameHistoryTypeID`, `NameHistoryTypeDesc` | Alternative/stage names a bill acquires through readings |
-| `KNS_BillSplit` | `BillSplitID` | `MainBillID`, `SplitBillID`, `Name` | Maps an original bill to a split-off offspring bill |
-| `KNS_BillUnion` | `BillUnionID` | `MainBillID`, `UnionBillID` | Maps a unified bill to a constituent merged bill |
+| `KNS_BillSplit` **✓verified** | `BillSplitID` | `MainBillID`, `SplitBillID`, `Name` | Maps an original bill to a split-off offspring bill — **881 rows**; child holds 0 own initiators (parent = `MainBillID`) |
+| `KNS_BillUnion` **✓verified** | `BillUnionID` | `MainBillID`, `UnionBillID` | Maps a unified bill to a constituent merged bill — **1622 rows** |
 | `KNS_JointCommittee` | `JointCommitteeID` (**Int64**) | `CommitteeID`, `ParticipantCommitteeID` | Joint sessions where two committees meet together |
 | `KNS_CmtSiteCode` | `CmtSiteCode` (**Int64**) | `KnsID` (=CommitteeID), `SiteId` | Maps `CommitteeID` to legacy website committee id |
-| `KNS_IsraelLaw` | `IsraelLawID` | `KnessetNum`, `Name`, `IsBasicLaw`, `IsFavoriteLaw`, `IsBudgetLaw`, `LawValidityID/Desc`, `ValidityStart/FinishDate`, `PublicationDate` | Enacted laws on the books (distinct from bills) |
-| `KNS_IsraelLawBinding` | `IsraelLawBinding` | `IsraelLawID`, `IsraelLawReplacedID`, `LawID`, `LawTypeID` | Links an enacted law to the bills that created/amended it |
-| `KNS_IsraelLawClassificiation` | `LawClassificiationID` | `IsraelLawID`, `ClassificiationID`, `ClassificiationDesc` | Topic/classification tags on laws (**metadata typo `Classificiation` — use as-is**) |
+| `KNS_IsraelLaw` **✓verified** | `IsraelLawID` | `KnessetNum`, `Name`, `IsBasicLaw`, `IsFavoriteLaw`, `IsBudgetLaw`, `LawValidityID/Desc` (בתוקף/פקע), `ValidityStart/FinishDate`, `PublicationDate`, `LatestPublicationDate` | Enacted laws on the books (distinct from bills) — **106 K25 rows** |
+| `KNS_IsraelLawBinding` **✓verified** | `IsraelLawBinding` | `IsraelLawID`, `IsraelLawReplacedID`, `LawID`, `LawTypeID` | Links an enacted law to the bills that created/amended it — **374 rows** |
+| `KNS_IsraelLawClassificiation` **✓verified** | `LawClassificiationID` | `IsraelLawID`, `ClassificiationID`, `ClassificiationDesc` | **Topic taxonomy** on enacted laws (**2902 rows · ~38 Hebrew tags**: ביטחון/בריאות/חינוך/מיסוי/…). Metadata typo `Classificiation` — use as-is. Enacted laws ONLY (not bills/votes) |
 | `KNS_IsraelLawMinistry` | `LawMinistryID` | `IsraelLawID`, `GovMinistryID` | Maps enacted laws to responsible ministries |
-| `KNS_IsraelLawName` | `IsraelLawNameID` | `IsraelLawID`, `LawID`, `LawTypeID`, `Name` | Name-linkage between an enacted law and its bill version(s) |
+| `KNS_IsraelLawName` **✓verified** | `IsraelLawNameID` | `IsraelLawID`, `LawID`, `LawTypeID`, `Name` | Name-linkage between an enacted law and its bill version(s) — **2169 rows** |
 | `KNS_Law` | `LawID` | `TypeID/Desc`, `SubTypeID/Desc`, `KnessetNum`, `Name`, `PublicationDate`, `PublicationSeriesID/Desc`, `MagazineNumber` (String), `PageNumber` (String) | Historical / pre-state laws (Mandatory, Ottoman) — `KnessetNum` null for pre-Knesset |
 | `KNS_LawBinding` | `LawBindingID` | `LawID`, `IsraelLawID`, `ParentLawID`, `LawTypeID`, `LawParentTypeID`, `BindingType/Desc`, `AmendmentType/Desc` | Detailed law-amendment / binding graph |
 | `KNS_DocumentBill` | `DocumentBillID` (**Int64**) | `BillID`, + shared doc fields | Documents attached to bills |
 | `KNS_DocumentCommitteeSession` | `DocumentCommitteeSessionID` (**Int64**) | `CommitteeSessionID`, + shared doc fields | Documents (protocols, agendas) on committee sessions |
-| `KNS_DocumentPlenumSession` | `DocumentPlenumSessionID` (**Int64**) | `PlenumSessionID`, + shared doc fields | Documents (transcripts, agendas) on plenum sessions |
+| `KNS_DocumentPlenumSession` **✓verified** | `DocumentPlenumSessionID` (**Int64-as-string**) | `PlenumSessionID`, + shared doc fields | Plenum transcripts ("דברי הכנסת" Hansard) + TOC, DOC/PDF on `fs.knesset.gov.il` (note `//` double-slash) — **75,959 rows** (all-Knesset) |
 | `KNS_DocumentQuery` | `DocumentQueryID` (**Int64**) | `QueryID`, + shared doc fields | Documents (query + response text) on queries |
 | `KNS_DocumentAgenda` | `DocumentAgendaID` (**Int64**) | `AgendaID`, + shared doc fields | Documents on agenda motions |
 | `KNS_DocumentIsraelLaw` | `DocumentIsraelLawID` (**Int64**) | `IsraelLawID`, + shared doc fields | Documents on enacted laws |
@@ -770,6 +772,27 @@ All items below were **verified live on ParliamentInfo.svc, 2026-06-11**, unless
 own `mk_votes` (no external dependency) — "voted in N of M roll-calls · present on K of L plenum
 vote-days", tenure-scoped via `faction_stints`. It is a roll-call-presence PROXY, labelled
 **"השתתפות בהצבעות"**, never "ימי נוכחות". See `app/lib/votes/participation.ts` + the decision-log entry.
+
+## Untapped data & feature opportunities (verified 2026-06-15)
+
+> What the service exposes that the app does **not** yet ingest, with live-verified K25
+> volumes and the join path. Each row was probed on 2026-06-15 (`$inlinecount`/`$count`,
+> sample row inspected). This answers "what more can we get" — it is not a backlog; it's a
+> menu. Re-run the probe before building on any number.
+
+| Entity (status) | Volume (verified 2026-06-15) | Could power | Join / how | Cost / caveat |
+|---|---|---|---|---|
+| `KNS_BillSplit` (now VERIFIED) | **881** rows (all-Knesset) | Correct initiator/parent attribution for **split bills** — the agenda budget-bills problem (most "על סדר היום" items are split children with **0 own initiators**); "split from / into X" lineage | `SplitBillID` → `MainBillID`; the parent carries the real initiators/subtype. Verified: BillID 2204244 → MainBillID **2203821** | No `KnessetNum` field — scope via the bill nav prop or post-filter; the *child* is government-typed, the parent holds the gov/minister initiators |
+| `KNS_BillUnion` (now VERIFIED) | **1622** rows (all-Knesset) | "merged into / absorbed bill X" lineage | `UnionBillID` ↔ `MainBillID` (fields: `BillUnionID, MainBillID, UnionBillID, LastUpdatedDate`) | same no-`KnessetNum` caveat |
+| `KNS_BillHistoryInitiator` (now VERIFIED) | **2273** K25 rows | Accurate "originally proposed by" when an initiator **left** a bill mid-term (departed MK) | `BillID` + `PersonID`; fields add `StartDate, EndDate, ReasonID/Desc` vs `KNS_BillInitiator`. Scope via `KNS_Bill/KnessetNum eq 25` | a *former*-initiator log, not current sponsors |
+| `KNS_IsraelLaw` (now VERIFIED) | **106** K25 enacted laws | "this bill **became Law X**, in force since Y / expired (פקע)"; a "laws on the books" surface; flag basic/budget laws | rich fields: `IsBasicLaw, IsBudgetLaw, IsFavoriteLaw, LawValidityDesc (בתוקף/פקע), PublicationDate, ValidityStart/FinishDate`. Bill→law join is **indirect** (see below) | only ~106 of 7,434 K25 bills reach enactment |
+| `KNS_IsraelLawClassificiation` (now VERIFIED) | **2902** rows · **~38 topic tags** | **A real topic taxonomy** — ביטחון/בריאות/חינוך/מיסוי/תחבורה/הגנת הסביבה/… as badges + filters | `IsraelLawID` → tags; reach a bill via `KNS_IsraelLawName`/`KNS_IsraelLawBinding` (LawID space) | **Enacted laws ONLY.** Does **NOT** solve the votes/bills-feed "no topic taxonomy" gap — most votes/bills never become law. The bill→IsraelLaw join is non-trivial (`LawID` ≠ `BillID`) |
+| `KNS_CommitteeSession` + `KNS_CmtSessionItem` (now VERIFIED) | **10,453** K25 sessions · **80,182** item rows (all-K) | "this bill was discussed in committee X on DATE" timelines; per-bill committee history; `SessionUrl`/`BroadcastUrl` deep links | `KNS_CmtSessionItem.ItemID` (+`ItemTypeID`→`KNS_ItemType`) → BillID/QueryID; `CommitteeSessionID` → `KNS_CommitteeSession` | **No per-MK attendance** — sessions carry no `PersonID` (see the Attendance section; committee attendance only via Open Knesset NLP CSV, deferred) |
+| `KNS_PlenumSession` + `KNS_DocumentPlenumSession` (now VERIFIED) | **75,959** plenum docs (all-K) | Link a vote/bill to the verbatim **plenum protocol** ("דברי הכנסת" Hansard DOC/PDF) + the sitting's TOC | `KNS_PlmSessionItem.ItemID`→item; `KNS_DocumentPlenumSession.PlenumSessionID`→docs on `fs.knesset.gov.il` | heavy (DOCs, all-Knesset); Document PK is Int64-as-string; FilePath has `//` double-slashes — normalize |
+
+**Bill → enacted-law join (the indirect chain, partly verified):** `KNS_IsraelLawName` (2169 rows: `IsraelLawID ↔ LawID ↔ Name`) and `KNS_IsraelLawBinding` (374 rows: `IsraelLawID ↔ LawID ↔ LawTypeID`, plus `IsraelLawReplacedID` for amendments) bridge an enacted `IsraelLawID` to a `LawID`. **Caveat (not fully traced):** `LawID` is its own id space (`KNS_Law`, historical/consolidated), distinct from `BillID` — getting from a vote's `BillID` to an `IsraelLawID`'s classifications needs more than one hop and was **not** end-to-end verified here. Treat topic-tagging via this chain as a spike, not a known-good path.
+
+---
 
 ## Official sources & documentation
 

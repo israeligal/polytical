@@ -32,6 +32,12 @@ you doubt a number. Do not add claims here you have not run yourself.
 > key fields, navigation properties, example query, and verified OData gotchas (counts,
 > `substringof` vs `contains`, paging, encoding) — see
 > [`references/api-catalog.md`](references/api-catalog.md).
+>
+> **What more can we get (untapped):** the catalog's
+> [Untapped data & feature opportunities](references/api-catalog.md#untapped-data--feature-opportunities-verified-2026-06-15)
+> table (verified 2026-06-15) maps the entities we DON'T ingest to what they could power —
+> bill genealogy (split/union), former initiators, enacted laws + a real **topic taxonomy**
+> (laws only), committee sessions, and plenum transcripts ("דברי הכנסת").
 
 ## The one base URL
 
@@ -79,6 +85,13 @@ python3 scripts/knesset_activity.py 30300 --cross-check   # re-proves vs paginat
 - **`KNS_BillInitiator` has NO `KnessetNum` field.** To scope bills to a Knesset you must
   filter through its navigation property: `KNS_Bill/KnessetNum eq <N>`. `KNS_Query` *does*
   carry its own `KnessetNum`, so it filters directly. (Don't mix these up.)
+- **Split/government bills have NO MK initiators — by design, not a data gap.** A `ממשלתית`
+  (government) bill, and especially a budget bill split into many child bills (the typical
+  "על סדר היום" agenda item), returns **0** rows from `KNS_BillInitiator` (verified: BillID
+  2227233 → 0). The proposing entity is the *government*, not MKs. The split child's lineage —
+  and any initiators — live on the **parent** bill: `KNS_BillSplit?$filter=SplitBillID eq <id>`
+  → `MainBillID` (verified: 2204244 → 2203821). So "who made it" is empty for most agenda
+  items, correctly; only private (`פרטית`) bills carry MK initiators (verified: 2233112 → 3).
 - **Counting: use `$inlinecount=allpages` OR the `/$count` path — never `$count=true`.**
   `$count=true` is unsupported here (HTTP 400, *"'$count' … is not recognized"*). The other
   two both work and both return the total *without* the rows:
