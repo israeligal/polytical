@@ -1,8 +1,11 @@
 import Link from "next/link";
 import type { Market, Politician } from "@/lib/types";
 import type { KnessetVoteRow } from "@/app/lib/votes/read-repo";
+import type { AgendaFeedItem } from "@/app/lib/agenda/read-repo";
 import { formatCount, pct, pctLabel, timeUntil } from "@/lib/format";
+import { formatDate } from "@/lib/time";
 import { catTint } from "@/lib/cat";
+import { AgendaSplitBar, InitiatorCluster, type AgendaCommunity, type AgendaStance } from "@/components/agenda-card";
 import { CategoryBadge, HotBadge } from "@/components/badges";
 import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
@@ -198,6 +201,89 @@ export function VoteHeroSpotlight({
         </span>
         <span className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary-hover">
           מי הצביע מה
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * "על סדר היום" hero — the most-imminent bill heading to a decisive vote, where
+ * a user can stake a pre-vote stance. Sibling of VoteHeroSpotlight: same card
+ * vocabulary, but it leads with the proposing MKs (caricature cluster) and a
+ * forward-looking CTA. The whole panel links to the bill page (the stance
+ * widget lives there). `community` arrives already k-gated.
+ */
+export function AgendaHeroSpotlight({
+  item,
+  community,
+  mine,
+}: {
+  item: AgendaFeedItem;
+  community: AgendaCommunity;
+  mine: AgendaStance | null;
+}) {
+  return (
+    <Link
+      href={item.billId != null ? `/bill/${item.billId}` : "/agenda"}
+      className="group flex flex-col rounded-card border border-border bg-card p-5 shadow-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-3 hover:shadow-glow-mint sm:p-6"
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 font-accent text-xs font-bold text-accent-foreground">
+          ההצעה הקרובה
+        </span>
+        {item.statusDescHe && (
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
+            {item.statusDescHe}
+          </span>
+        )}
+        {item.expectedDate && (
+          <span className="nums ms-auto inline-flex items-center gap-1 text-sm text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            צפוי: {formatDate(`${item.expectedDate}T00:00:00Z`)}
+          </span>
+        )}
+      </div>
+
+      <h2 className="mb-4 font-display text-2xl font-black leading-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+        {item.titleHe}
+      </h2>
+
+      {item.initiators.length > 0 && (
+        <div className="mb-4">
+          <InitiatorCluster initiators={item.initiators} total={item.initiatorCount} size="md" />
+        </div>
+      )}
+
+      {community.forPct != null ? (
+        <div className="flex flex-col gap-2">
+          <AgendaSplitBar forPct={community.forPct} className="h-2.5" />
+          <span className="nums text-sm text-muted-foreground">
+            <span className="font-bold text-positive">{community.forPct}% מהקהילה בעד</span> · {community.total} עמדות
+          </span>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {community.total > 0
+            ? `${community.total} אנשים כבר קבעו עמדה — הצטרפו וגלו את הרוב`
+            : "טרם נקבעו עמדות — היו הראשונים לקבוע עמדה לפני ההצבעה"}
+        </p>
+      )}
+
+      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+        {mine ? (
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold ${
+              mine === "for" ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative"
+            }`}
+          >
+            העמדה שלכם: {mine === "for" ? "בעד" : "נגד"}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">העמדה שלכם תיספר כשתתקיים ההצבעה</span>
+        )}
+        <span className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-colors group-hover:bg-primary-hover">
+          {mine ? "עדכנו עמדה" : "קבעו עמדה"}
         </span>
       </div>
     </Link>
