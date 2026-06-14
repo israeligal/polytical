@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { formatCount } from "@/lib/format";
 import { db } from "@/app/lib/db";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
 import { getMembership, getGroupMotionPicks } from "@/app/lib/groups/repo";
+import { CopyMotionLink } from "@/components/groups/copy-motion-link";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getUnpredictedOpenMarketCards } from "@/app/lib/markets/feed";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
@@ -35,7 +36,10 @@ export default async function MarketPage({
   // Group motions are member-only — gate access (and hide global chrome below).
   const groupId = bundle.market.groupId;
   if (groupId) {
-    const membership = session?.user ? await getMembership({ groupId, userId: session.user.id }) : null;
+    // A logged-out member following a shared vote link → bounce through login
+    // back to the motion (instead of a dead 404). Non-members still 404 below.
+    if (!session?.user) redirect(`/login?callbackUrl=${encodeURIComponent(`/market/${id}`)}`);
+    const membership = await getMembership({ groupId, userId: session.user.id });
     if (!membership || membership.status !== "active") notFound();
   }
 
@@ -153,6 +157,8 @@ export default async function MarketPage({
                 הצעה לסדר
               </Link>
             )}
+            {/* Group motions: share the vote link with fellow members. */}
+            {groupId && <CopyMotionLink marketId={market.id} />}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">

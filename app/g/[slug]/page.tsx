@@ -5,6 +5,7 @@ import { getGroupForMember } from "@/app/lib/groups/service";
 import { getGroupScoreboard, listGroupMarkets, listActiveMembers } from "@/app/lib/groups/repo";
 import { getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { GroupActionBar } from "@/components/groups/group-action-bar";
+import { CopyMotionLink } from "@/components/groups/copy-motion-link";
 import { StatusChip } from "@/components/status-chip";
 import { Countdown } from "@/components/badges";
 import { EmptyState } from "@/components/empty-state";
@@ -82,7 +83,7 @@ export default async function GroupHomePage({ params }: { params: Promise<{ slug
               {motions.map((m) => {
                 const st = STATUS_HE[m.status] ?? STATUS_HE.open;
                 return (
-                  <li key={m.id}>
+                  <li key={m.id} className="relative">
                     <Link
                       href={`/market/${m.id}`}
                       className="block rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary"
@@ -96,6 +97,10 @@ export default async function GroupHomePage({ params }: { params: Promise<{ slug
                         <span className="nums">{predictorCount(m.id)}</span> חברים ניבאו
                       </p>
                     </Link>
+                    {/* Share-to-vote chip — sibling of the Link so a copy never navigates. */}
+                    <div className="absolute end-3 top-3 z-10">
+                      <CopyMotionLink marketId={m.id} variant="chip" />
+                    </div>
                   </li>
                 );
               })}
