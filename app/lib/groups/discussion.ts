@@ -13,13 +13,16 @@ import { NotGroupMemberError } from "@/app/lib/errors";
 // any @-mentioned fellow members + the motion's author. General-market comments
 // keep their existing behavior (no group context, no mention pings).
 
-// @handle tokens: latin OR Hebrew letters, digits, underscore (mirrors HANDLE_RE).
-const MENTION_RE = /@([a-zA-Z0-9_֐-׿]+)/g;
+// @handle tokens. The Hebrew class is the base block א-ת ONLY (matching
+// HANDLE_RE's stored alphabet) — NOT the wider ֐-׿, which would swallow a
+// trailing geresh/niqqud into the token and miss the lookup.
+const MENTION_RE = /@([a-zA-Z0-9_א-ת]+)/g;
 
-/** Distinct handles referenced in a comment body. */
+/** Distinct handles referenced in a comment body, lowercased to match stored
+ *  handles (normalizeHandle forces lowercase; the DB lookup is case-sensitive). */
 export function parseMentionHandles(body: string): string[] {
   const out = new Set<string>();
-  for (const m of body.matchAll(MENTION_RE)) out.add(m[1]);
+  for (const m of body.matchAll(MENTION_RE)) out.add(m[1].toLowerCase());
   return [...out];
 }
 
@@ -61,7 +64,11 @@ export async function postGroupAwareComment({
     const handles = parseMentionHandles(body);
     const mentioned = await groupsRepo.getActiveMembersByHandles({ db: tx, groupId, handles });
     const recipients = new Set<string>(mentioned.map((m) => m.userId));
-    if (market.createdBy) recipients.add(market.createdBy);
+    // Notify the motion author only if they're still an active member.
+    if (market.createdBy && market.createdBy !== userId) {
+      const author = await groupsRepo.getMembership({ db: tx, groupId, userId: market.createdBy });
+      if (author?.status === "active") recipients.add(market.createdBy);
+    }
     recipients.delete(userId);
 
     const events: NotificationEvent[] = [...recipients].map((rid) => ({

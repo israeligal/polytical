@@ -6,10 +6,10 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 
 import { users, markets, outcomes, bets, cardProgress } from "@/app/lib/schema";
-import { createGroup, joinGroup } from "./service";
+import { createGroup, joinGroup, leaveGroup } from "./service";
 import { createGroupMotion, resolveGroupMotion } from "./motions";
 import { getGroupScoreboard, getGroupMotionPicks, listGroupMarkets, getMembership } from "./repo";
-import { makePrediction } from "@/app/lib/markets/service";
+import { makePrediction, resolveMarket } from "@/app/lib/markets/service";
 import {
   listOpenMarkets, getMarketOfTheDay, searchMarkets, getUserPredictions,
 } from "@/app/lib/markets/repo";
@@ -207,6 +207,42 @@ test("resolveGroupMotion refuses a market that isn't this group's", async () => 
   await expect(
     resolveGroupMotion({ db: h.db, actorId: "owner", groupId: g.id, marketId: globalId, winningOutcomeId: yes }),
   ).rejects.toBeInstanceOf(MarketNotFoundError);
+});
+
+test("SANDBOX: a group motion cannot be settled via the global resolveMarket", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  const { marketId } = await createGroupMotion({
+    db: h.db, userId: "owner", groupId: g.id, questionHe: "האם זה יקרה השבוע?", category: "coalition", closeAt: new Date(Date.now() + 86_400_000),
+  });
+  const [yes] = await outcomeIds(marketId);
+  // The global resolve path must refuse a group market (else it would bump global stats).
+  await expect(resolveMarket({ db: h.db, marketId, winningOutcomeId: yes })).rejects.toBeInstanceOf(MarketNotFoundError);
+});
+
+test("a predictor who LEAVES keeps frozen counters and is hidden from revealed picks", async () => {
+  await seedUsers(["owner", "leaver", "viewer"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "leaver", inviteCode: g.inviteCode });
+  await joinGroup({ db: h.db, userId: "viewer", inviteCode: g.inviteCode });
+  const { marketId } = await createGroupMotion({
+    db: h.db, userId: "owner", groupId: g.id, questionHe: "האם תקום ממשלה?", category: "coalition", closeAt: new Date(Date.now() + 86_400_000),
+  });
+  const [yes, no] = await outcomeIds(marketId);
+  await makePrediction({ db: h.db, userId: "leaver", marketId, outcomeId: yes });
+  await makePrediction({ db: h.db, userId: "viewer", marketId, outcomeId: no });
+  await leaveGroup({ db: h.db, userId: "leaver", groupId: g.id }); // bet stays; membership → left
+
+  await resolveGroupMotion({ db: h.db, actorId: "owner", groupId: g.id, marketId, winningOutcomeId: yes });
+
+  // F6: departed predictor's counters are NOT bumped (frozen on leave)
+  expect((await getMembership({ db: h.db, groupId: g.id, userId: "leaver" }))?.groupResolved).toBe(0);
+  expect((await getMembership({ db: h.db, groupId: g.id, userId: "viewer" }))?.groupResolved).toBe(1);
+  // F7: departed member's pick is hidden from the revealed picks
+  const picks = await getGroupMotionPicks({ db: h.db, marketId, viewerId: "viewer" });
+  const ids = picks.picks.map((p) => p.userId);
+  expect(ids).toContain("viewer");
+  expect(ids).not.toContain("leaver");
 });
 
 function DAY() {

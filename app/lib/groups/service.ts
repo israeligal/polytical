@@ -147,19 +147,27 @@ export async function leaveGroup({
   if (!membership || membership.status !== "active") throw new NotGroupMemberError();
 
   if (membership.role !== "owner") {
-    await repo.setMemberStatus({ db, groupId, userId, status: "left" });
+    await db.transaction(async (tx) => {
+      await repo.setMemberStatus({ tx, groupId, userId, status: "left" });
+      // Don't leave the leaver's bare-home pointing at a group they're no longer in.
+      await repo.clearDefaultGroupIfMatches({ tx, userId, groupId });
+    });
     return { deleted: false };
   }
 
   return db.transaction(async (tx) => {
     const heir = await repo.findSuccessor({ tx, groupId, excludeUserId: userId });
     if (!heir) {
-      await repo.deleteGroup({ tx, groupId }); // sole member → archive (cascade)
+      await repo.deleteGroup({ tx, groupId }); // sole member → archive (cascade clears defaultGroupId)
       return { deleted: true };
     }
     await repo.setMemberRole({ tx, groupId, userId: heir.userId, role: "owner" });
     await repo.setGroupOwner({ tx, groupId, ownerId: heir.userId });
+    // Demote the departing owner (so a later rejoin via invite comes back as a
+    // plain member, not a second owner) and flip them to left.
+    await repo.setMemberRole({ tx, groupId, userId, role: "member" });
     await repo.setMemberStatus({ tx, groupId, userId, status: "left" });
+    await repo.clearDefaultGroupIfMatches({ tx, userId, groupId });
     return { deleted: false };
   });
 }
@@ -184,7 +192,11 @@ export async function removeMember({
   if (!target || target.status !== "active") throw new NotGroupMemberError();
   if (target.role === "owner") throw new InsufficientGroupRoleError(); // the owner leaves via leaveGroup
 
-  await repo.setMemberStatus({ db, groupId, userId: targetUserId, status: "left" });
+  await db.transaction(async (tx) => {
+    await repo.setMemberStatus({ tx, groupId, userId: targetUserId, status: "left" });
+    // Clear the removed member's home group so their bare-home doesn't 404.
+    await repo.clearDefaultGroupIfMatches({ tx, userId: targetUserId, groupId });
+  });
 }
 
 /**

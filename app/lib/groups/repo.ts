@@ -463,8 +463,11 @@ export async function getGroupMotionPicks({
     .where(and(eq(bets.marketId, marketId), eq(bets.userId, requireUserId(viewerId))));
   const closed = market.status !== "open" || market.closeAt.getTime() <= Date.now();
   const revealed = Boolean(own) || closed;
-  if (!revealed) return { revealed: false, picks: [] };
+  const groupId = market.groupId;
+  if (!revealed || !groupId) return { revealed, picks: [] };
 
+  // Only ACTIVE members' picks are revealed — a departed member's bet row
+  // survives, but their identity + pick must not leak into "מי ניבא מה".
   const picks = await db
     .select({
       userId: bets.userId,
@@ -476,7 +479,8 @@ export async function getGroupMotionPicks({
     .from(bets)
     .innerJoin(users, eq(users.id, bets.userId))
     .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
-    .where(eq(bets.marketId, marketId));
+    .innerJoin(groupMembers, and(eq(groupMembers.userId, bets.userId), eq(groupMembers.groupId, groupId)))
+    .where(and(eq(bets.marketId, marketId), eq(groupMembers.status, "active")));
   return { revealed: true, picks };
 }
 
@@ -502,7 +506,34 @@ export async function bumpGroupStats({
       groupResolved: sql`${groupMembers.groupResolved} + 1`,
       groupWins: sql`${groupMembers.groupWins} + ${correct ? 1 : 0}`,
     })
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)));
+    // Active members only: a predictor who has LEFT keeps their counters frozen
+    // (their bet row survives, but their record must not move after departure).
+    .where(and(
+      eq(groupMembers.groupId, groupId),
+      eq(groupMembers.userId, requireUserId(userId)),
+      eq(groupMembers.status, "active"),
+    ));
+}
+
+/** Clears a user's home group IF it points at `groupId` (called on leave/remove
+ *  so a departed member's bare-home redirect doesn't 404 on a group they left).
+ *  The FK's onDelete:set null only covers group DELETION, not an ordinary leave. */
+export async function clearDefaultGroupIfMatches({
+  tx,
+  db = defaultDb,
+  userId,
+  groupId,
+}: {
+  tx?: Tx;
+  db?: AppDb;
+  userId: string;
+  groupId: string;
+}): Promise<void> {
+  const exec = tx ?? db;
+  await exec
+    .update(users)
+    .set({ defaultGroupId: null })
+    .where(and(eq(users.id, requireUserId(userId)), eq(users.defaultGroupId, groupId)));
 }
 
 /** Explicitly set (or clear, with null) the user's home group — the "הפוך לבית

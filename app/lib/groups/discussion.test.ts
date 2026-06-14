@@ -26,9 +26,27 @@ afterEach(async () => {
   await h.close();
 });
 
-test("parseMentionHandles extracts distinct latin + hebrew handles", () => {
+test("parseMentionHandles extracts distinct latin + hebrew handles, lowercased", () => {
   expect(parseMentionHandles("שלום @bob_h ו-@דנה1 ושוב @bob_h")).toEqual(["bob_h", "דנה1"]);
   expect(parseMentionHandles("בלי תיוגים בכלל")).toEqual([]);
+  // Uppercase is lowercased to match stored handles; a trailing geresh is NOT
+  // swallowed into the token (Hebrew class is the base block only).
+  expect(parseMentionHandles("@Bob_H ו-@דנה׳")).toEqual(["bob_h", "דנה"]);
+});
+
+test("an uppercase @-mention still resolves (handles are stored lowercase)", async () => {
+  await seedUser("owner", "owner_h");
+  await seedUser("cm", "cm_h");
+  await seedUser("bob", "bob_h");
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "הקואליציה" } });
+  await joinGroup({ db: h.db, userId: "cm", inviteCode: g.inviteCode });
+  await joinGroup({ db: h.db, userId: "bob", inviteCode: g.inviteCode });
+  const { marketId } = await createGroupMotion({
+    db: h.db, userId: "owner", groupId: g.id,
+    questionHe: "האם זה יקרה השבוע?", category: "coalition", closeAt: new Date(Date.now() + 86_400_000),
+  });
+  await postGroupAwareComment({ db: h.db, userId: "cm", actorName: "cm", marketId, body: "מה דעתך @Bob_H?" });
+  expect(await mentions("bob")).toHaveLength(1); // resolved despite the uppercase
 });
 
 test("a @-mention on a group motion notifies the mentioned member AND the author, not the commenter", async () => {

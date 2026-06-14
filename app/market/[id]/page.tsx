@@ -63,7 +63,9 @@ export default async function MarketPage({
     session?.user
       ? getUserPositions({ userId: session.user.id, marketId: id })
       : Promise.resolve([]),
-    isOpen && session?.user
+    // No global queue inside a group motion's deck (would mix global markets
+    // into the group context, and they're a different audience).
+    isOpen && session?.user && !groupId
       ? getUnpredictedOpenMarketCards({ db, userId: session.user.id, excludeMarketId: id, limit: 6 })
       : Promise.resolve([]),
   ]);
@@ -81,11 +83,15 @@ export default async function MarketPage({
     groupId && groupReveal && session?.user
       ? await getGroupMotionPicks({ marketId: id, viewerId: session.user.id })
       : null;
+  // The deck embeds per-outcome shares into the client payload — for an
+  // unrevealed group motion that would leak the split (esp. multi, which renders
+  // it). Feed the deck a zero-count market until the viewer has predicted.
+  const deckMarket = groupReveal ? market : bundleToMarket({ ...bundle, counts: new Map() });
 
   // Build deck for open markets (shown to all — logged-out sees login CTA on first card).
   const deckQuestions = isOpen
     ? [
-        marketToOwnDeckQuestion({ market, initialPickId }),
+        marketToOwnDeckQuestion({ market: deckMarket, initialPickId }),
         ...queueCards.map(marketCardToQueueQuestion),
       ]
     : [];

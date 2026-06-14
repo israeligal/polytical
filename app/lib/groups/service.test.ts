@@ -149,3 +149,33 @@ test("getGroupForMember gates non-members", async () => {
   expect(ok.group.id).toBe(g.id);
   await expect(getGroupForMember({ db: h.db, slug: g.slug, userId: "stranger" })).rejects.toBeInstanceOf(NotGroupMemberError);
 });
+
+test("leaving a SURVIVING group clears the leaver's home group (no bare-home 404)", async () => {
+  await seedUsers(["owner", "m"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "m", inviteCode: g.inviteCode });
+  expect(await defaultGroupId("m")).toBe(g.id); // auto-homed
+  await leaveGroup({ db: h.db, userId: "m", groupId: g.id }); // g survives (owner remains)
+  expect(await defaultGroupId("m")).toBeNull(); // cleared, so proxy won't 404 their home
+});
+
+test("removeMember clears the removed member's home group", async () => {
+  await seedUsers(["owner", "m"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "m", inviteCode: g.inviteCode });
+  await removeMember({ db: h.db, actorId: "owner", groupId: g.id, targetUserId: "m" });
+  expect(await defaultGroupId("m")).toBeNull();
+});
+
+test("an owner who hands off and rejoins comes back as a plain member", async () => {
+  await seedUsers(["owner", "heir"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "heir", inviteCode: g.inviteCode });
+  await leaveGroup({ db: h.db, userId: "owner", groupId: g.id }); // hands off to heir
+  expect((await getMembership({ db: h.db, groupId: g.id, userId: "heir" }))?.role).toBe("owner");
+
+  await joinGroup({ db: h.db, userId: "owner", inviteCode: g.inviteCode }); // ex-owner rejoins
+  const back = await getMembership({ db: h.db, groupId: g.id, userId: "owner" });
+  expect(back?.role).toBe("member"); // NOT a second owner
+  expect(back?.status).toBe("active");
+});
