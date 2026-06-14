@@ -1,48 +1,43 @@
 "use client";
 
-// עמדה widget — the outcome-pill toggle (design-spec §4: selectable YES/NO
-// pills; selected → filled bg-positive/bg-negative with -foreground text).
-// Optimistic with functional-update rollback (the comment-row precedent), so
-// rapid double-taps can't desync. Tapping the selected pill RETRACTS (privacy:
-// a recorded position must be removable). Aggregate + match progress render
-// from the server response only — never optimistically.
+// עמדה מראש widget — pre-vote בעד/נגד on an upcoming bill, mirroring StanceWidget
+// (optimistic toggle with rollback; tapping the selected pill retracts — privacy).
+// Unlike a post-vote stance there's no match-unlock progress: a pre-vote only
+// counts toward "מי מצביע כמוכם" once the plenum vote happens and the resolution
+// sweep adopts it. Aggregate renders from the server response only.
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { setStanceAction } from "@/app/actions/stances";
+import { setAgendaStanceAction } from "@/app/actions/agenda-stances";
 import { StancePill, type Stance } from "@/components/stance-pill";
 
-interface Progress {
-  scoreableCount: number;
-  unlockThreshold: number;
-}
-
-export function StanceWidget({
-  voteId,
+export function AgendaStanceWidget({
+  agendaItemId,
+  billId,
   initialStance,
   initialAggregate = null,
-  initialProgress = null,
   loggedIn,
 }: {
-  voteId: number;
+  agendaItemId: string;
+  billId: number | null;
   initialStance: Stance | null;
-  /** Server-seeded so a RETURNING user sees the aggregate/progress immediately. */
+  /** Server-seeded so a returning user sees the aggregate immediately. */
   initialAggregate?: { forPct: number; total: number } | null;
-  initialProgress?: Progress | null;
   loggedIn: boolean;
 }) {
   const [stance, setStance] = useState<Stance | null>(initialStance);
   const [aggregate, setAggregate] = useState<{ forPct: number; total: number } | null>(initialAggregate);
-  const [progress, setProgress] = useState<Progress | null>(initialProgress);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const backTo = billId != null ? `/bill/${billId}` : "/agenda";
 
   if (!loggedIn) {
     return (
       <div className="mt-4 rounded-xl border border-border bg-card p-4 text-center">
-        <p className="text-sm font-semibold text-foreground">מה העמדה שלכם?</p>
+        <p className="text-sm font-semibold text-foreground">ההצעה בדרך להצבעה — מה העמדה שלכם?</p>
         <Link
-          href={`/login?callbackUrl=${encodeURIComponent(`/vote/${voteId}`)}`}
+          href={`/login?callbackUrl=${encodeURIComponent(backTo)}`}
           className="mt-2 inline-block rounded-full border-2 border-primary px-5 py-2 text-sm font-bold text-primary transition-all hover:-translate-y-0.5"
         >
           התחברו כדי לקבוע עמדה
@@ -57,7 +52,7 @@ export function StanceWidget({
     setMessage(null);
     startTransition(async () => {
       try {
-        const res = await setStanceAction({ voteId, stance: next });
+        const res = await setAgendaStanceAction({ agendaItemId, billId: billId ?? undefined, stance: next });
         if (!res.ok) {
           setStance(prev); // rollback
           setMessage(res.message ?? "אירעה שגיאה — נסו שוב");
@@ -65,7 +60,6 @@ export function StanceWidget({
         }
         setStance(res.stance);
         setAggregate(res.aggregate);
-        setProgress({ scoreableCount: res.scoreableCount, unlockThreshold: res.unlockThreshold });
       } catch {
         setStance(prev);
         setMessage("אירעה שגיאה — נסו שוב");
@@ -73,12 +67,11 @@ export function StanceWidget({
     });
   }
 
-  const remaining = progress ? Math.max(0, progress.unlockThreshold - progress.scoreableCount) : null;
-
   return (
     <div className="mt-4 rounded-xl border border-border bg-card p-4">
-      <p className="mb-3 text-sm font-semibold text-foreground">מה העמדה שלכם?</p>
-      <div className="flex gap-3" role="group" aria-label="קביעת עמדה">
+      <p className="mb-1 text-sm font-semibold text-foreground">ההצעה בדרך להצבעה — מה העמדה שלכם?</p>
+      <p className="mb-3 text-xs text-muted-foreground">העמדה שלכם תיספר כעמדה רגילה כשתתקיים ההצבעה במליאה.</p>
+      <div className="flex gap-3" role="group" aria-label="קביעת עמדה מראש">
         <StancePill
           value="for"
           label={stance === "for" ? "בעד ✓" : "בעד"}
@@ -106,19 +99,9 @@ export function StanceWidget({
           <span className="nums">{aggregate.total}</span> עמדות
         </p>
       )}
-      {stance != null && !aggregate && progress && (
+      {stance != null && !aggregate && (
         <p className="mt-3 text-xs text-muted-foreground">עוד אין מספיק עמדות בקהילה להצגת התפלגות.</p>
       )}
-      {progress &&
-        (remaining! > 0 ? (
-          <p className="mt-2 text-xs font-semibold text-primary">
-            עוד <span className="nums">{remaining}</span> עמדות לפתיחת ״מי מצביע כמוכם״
-          </p>
-        ) : (
-          <Link href="/my-match" className="mt-2 inline-block text-xs font-bold text-primary hover:underline">
-            ההתאמה שלכם מוכנה — מי מצביע כמוכם? ←
-          </Link>
-        ))}
     </div>
   );
 }

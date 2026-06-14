@@ -20,6 +20,8 @@ import {
   upsertCommittees, upsertCommitteeMemberships, upsertFactionStints, upsertActivityCounts,
 } from "@/app/lib/knesset/repo";
 import type { ActivityCountsRow } from "@/app/lib/knesset/repo";
+import { runAgendaCuration } from "@/app/lib/agenda/curate";
+import { resolveAgendaItems } from "@/app/lib/agenda/resolve";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -271,6 +273,8 @@ async function main() {
     bills: () => ingestBills(prov),
     billSponsors: () => ingestBillSponsors(prov),
     lifetimeBills: () => ingestLifetimeBills(prov),
+    agendaCuration: async () => { await runAgendaCuration({ db, fetchedAt: prov.fetchedAt }); },
+    agendaResolution: async () => { await resolveAgendaItems({ db }); },
     queries: () => ingestQueries(prov),
     committees: () => ingestCommittees(prov),
     committeeMemberships: () => ingestCommitteeMemberships(prov),
@@ -281,10 +285,14 @@ async function main() {
   // counts after members (they UPDATE existing rows by personId), then committees.
   const bounded = ["factions", "members", "activityCounts", "committees"];
   // Heavy entities (~7387 bills / ~1538 queries + bulk membership CSV) only on --full.
-  const heavy = ["bills", "billSponsors", "lifetimeBills", "queries", "committeeMemberships"];
+  // agendaCuration/agendaResolution depend on a fresh bills table (statusId) so they
+  // ride --full too; both are idempotent and cheap.
+  const heavy = ["bills", "billSponsors", "lifetimeBills", "agendaCuration", "agendaResolution", "queries", "committeeMemberships"];
   // Run order keeps dependency order; heavy steps appended when --full is set.
+  // Curation after bills (reads statusId); resolution after curation (+ uses any
+  // decisive votes the votes pipeline has already landed).
   const order = full
-    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "lifetimeBills", "queries", "committees", "committeeMemberships"]
+    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "lifetimeBills", "agendaCuration", "agendaResolution", "queries", "committees", "committeeMemberships"]
     : bounded;
 
   // A specific --only=<entity> always runs that one (even a heavy one), bypassing the bound.

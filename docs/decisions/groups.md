@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-06-15 — Renumbered groups migration 0029 → 0030 (collision with agenda-stances on main)
+
+**Decision.** While this branch was in review, `origin/main` merged PR #81/#82 (agenda-stances), which claimed `drizzle/0029_agenda_stances.sql` — already applied to prod. On merging main into this branch, the groups migration was renumbered to **`0030_groups_coalition.sql`** (the chain is now …0028 → 0029_agenda → 0030_groups). `drizzle-kit generate` re-emitted it cleanly groups-only (no hand-trim needed this time — main's `0029_agenda` snapshot already includes the bills tables, so the prior drift is gone). **Prod application:** prod already has agenda-stances 0029, so only the groups delta (this 0030) is applied to prod via a guarded one-off runner. The full suite (477 tests) passes replaying both 0029_agenda and 0030_groups.
+
+**Rejected.** Keeping 0029 (two different migrations can't share an index in the journal); rebasing instead of merging (loses the clean review history).
+
 ## 2026-06-14 — Migration 0029 carries ONLY the groups delta (committed snapshot was stale)
 
 **Decision.** `drizzle-kit generate` re-emitted the entire bills feature (bill_documents/bill_statuses + 9 bills columns) because the committed `drizzle/meta` was missing the `0024` and `0028` snapshots, so it diffed against `0027`. The generated `0029_groups_coalition.sql` was hand-trimmed to contain ONLY the group tables/enums/columns (which `0028` does not create), so replaying `0028→0029` doesn't double-create bill tables. The regenerated `0029_snapshot.json` IS the correct full schema, so future `generate` is clean again. **Applying 0029 to the shared prod DB is deferred to a supervised deploy** (HARD GATE) — additive (new tables + nullable cols + enum values), so safe, but prod already has the bills tables via `db:push`, so a non-trimmed migration would have failed there.

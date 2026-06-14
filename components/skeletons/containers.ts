@@ -27,3 +27,4 @@ export const BILL_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6
 export const GROUPS_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const GROUP_CONTAINER = "mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const GROUP_GRID = "grid gap-6 lg:grid-cols-[1fr_300px]";
+export const AGENDA_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
