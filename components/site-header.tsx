@@ -9,11 +9,12 @@ import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 
-// Deliberately minimal: the three product surfaces only. האוסף + עונה live on
-// /profile; פוליטיקאים is reachable from every card and the homepage section.
+// Core product surfaces. האוסף + עונה live on /profile; פוליטיקאים is reachable
+// from every card and the homepage section.
 const NAV = [
   { href: "/markets", label: "תחזיות" },
   { href: "/votes", label: "הצבעות" },
+  { href: "/agenda", label: "על סדר היום" },
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];
 
