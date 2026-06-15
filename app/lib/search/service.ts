@@ -36,18 +36,22 @@ export interface SearchResults {
 export async function search({
   db = defaultDb,
   q,
+  groupScope = null,
 }: {
   db?: DB;
   q: string;
+  /** Active-coalition scope: null = national search, id = scope markets to that coalition. */
+  groupScope?: string | null;
 }): Promise<SearchResults> {
   const normalized = normalizeSearchName(q);
   if (normalized.length < MIN_QUERY_LEN) {
     return { q, normalized, politicians: [], markets: [] };
   }
 
+  // Politicians are global (never coalition-scoped); only market results follow the active coalition.
   const [politicianRows, marketRows] = await Promise.all([
     searchPoliticians({ db, q: normalized }),
-    searchMarkets({ db, q: normalized }),
+    searchMarkets({ db, q: normalized, groupScope }),
   ]);
 
   const politicians = politicianRows.map(dbToCard);

@@ -13,8 +13,14 @@ import { bundleToMarket } from "@/app/lib/markets/adapter";
 import type { AppDb } from "@/app/lib/db-utils";
 
 /** marketId → the viewer's picked-outcome label, for the המנדט-שלי chip on feed cards. */
-export async function getMyPickLabels({ userId }: { userId: string }): Promise<Map<string, string>> {
-  const predictions = await getUserPredictions({ userId });
+export async function getMyPickLabels({
+  userId,
+  groupScope = null,
+}: {
+  userId: string;
+  groupScope?: string | null;
+}): Promise<Map<string, string>> {
+  const predictions = await getUserPredictions({ userId, groupScope });
   return new Map(predictions.map((p) => [p.marketId, p.outcomeLabelHe]));
 }
 
@@ -29,10 +35,13 @@ export type MarketCardData = { market: Market; featured: Politician[] };
  */
 export async function getMarketCards({
   category,
+  groupScope = null,
 }: {
   category?: Category;
+  /** Active-coalition scope: null = national feed, id = that coalition's motions. */
+  groupScope?: string | null;
 }): Promise<MarketCardData[]> {
-  const marketRows = await listOpenMarkets({ category });
+  const marketRows = await listOpenMarkets({ category, groupScope });
   const bundles = (
     await Promise.all(marketRows.map((m) => getMarketBundle({ marketId: m.id })))
   ).filter((b): b is NonNullable<typeof b> => b !== null);
@@ -72,13 +81,16 @@ export async function getUnpredictedOpenMarketCards({
   userId,
   excludeMarketId,
   limit = 8,
+  groupScope = null,
 }: {
   db: AppDb;
   userId: string;
   excludeMarketId?: string;
   limit?: number;
+  /** Active-coalition scope: null = national deck, id = that coalition's motions. */
+  groupScope?: string | null;
 }): Promise<MarketCardData[]> {
-  const marketRows = await listUnpredictedOpenMarkets({ db, userId, excludeMarketId, limit });
+  const marketRows = await listUnpredictedOpenMarkets({ db, userId, excludeMarketId, limit, groupScope });
   if (marketRows.length === 0) return [];
 
   const bundles = await getMarketBundles({
