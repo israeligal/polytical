@@ -27,7 +27,8 @@ export async function SiteHeader() {
   const myGroups = user ? await listMyGroups({ userId: user.id }) : [];
   // Logged-in users get a "my groups" entry in the mobile menu.
   const mobileNav = user ? [...NAV, { href: "/g", label: "הקואליציות שלי" }] : NAV;
-  const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
+  // Avatar initial comes from the public @-handle, never the user's real name.
+  const initial = user?.handle?.trim()?.[0]?.toUpperCase() ?? "?";
   const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
 
   return (

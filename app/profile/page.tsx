@@ -23,6 +23,7 @@ import { ChevronForward, Gem, Trophy } from "@/components/icons";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 
 /** Whether a resolved prediction picked the winning outcome. */
 function isCorrect(p: PortfolioPrediction): boolean {
@@ -71,7 +72,9 @@ export default async function ProfilePage() {
     }),
   );
 
-  const initial = user.name?.trim()?.[0]?.toUpperCase() ?? "?";
+  // Identity is the public @-handle only — never the user's real `name`.
+  const handle = user.handle ?? FALLBACK_HANDLE;
+  const initial = handle.trim()[0]?.toUpperCase() ?? "?";
 
   return (
     <main className={PROFILE_CONTAINER}>
@@ -87,7 +90,7 @@ export default async function ProfilePage() {
           </span>
           <div>
             <h1 className="font-display text-3xl font-black leading-tight text-foreground">
-              {user.name}
+              <bdi>@{handle}</bdi>
             </h1>
             <p className="text-sm text-muted-foreground">הפרופיל שלך</p>
           </div>

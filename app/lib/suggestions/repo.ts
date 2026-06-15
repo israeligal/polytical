@@ -1,11 +1,12 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { marketSuggestions, users } from "@/app/lib/schema";
 import { SuggestionNotFoundError } from "@/app/lib/errors";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 
 // Repository for community market suggestions. Mirrors the comments repo: owns
 // all Drizzle access, driver-agnostic DB handle (postgres-js in prod, PGlite in
@@ -29,7 +30,7 @@ export interface SuggestionOutcomeInput {
 export interface SuggestionView {
   id: string;
   userId: string;
-  proposerName: string;
+  proposerHandle: string;
   questionHe: string;
   category: string;
   personId: number | null;
@@ -45,7 +46,7 @@ export interface SuggestionView {
 const VIEW_COLUMNS = {
   id: marketSuggestions.id,
   userId: marketSuggestions.userId,
-  proposerName: users.name,
+  proposerHandle: sql<string>`coalesce(${users.handle}, ${FALLBACK_HANDLE})`,
   questionHe: marketSuggestions.questionHe,
   category: marketSuggestions.category,
   personId: marketSuggestions.personId,

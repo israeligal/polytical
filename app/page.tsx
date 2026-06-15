@@ -6,6 +6,7 @@ import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
 import { getMarketCards, getMyPickLabels } from "@/app/lib/markets/feed";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { pctLabel } from "@/lib/format";
 import { CategoryRail } from "@/components/category-rail";
 import { HeroSpotlight, HotRail } from "@/components/hero";
@@ -70,16 +71,17 @@ export default async function Home({
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
   const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
 
-  // Real leaderboard: top 8 by correct predictions (handle = display name for
-  // now). If the viewer is logged in but outside the top 8, append their own row
-  // so they can always find themselves. Empty state until there are users to rank.
+  // Real leaderboard: top 8 by correct predictions, shown by public @-handle
+  // (never the real name). If the viewer is logged in but outside the top 8,
+  // append their own row so they can always find themselves. Empty state until
+  // there are users to rank.
   const session = await getSession();
   const me = session?.user ?? null;
   const myPicks = me ? await getMyPickLabels({ userId: me.id }) : new Map<string, string>();
   const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,
-    handle: e.name,
+    handle: e.handle,
     totalWins: e.totalWins,
     totalResolved: e.totalResolved,
     accuracy: e.accuracy,
@@ -91,7 +93,7 @@ export default async function Home({
     me && myStats
       ? {
           rank: myStats.rank,
-          handle: me.name,
+          handle: me.handle ?? FALLBACK_HANDLE,
           totalWins: myStats.totalWins,
           totalResolved: myStats.totalResolved,
           accuracy: myStats.accuracy,

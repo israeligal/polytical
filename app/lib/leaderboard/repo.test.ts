@@ -19,9 +19,9 @@ let h: Awaited<ReturnType<typeof createTestDb>>;
  */
 async function seed() {
   await h.db.insert(users).values([
-    { id: "alice", name: "Alice", email: "a@x.co", totalResolved: 10, totalWins: 9 },
-    { id: "bob",   name: "Bob",   email: "b@x.co", totalResolved:  4, totalWins: 1 },
-    { id: "carol", name: "Carol", email: "c@x.co", totalResolved:  0, totalWins: 0 },
+    { id: "alice", name: "Alice", handle: "alice_h", email: "a@x.co", totalResolved: 10, totalWins: 9 },
+    { id: "bob",   name: "Bob",   handle: "bob_h",   email: "b@x.co", totalResolved:  4, totalWins: 1 },
+    { id: "carol", name: "Carol", handle: "carol_h", email: "c@x.co", totalResolved:  0, totalWins: 0 },
   ]);
 }
 
@@ -39,7 +39,7 @@ test("getLeaderboard by wins orders by totalWins desc with accuracy tiebreak and
   expect(rows.map((r) => r.userId)).toEqual(["alice", "bob", "carol"]);
   expect(rows.map((r) => r.rank)).toEqual([1, 2, 3]);
   expect(rows.map((r) => r.totalWins)).toEqual([9, 1, 0]);
-  expect(rows[0].name).toBe("Alice");
+  expect(rows[0].handle).toBe("alice_h"); // public @-handle, never the real name
   // accuracy is included even when ordering by wins
   expect(rows[0].accuracy).toBe(90);
   expect(rows[1].accuracy).toBe(25);

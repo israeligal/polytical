@@ -21,11 +21,9 @@ type Availability = { available: boolean; reason?: "invalid" | "taken" | "rate_l
 export function OnboardingWizard({
   arenas,
   initialHandle,
-  displayName,
 }: {
   arenas: Arena[];
   initialHandle: string;
-  displayName: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -124,7 +122,7 @@ export function OnboardingWizard({
       <div className="mb-6 flex items-center gap-3">
         <PolyticalLogo className="h-10 w-10" />
         <div>
-          <p className="font-accent text-xs font-bold text-primary">ברוכים הבאים, {displayName}</p>
+          <p className="font-accent text-xs font-bold text-primary">ברוכים הבאים לפוליטיקל</p>
           <h1 className="font-display text-2xl text-foreground">בואו נתחיל</h1>
         </div>
       </div>

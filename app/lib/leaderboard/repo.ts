@@ -4,6 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { users } from "@/app/lib/schema";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 
 // Leaderboard + profile read model. Pure, read-only derivations over the users
 // table — the only score is the prediction record (totalWins / totalResolved).
@@ -16,11 +17,12 @@ type DB = PgDatabase<
   ExtractTablesWithRelations<typeof schema>
 >;
 
-/** A leaderboard line: how many correct calls + the accuracy of those calls. */
+/** A leaderboard line: how many correct calls + the accuracy of those calls.
+ *  `handle` is the public @-nickname — never the user's real `name`. */
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
-  name: string;
+  handle: string;
   totalWins: number;
   totalResolved: number;
   accuracy: number; // 0–100
@@ -65,7 +67,7 @@ export async function getLeaderboard({
   const rows = await db
     .select({
       userId: users.id,
-      name: users.name,
+      handle: users.handle,
       totalWins: users.totalWins,
       totalResolved: users.totalResolved,
       accuracy: accuracyExpr,
@@ -77,7 +79,7 @@ export async function getLeaderboard({
   return rows.map((r, i) => ({
     rank: i + 1,
     userId: r.userId,
-    name: r.name,
+    handle: r.handle ?? FALLBACK_HANDLE,
     totalWins: r.totalWins,
     totalResolved: r.totalResolved,
     accuracy: r.accuracy,

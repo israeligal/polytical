@@ -43,9 +43,9 @@ beforeEach(async () => {
   dispatchPushMock.mockReset();
   dispatchPushMock.mockResolvedValue(undefined);
   await h.db.insert(users).values([
-    { id: "proposer", name: "מציע", email: "p@x.co" },
-    { id: "other", name: "אחר", email: "o@x.co" },
-    { id: "admin", name: "מנהל", email: "a@x.co", isAdmin: true },
+    { id: "proposer", name: "מציע", handle: "proposer_h", email: "p@x.co" },
+    { id: "other", name: "אחר", handle: "other_h", email: "o@x.co" },
+    { id: "admin", name: "מנהל", handle: "admin_h", email: "a@x.co", isAdmin: true },
   ]);
   await h.db.insert(politicians).values({ personId: 100, nameHe: "ח״כ פלוני", searchName: "ploni", ...PROV });
 });
@@ -162,7 +162,7 @@ test("getMySuggestions returns only the caller's rows; listSuggestions filters b
 
   const mine = await getMySuggestions({ db: h.db, userId: "proposer" });
   expect(mine.length).toBe(1);
-  expect(mine[0].proposerName).toBe("מציע");
+  expect(mine[0].proposerHandle).toBe("proposer_h");
 
   const pending = await listSuggestions({ db: h.db, status: "pending" });
   expect(pending.length).toBe(2);

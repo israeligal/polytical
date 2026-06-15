@@ -33,7 +33,6 @@ export default async function OnboardingPage() {
       <OnboardingWizard
         arenas={CATEGORIES}
         initialHandle={state?.handle ?? suggestedHandle ?? ""}
-        displayName={session.user.name}
       />
     </main>
   );
