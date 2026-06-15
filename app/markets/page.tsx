@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Category } from "@/lib/types";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
+import { getActiveCoalition } from "@/app/lib/groups/context";
 import { getMarketCards, getMyPickLabels, type MarketCardData } from "@/app/lib/markets/feed";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
 import { CategoryRail } from "@/components/category-rail";
@@ -28,14 +29,20 @@ export default async function MarketsPage({
   const { cat } = await searchParams;
   const active = (cat as Category) || undefined;
 
+  // The active coalition (or null = ארצי) scopes the whole feed — same cards,
+  // different audience. Resolved before the reads so they all share one scope.
+  const session = await getSession();
+  const groupScope = session?.user
+    ? await getActiveCoalition({ userId: session.user.id, defaultGroupId: session.user.defaultGroupId })
+    : null;
+
   // Fetch all open markets once; hero is category-independent.
-  const [allCards, motd, session] = await Promise.all([
-    getMarketCards({}),
-    getMarketOfTheDay(),
-    getSession(),
+  const [allCards, motd] = await Promise.all([
+    getMarketCards({ groupScope }),
+    getMarketOfTheDay({ groupScope }),
   ]);
   const myPicks = session?.user
-    ? await getMyPickLabels({ userId: session.user.id })
+    ? await getMyPickLabels({ userId: session.user.id, groupScope })
     : new Map<string, string>();
 
   // Hero: hot-flagged > market-of-the-day > most-active > first.

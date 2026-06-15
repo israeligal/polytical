@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Category } from "@/lib/types";
 import { getSession } from "@/lib/auth";
+import { getActiveCoalition } from "@/app/lib/groups/context";
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
@@ -29,13 +30,22 @@ export default async function Home({
   const { cat } = await searchParams;
   const active = (cat as Category) || undefined;
 
+  // The active coalition (or null = ארצי) scopes the forecast feed below — the
+  // markets section, hero and "hot now" rail re-scope; politicians/leaderboard/
+  // votes stay national. Seeds from the member's default coalition on first load.
+  const session = await getSession();
+  const me = session?.user ?? null;
+  const groupScope = me
+    ? await getActiveCoalition({ userId: me.id, defaultGroupId: me.defaultGroupId })
+    : null;
+
   // Fetch ALL open markets once; in-memory filtering keeps DB round-trips to 1.
-  const allCards = await getMarketCards({});
+  const allCards = await getMarketCards({ groupScope });
 
   // Hero: always spotlights a market globally — independent of the category
   // filter so the hero persists when the user switches pills.
   // Preference: admin-flagged `hot` → market-of-the-day (most bets) → newest.
-  const motd = await getMarketOfTheDay();
+  const motd = await getMarketOfTheDay({ groupScope });
   const hotCard = allCards.find((c) => c.market.hot) ?? null;
   const motdCard = motd ? allCards.find((c) => c.market.id === motd.id) ?? null : null;
   const featured = hotCard ?? motdCard ?? allCards[0] ?? null;
@@ -75,9 +85,7 @@ export default async function Home({
   // (never the real name). If the viewer is logged in but outside the top 8,
   // append their own row so they can always find themselves. Empty state until
   // there are users to rank.
-  const session = await getSession();
-  const me = session?.user ?? null;
-  const myPicks = me ? await getMyPickLabels({ userId: me.id }) : new Map<string, string>();
+  const myPicks = me ? await getMyPickLabels({ userId: me.id, groupScope }) : new Map<string, string>();
   const top = await getLeaderboard({ by: "wins", limit: 8 });
   const topEntries = top.map((e) => ({
     rank: e.rank,

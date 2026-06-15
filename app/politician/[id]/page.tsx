@@ -15,6 +15,7 @@ import { CaricatureCard } from "@/components/caricature-card";
 import { MarketCard } from "@/components/market-card";
 import { ChevronForward, Trophy, Lock } from "@/components/icons";
 import { getSession } from "@/lib/auth";
+import { getActiveCoalition } from "@/app/lib/groups/context";
 import { isOwned, getProgressByPerson } from "@/app/lib/cards/service";
 import { unlockThreshold } from "@/lib/rarity";
 import { getRecentMkVotes } from "@/app/lib/votes/read-repo";
@@ -44,6 +45,11 @@ export default async function PoliticianPage({
   // Collection is unlocked by ACCURACY: getting `threshold` correct predictions on
   // this MK's markets auto-grants the card. Show ownership or progress toward it.
   const session = await getSession();
+  // The MK's markets follow the active coalition (its motions about this MK) or
+  // national. Card-unlock progress below stays national — the sandbox invariant.
+  const groupScope = session?.user
+    ? await getActiveCoalition({ userId: session.user.id, defaultGroupId: session.user.defaultGroupId })
+    : null;
   const owned = session?.user ? await isOwned({ userId: session.user.id, personId }) : false;
   const threshold = unlockThreshold({ personId, role: row.roleHe });
   const correctCount = session?.user
@@ -53,7 +59,7 @@ export default async function PoliticianPage({
   // Markets that feature this MK → the same view-model the homepage cards use.
   // Featured portraits resolve against one politicians map (no N+1), mirroring
   // app/page.tsx so each card can show every MK it touches, not just this one.
-  const marketBundles = await getMarketsForPolitician({ personId });
+  const marketBundles = await getMarketsForPolitician({ personId, groupScope });
   const polById = new Map<string, Politician>();
   for (const p of await getAllPoliticians()) polById.set(String(p.personId), dbToCard(p));
   const featuredFor = (ids: number[]): Politician[] =>

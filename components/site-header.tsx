@@ -10,6 +10,7 @@ import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
 import { listMyGroups } from "@/app/lib/groups/service";
+import { getActiveCoalition } from "@/app/lib/groups/context";
 
 // Core product surfaces. האוסף + עונה live on /profile; פוליטיקאים is reachable
 // from every card and the homepage section.
@@ -25,6 +26,9 @@ export async function SiteHeader() {
   const user = session?.user ?? null;
   const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
   const myGroups = user ? await listMyGroups({ userId: user.id }) : [];
+  const activeCoalitionId = user
+    ? await getActiveCoalition({ userId: user.id, defaultGroupId: user.defaultGroupId })
+    : null;
   // Logged-in users get a "my groups" entry in the mobile menu.
   const mobileNav = user ? [...NAV, { href: "/g", label: "הקואליציות שלי" }] : NAV;
   // Avatar initial comes from the public @-handle, never the user's real name.
@@ -43,7 +47,10 @@ export async function SiteHeader() {
             <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
           </Link>
           {user && (
-            <GroupSwitcher groups={myGroups.map((g) => ({ slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }))} />
+            <GroupSwitcher
+              groups={myGroups.map((g) => ({ id: g.id, slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }))}
+              activeId={activeCoalitionId}
+            />
           )}
         </div>
 
