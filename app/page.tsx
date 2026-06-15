@@ -2,6 +2,9 @@ import Link from "next/link";
 import type { Category } from "@/lib/types";
 import { getSession } from "@/lib/auth";
 import { getActiveCoalition } from "@/app/lib/groups/context";
+import { getGroupById } from "@/app/lib/groups/repo";
+import { groupLabel } from "@/lib/group-display";
+import { CoalitionScopeBanner } from "@/components/groups/coalition-scope-banner";
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
@@ -38,6 +41,7 @@ export default async function Home({
   const groupScope = me
     ? await getActiveCoalition({ userId: me.id, defaultGroupId: me.defaultGroupId })
     : null;
+  const activeGroup = groupScope ? await getGroupById({ id: groupScope }) : null;
 
   // Fetch ALL open markets once; in-memory filtering keeps DB round-trips to 1.
   const allCards = await getMarketCards({ groupScope });
@@ -143,6 +147,7 @@ export default async function Home({
         >
           {/* Heading row: title + the "all forecasts" link share one line (also on
               mobile, where the link used to float awkwardly beside the rail). */}
+          {activeGroup && <CoalitionScopeBanner label={groupLabel(activeGroup)} slug={activeGroup.slug} />}
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="font-display text-4xl font-black text-foreground">
               תחזיות

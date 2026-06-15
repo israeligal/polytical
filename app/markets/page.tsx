@@ -3,6 +3,9 @@ import type { Category } from "@/lib/types";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getActiveCoalition } from "@/app/lib/groups/context";
+import { getGroupById } from "@/app/lib/groups/repo";
+import { groupLabel } from "@/lib/group-display";
+import { CoalitionScopeBanner } from "@/components/groups/coalition-scope-banner";
 import { getMarketCards, getMyPickLabels, type MarketCardData } from "@/app/lib/markets/feed";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
 import { CategoryRail } from "@/components/category-rail";
@@ -35,6 +38,7 @@ export default async function MarketsPage({
   const groupScope = session?.user
     ? await getActiveCoalition({ userId: session.user.id, defaultGroupId: session.user.defaultGroupId })
     : null;
+  const activeGroup = groupScope ? await getGroupById({ id: groupScope }) : null;
 
   // Fetch all open markets once; hero is category-independent.
   const [allCards, motd] = await Promise.all([
@@ -89,6 +93,7 @@ export default async function MarketsPage({
       )}
 
       <main className={MARKETS_PAGE_CONTAINER}>
+        {activeGroup && <CoalitionScopeBanner label={groupLabel(activeGroup)} slug={activeGroup.slug} />}
         <div className="mb-6 flex items-center justify-between gap-4">
           <h1 className="font-display text-4xl font-black text-foreground">תחזיות</h1>
           <Link
