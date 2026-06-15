@@ -779,6 +779,15 @@ vote-days", tenure-scoped via `faction_stints`. It is a roll-call-presence PROXY
 > volumes and the join path. Each row was probed on 2026-06-15 (`$inlinecount`/`$count`,
 > sample row inspected). This answers "what more can we get" — it is not a backlog; it's a
 > menu. Re-run the probe before building on any number.
+>
+> **✅ NOW INGESTED (2026-06-15, PR enacted-law-badges):** `KNS_IsraelLaw` →
+> `israel_laws` (107 K25), `KNS_IsraelLawClassificiation` → `israel_law_topics` (237,
+> scoped), `KNS_IsraelLawName` → `israel_law_bills` (110; the **`LawID = BillID`** join,
+> confirmed 12/12), `KNS_BillSplit` → `bill_splits` (229 child→parent). Surfaced on the
+> bill page ("נחקק כחוק" + topic badges) + split lineage on bill/agenda. Ingest steps in
+> `scripts/ingest-knesset.ts` (`--full`); read in `app/lib/bills/repo.ts`. See
+> `docs/decisions/knesset-data.md` (2026-06-15). The rows below for these entities are kept
+> for the field reference; "could power" is now partly shipped.
 
 | Entity (status) | Volume (verified 2026-06-15) | Could power | Join / how | Cost / caveat |
 |---|---|---|---|---|
