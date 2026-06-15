@@ -3,9 +3,11 @@ import {
   parseODataDate, buildPositionLabelMap, normalizeFactions, normalizeCurrentMembers,
   normalizeBillSponsors, normalizeBills, normalizeBillDocuments, normalizeBillStatuses, splitExpandedInitiators,
   resolveRoleLabel, normalizeK25Members, parseGender,
+  normalizeIsraelLaws, normalizeIsraelLawTopics, normalizeIsraelLawBills, normalizeBillSplits,
 } from "./normalize";
 import type {
   KnsBillInitiator, KnsBillInitiatorExpanded, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition,
+  KnsIsraelLaw, KnsIsraelLawClassificiation, KnsIsraelLawName, KnsBillSplit,
 } from "./odata-types";
 
 const billProv = { sourceUrl: "https://knesset.gov.il/x", fetchedAt: new Date("2026-06-13T00:00:00Z") };
@@ -354,4 +356,58 @@ test("normalizeK25Members: sitting MK with current faction keeps party + is not 
   expect(m.active).toBe(true);
   expect(m.party).toBe("סיעה");
   expect((m.facts as { isNorwegianMinister?: boolean }).isNorwegianMinister).toBe(false);
+});
+
+// --- enacted laws + bill genealogy (KNS_IsraelLaw family + KNS_BillSplit) ---
+
+test("normalizeIsraelLaws: maps validity + dates, defaults a null Name to empty", () => {
+  const raw: KnsIsraelLaw[] = [{
+    IsraelLawID: 2204276, KnessetNum: 25, Name: "חוק מירון", IsBasicLaw: false, IsFavoriteLaw: false,
+    IsBudgetLaw: false, PublicationDate: "2023-04-03T00:00:00", LatestPublicationDate: "2023-04-03T00:00:00",
+    LawValidityID: 6081, LawValidityDesc: "פקע", ValidityStartDate: "2023-04-03T00:00:00",
+    ValidityFinishDate: "2023-05-24T00:00:00", LastUpdatedDate: "2025-04-03T10:21:08.387",
+  }];
+  const [row] = normalizeIsraelLaws(raw, PROV);
+  expect(row).toMatchObject({
+    israelLawId: 2204276, knessetNum: 25, nameHe: "חוק מירון", validityDesc: "פקע",
+    isBudgetLaw: false, sourceDataset: "KNS_IsraelLaw", sourceUrl: PROV.sourceUrl,
+  });
+  // parseODataDate converts naive Jerusalem wall-clock → UTC, so just assert the
+  // dates parsed (non-null) rather than an exact offset.
+  expect(row.publicationDate).toBeInstanceOf(Date);
+  expect(row.validityStart).toBeInstanceOf(Date);
+  expect(row.validityFinish).toBeInstanceOf(Date);
+});
+
+test("normalizeIsraelLawTopics: drops empty/null tags + laws outside validLawIds", () => {
+  const raw: KnsIsraelLawClassificiation[] = [
+    { LawClassificiationID: 1, IsraelLawID: 10, ClassificiationID: 23, ClassificiationDesc: "מקרקעין", LastUpdatedDate: null },
+    { LawClassificiationID: 2, IsraelLawID: 10, ClassificiationID: null, ClassificiationDesc: "", LastUpdatedDate: null }, // dropped: empty
+    { LawClassificiationID: 3, IsraelLawID: 99, ClassificiationID: 5, ClassificiationDesc: "ביטחון", LastUpdatedDate: null }, // dropped: not in validLawIds
+  ];
+  const rows = normalizeIsraelLawTopics(raw, PROV, new Set([10]));
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ israelLawId: 10, classificationId: 23, descHe: "מקרקעין" });
+});
+
+test("normalizeIsraelLawBills: scopes to validLawIds and dedupes (law,bill) pairs", () => {
+  const raw: KnsIsraelLawName[] = [
+    { IsraelLawNameID: 1, IsraelLawID: 10, LawID: 900, LawTypeID: 2, Name: "x", LastUpdatedDate: null },
+    { IsraelLawNameID: 2, IsraelLawID: 10, LawID: 900, LawTypeID: 6002, Name: "x dup", LastUpdatedDate: null }, // dedup
+    { IsraelLawNameID: 3, IsraelLawID: 10, LawID: 901, LawTypeID: 2, Name: "y", LastUpdatedDate: null },
+    { IsraelLawNameID: 4, IsraelLawID: 77, LawID: 902, LawTypeID: 2, Name: "z", LastUpdatedDate: null }, // dropped: not in validLawIds
+  ];
+  const rows = normalizeIsraelLawBills(raw, PROV, new Set([10]));
+  expect(rows.map((r) => r.billId).sort()).toEqual([900, 901]);
+  expect(rows.every((r) => r.israelLawId === 10)).toBe(true);
+});
+
+test("normalizeBillSplits: keeps only splits whose CHILD is a stored bill", () => {
+  const raw: KnsBillSplit[] = [
+    { BillSplitID: 1, MainBillID: 100, SplitBillID: 200, Name: "child A", LastUpdatedDate: null },
+    { BillSplitID: 2, MainBillID: 100, SplitBillID: 999, Name: "child not stored", LastUpdatedDate: null },
+  ];
+  const rows = normalizeBillSplits(raw, PROV, new Set([200]));
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ splitBillId: 200, mainBillId: 100, nameHe: "child A", sourceDataset: "KNS_BillSplit" });
 });
