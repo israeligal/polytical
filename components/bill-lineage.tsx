@@ -5,7 +5,6 @@
 // this is the meaningful context for them. RSC, presentational; tokens + RTL.
 
 import Link from "next/link";
-import { ChevronForward } from "@/components/icons";
 
 export function BillLineage({
   parent,
@@ -29,12 +28,8 @@ export function BillLineage({
   return (
     <p className={base}>
       <span className="shrink-0">חלק מהצעת חוק:</span>
-      <Link
-        href={`/bill/${parent.billId}`}
-        className="inline-flex min-w-0 items-center gap-0.5 font-semibold text-primary hover:underline"
-      >
-        <span className="truncate">{parent.nameHe}</span>
-        <ChevronForward className="h-3 w-3 shrink-0 -scale-x-100" />
+      <Link href={`/bill/${parent.billId}`} className="min-w-0 truncate font-semibold text-primary hover:underline">
+        {parent.nameHe}
       </Link>
     </p>
   );

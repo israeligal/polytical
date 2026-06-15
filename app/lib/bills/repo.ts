@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
@@ -7,7 +7,6 @@ import {
   bills, billSponsors, billDocuments, billStatuses, politicians, knessetVotes,
   israelLaws, israelLawBills, israelLawTopics, billSplits,
 } from "@/app/lib/schema";
-import { inArray } from "drizzle-orm";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
@@ -91,7 +90,7 @@ export async function getBillById({
     .from(israelLawBills)
     .innerJoin(israelLaws, eq(israelLaws.israelLawId, israelLawBills.israelLawId))
     .where(eq(israelLawBills.billId, billId))
-    .orderBy(desc(israelLaws.publicationDate));
+    .orderBy(sql`${israelLaws.publicationDate} desc nulls last`); // DESC defaults NULLS FIRST
   const lawIds = lawRows.map((l) => l.israelLawId);
   const topicRows = lawIds.length
     ? await db
