@@ -122,6 +122,56 @@ export interface KnsBillInitiator {
   LastUpdatedDate: string | null;
 }
 
+/** Enacted law on the books — distinct from a bill (KNS_Bill). 106 K25 rows
+ *  (verified 2026-06-15). Field names verbatim from a live row. */
+export interface KnsIsraelLaw {
+  IsraelLawID: number;
+  KnessetNum: number | null;
+  Name: string | null;
+  IsBasicLaw: boolean | null;
+  IsFavoriteLaw: boolean | null;
+  IsBudgetLaw: boolean | null;
+  PublicationDate: string | null;
+  LatestPublicationDate: string | null;
+  LawValidityID: number | null;
+  LawValidityDesc: string | null;     // בתוקף / פקע
+  ValidityStartDate: string | null;
+  ValidityFinishDate: string | null;
+  LastUpdatedDate: string | null;
+}
+
+/** Topic tag on an enacted law (~38 distinct Hebrew tags). NB the metadata typo
+ *  `Classificiation` (double-i) — verbatim, do not "fix". No KnessetNum field. */
+export interface KnsIsraelLawClassificiation {
+  LawClassificiationID: number;
+  IsraelLawID: number;
+  ClassificiationID: number | null;
+  ClassificiationDesc: string | null;
+  LastUpdatedDate: string | null;
+}
+
+/** Name-link bridging an enacted law to its source bill: `LawID` IS a
+ *  `KNS_Bill.BillID` (verified 12/12 K25 laws → real K25 bills, 2026-06-15).
+ *  A law may carry several rows (amendments → multiple bills). No KnessetNum. */
+export interface KnsIsraelLawName {
+  IsraelLawNameID: number;
+  IsraelLawID: number;
+  LawID: number;            // == KNS_Bill.BillID for our purposes
+  LawTypeID: number | null;
+  Name: string | null;
+  LastUpdatedDate: string | null;
+}
+
+/** A bill split into offspring: `SplitBillID` (child) split off `MainBillID`
+ *  (parent). 881 rows (verified 2026-06-15). No KnessetNum field. */
+export interface KnsBillSplit {
+  BillSplitID: number;
+  MainBillID: number;
+  SplitBillID: number;
+  Name: string | null;
+  LastUpdatedDate: string | null;
+}
+
 /** Shape returned by `KNS_BillInitiator?$expand=KNS_Bill/KNS_DocumentBills`:
  *  each initiator carries its bill inline, and the bill carries its documents. */
 export interface KnsBillInitiatorExpanded extends KnsBillInitiator {

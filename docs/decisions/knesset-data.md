@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-06-15 — Ship enacted-law badges + split-bill lineage (from the OData survey menu)
+
+**What.** Acted on the [2026-06-15 survey](#2026-06-15--odata-survey-split-bill-genealogy-a-topic-taxonomy-laws-only-and-the-untapped-entity-menu): ingested 4 previously-untapped entities and surfaced them on bill/agenda pages.
+- New tables (migration 0032): `israel_laws` (107 K25), `israel_law_topics` (237 tags scoped to those laws), `israel_law_bills` (110 law↔bill links), `bill_splits` (229 child→parent). New ingest steps in `scripts/ingest-knesset.ts` (heavy/`--full`), each scoped by stored K25 law/bill ids (the `validBillIds` pattern). Verified counts on the live run.
+- **The law↔bill join is `KNS_IsraelLawName.LawID = KNS_Bill.BillID`** — confirmed 12/12 K25 laws → real K25 bills before building (HARD GATE). billId→law is **one-to-many** (budget bill 2203821 → many laws), so `getBillById` returns `enactedLaws[]`; each law's topic tags are deduped.
+- **Bill page** (`#1`): `EnactedLawPanel` — "נחקק כחוק" + validity chip + official topic badges (the ONLY topic taxonomy in the source; enacted laws only). Validity vocab (verified): `תקף`=in force (positive), `בטל`/`פקע`/`נושן`=not.
+- **Split lineage** (`#2`): `bill_splits` → `getBillById.splitParent` + `getAgendaFeed.splitParent`; `BillLineage` ("חלק מ:") on the bill page (linked) and agenda card/hero (plain text — the card is already a Link).
+
+**Why it matters for agenda.** Re-ran `bill_sponsors` (#3, 17,106 rows) but agenda initiator coverage stayed **5/75** — because **73/75 announced items are split children** (government budget bills with no own MK initiator). That's not an ingest gap; it's why split-lineage is the right context for those 73 items. Confirmed: a split child's initiators live on the parent (`KNS_BillSplit.MainBillID`).
+
+**Scope chosen.** Bill-page badges only — NO standalone `/laws` route (the survey's other option). Topic-tagging the votes feed remains out: most votes/bills never become law, so the taxonomy can't cover the feed (`votes-discovery.md`).
+
 ## 2026-06-15 — OData survey: split-bill genealogy, a topic taxonomy (laws only), and the untapped-entity menu
 
 **Context.** The agenda hero/cards feature surfaced that only **5 of 75** announced agenda items carry an

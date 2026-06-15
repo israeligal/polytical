@@ -8,6 +8,7 @@ import type { AgendaFeedItem, AgendaInitiator } from "@/app/lib/agenda/read-repo
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { Clock, ChevronForward } from "@/components/icons";
+import { BillLineage } from "@/components/bill-lineage";
 import { formatDate } from "@/lib/time";
 
 export type AgendaStance = "for" | "against";
@@ -129,6 +130,8 @@ export function AgendaCard({
       <h3 className="line-clamp-2 font-display text-lg font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary">
         {item.titleHe}
       </h3>
+
+      {item.splitParent && <BillLineage parent={item.splitParent} asLink={false} className="mt-1.5" />}
 
       {item.initiators.length > 0 && (
         <div className="mt-3">

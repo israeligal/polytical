@@ -3,7 +3,7 @@
 // page), ordered most-imminent-first.
 import { beforeEach, expect, test } from "vitest";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { agendaItems, agendaStances, billSponsors, billStatuses, bills, politicians, users } from "@/app/lib/schema";
+import { agendaItems, agendaStances, billSplits, billSponsors, billStatuses, bills, politicians, users } from "@/app/lib/schema";
 import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 import { getAgendaFeed, getAnnouncedAgendaItemByBill } from "./read-repo";
 
@@ -94,4 +94,17 @@ test("getAnnouncedAgendaItemByBill returns the announced item, null otherwise", 
   expect((await getAnnouncedAgendaItemByBill({ db: h.db, billId: 1 }))?.id).toBe(id);
   expect(await getAnnouncedAgendaItemByBill({ db: h.db, billId: 2 })).toBeNull(); // voted
   expect(await getAnnouncedAgendaItemByBill({ db: h.db, billId: 999 })).toBeNull(); // none
+});
+
+test("attaches the split parent when the agenda item's bill is a split child", async () => {
+  // parent bill exists; the agenda item's bill (1) is a split child of it
+  await h.db.insert(bills).values({ billId: 500, knessetNum: CURRENT_KNESSET, nameHe: "חוק האב התקציבי", statusId: 113, ...PROV }).onConflictDoNothing();
+  await seedItem({ billId: 1, titleHe: "פרק שפוצל" });
+  await h.db.insert(billSplits).values({ splitBillId: 1, mainBillId: 500, nameHe: "פרק שפוצל", ...PROV });
+  await seedItem({ billId: 2, titleHe: "חוק רגיל" }); // not a split child
+
+  const feed = await getAgendaFeed({ db: h.db });
+  const byBill = new Map(feed.map((f) => [f.billId, f]));
+  expect(byBill.get(1)!.splitParent).toMatchObject({ billId: 500, nameHe: "חוק האב התקציבי" });
+  expect(byBill.get(2)!.splitParent).toBeNull();
 });
