@@ -1,5 +1,5 @@
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
-import { GROUPS_CONTAINER, GROUP_CONTAINER, GROUP_GRID } from "./containers";
+import { GROUPS_CONTAINER, GROUP_CONTAINER } from "./containers";
 
 /** app/g — "my groups" list: header + a column of group cards. */
 export function GroupsListSkeleton() {
@@ -22,8 +22,9 @@ export function GroupsListSkeleton() {
   );
 }
 
-/** app/g/[slug] — group home: header + action bar, then the motions feed +
- *  scoreboard/roster aside (shares GROUP_GRID with the page). */
+/** app/g/[slug] — coalition MANAGEMENT page: header + action bar, the
+ *  enter-feed / post-motion buttons, then scoreboard + roster + stance toggle
+ *  in a single column (the motions feed moved to the global scoped feed). */
 export function GroupHomeSkeleton() {
   return (
     <main role="status" aria-busy="true" aria-label="טוען קואליציה" className={GROUP_CONTAINER}>
@@ -43,19 +44,16 @@ export function GroupHomeSkeleton() {
           ))}
         </div>
       </div>
-      <div className={GROUP_GRID}>
-        <section className="min-w-0">
-          <Skeleton className="mb-3 h-6 w-40" />
-          <div className="space-y-3">
-            {Array.from({ length: 3 }, (_, i) => (
-              <SkeletonCard key={i} className="h-28" />
-            ))}
-          </div>
-        </section>
-        <aside className="min-w-0 space-y-6">
-          <SkeletonCard className="h-48" />
-          <SkeletonCard className="h-40" />
-        </aside>
+      {/* enter-feed + post-motion buttons */}
+      <div className="mb-8 flex flex-wrap gap-3">
+        <Skeleton className="h-10 w-44 rounded-full" />
+        <Skeleton className="h-10 w-32 rounded-full" />
+      </div>
+      {/* scoreboard + roster + stance toggle (single column) */}
+      <div className="space-y-6">
+        <SkeletonCard className="h-48" />
+        <SkeletonCard className="h-40" />
+        <SkeletonCard className="h-24" />
       </div>
     </main>
   );

@@ -20,6 +20,15 @@ import { getMembership } from "./repo";
 export const COALITION_COOKIE = "polytical_coalition";
 export const COALITION_NATIONAL = "national";
 
+// 180 days — the active coalition is a sticky preference, not a session token.
+export const COALITION_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
+export const coalitionCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  path: "/",
+  maxAge: COALITION_COOKIE_MAX_AGE,
+} as const;
+
 /**
  * Resolve the active coalition from a raw cookie value, healing stale state.
  * Pure of `next/headers` so the heal logic is testable without a request — the

@@ -65,15 +65,10 @@ export async function proxy(req: NextRequest) {
     if (isOnboarded && path === ONBOARDING_ROUTE) {
       return NextResponse.redirect(new URL("/", req.nextUrl.origin));
     }
-    // Default-group landing: an onboarded member with a home group lands on it
-    // from the bare home. Loop-safe — fires ONLY on exactly "/" (the group route
-    // /g/* never matches), and `?view=general` escapes to the global home. We
-    // redirect via /g/by-id/<id> (resolves the slug) since the session carries
-    // the group id, not the slug.
-    const defaultGroupId = session?.user?.defaultGroupId;
-    if (isOnboarded && path === "/" && defaultGroupId && req.nextUrl.searchParams.get("view") !== "general") {
-      return NextResponse.redirect(new URL(`/g/by-id/${defaultGroupId}`, req.nextUrl.origin));
-    }
+    // No default-group redirect: `/` stays `/` and the feed itself scopes to the
+    // active coalition (seeded from the member's defaultGroupId on first load by
+    // getActiveCoalition). The old `/` → /g/by-id/<id> bounce and its
+    // `?view=general` escape were retired with the global-context redesign.
   }
 
   return NextResponse.next();

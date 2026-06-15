@@ -4,12 +4,9 @@ import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { getMembership } from "@/app/lib/groups/repo";
-import { COALITION_COOKIE, COALITION_NATIONAL } from "@/app/lib/groups/context";
+import { COALITION_COOKIE, COALITION_NATIONAL, coalitionCookieOptions } from "@/app/lib/groups/context";
 import { setActiveCoalitionSchema } from "@/app/lib/groups/schemas";
 import type { ActionResult } from "./types";
-
-// 180 days — the active coalition is a sticky preference, not a session token.
-const COALITION_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
 /**
  * Set the active-coalition context the whole site scopes to. `groupId` selects a
@@ -36,15 +33,14 @@ export async function setActiveCoalitionAction(input: {
   const { groupId } = parsed.data;
 
   const jar = await cookies();
-  const cookieOpts = { httpOnly: true, sameSite: "lax", path: "/", maxAge: COALITION_COOKIE_MAX_AGE } as const;
 
   if (groupId === null) {
-    jar.set(COALITION_COOKIE, COALITION_NATIONAL, cookieOpts);
+    jar.set(COALITION_COOKIE, COALITION_NATIONAL, coalitionCookieOptions);
   } else {
     // Only your own active coalition can become the active scope.
     const m = await getMembership({ groupId, userId: s.user.id });
     if (!m || m.status !== "active") return { ok: false, message: "אינכם חברים בקואליציה הזו" };
-    jar.set(COALITION_COOKIE, groupId, cookieOpts);
+    jar.set(COALITION_COOKIE, groupId, coalitionCookieOptions);
   }
 
   revalidatePath("/", "layout");

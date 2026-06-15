@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Market } from "@/lib/types";
 import { getSession } from "@/lib/auth";
+import { getActiveCoalition } from "@/app/lib/groups/context";
+import { CoalitionScopeNote } from "@/components/coalition-scope-note";
 import { formatCount, timeUntil } from "@/lib/format";
 import { getUserStats } from "@/app/lib/leaderboard/repo";
 import { getSeasonBoard } from "@/app/lib/seasons/service";
@@ -37,6 +39,10 @@ export default async function ProfilePage() {
   // proxy.ts already gates /profile, but redirect defensively (and to carry the
   // callbackUrl) so a direct hit without a session still lands on login → back.
   if (!user) redirect("/login?callbackUrl=%2Fprofile");
+
+  // The profile is a NATIONAL account view (stats/season/cards never count
+  // coalition picks). If a coalition is the active context, note that explicitly.
+  const activeCoalitionId = await getActiveCoalition({ userId: user.id, defaultGroupId: user.defaultGroupId });
 
   const [stats, allPredictions, mySuggestions, celebrations, mutedPushTypes, seasonBoard, politicians, ownedIds] =
     await Promise.all([
@@ -138,6 +144,7 @@ export default async function ProfilePage() {
         <aside className="space-y-5 lg:col-start-2 lg:row-start-1 lg:self-start xl:sticky xl:top-24">
           <SeasonCard board={seasonBoard} />
           <CollectionCard ownedCount={ownedIds.size} total={politicians.length} preview={ownedCards} />
+          {activeCoalitionId && <CoalitionScopeNote />}
           <Link
             href="/my-match"
             className="group flex items-center justify-between gap-3 rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary"

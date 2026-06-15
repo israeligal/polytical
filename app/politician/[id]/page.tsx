@@ -12,6 +12,7 @@ import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 import { getMarketsForPolitician, getOutcomeCountsForMarkets } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { CaricatureCard } from "@/components/caricature-card";
+import { CoalitionScopeNote } from "@/components/coalition-scope-note";
 import { MarketCard } from "@/components/market-card";
 import { ChevronForward, Trophy, Lock } from "@/components/icons";
 import { getSession } from "@/lib/auth";
@@ -109,6 +110,7 @@ export default async function PoliticianPage({
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   <span className="nums font-bold text-foreground">{correctCount}</span>/{threshold} מנדטים מדויקים
                 </p>
+                {groupScope && <CoalitionScopeNote className="mt-3" />}
               </div>
             )
           ) : (
