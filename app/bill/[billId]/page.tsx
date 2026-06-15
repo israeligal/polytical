@@ -9,6 +9,8 @@ import { getSession } from "@/lib/auth";
 import { ChevronForward, ArrowUpRight, Document } from "@/components/icons";
 import { formatDate } from "@/lib/time";
 import { BILL_CONTAINER } from "@/components/skeletons/containers";
+import { EnactedLawPanel } from "@/components/enacted-law-panel";
+import { BillLineage } from "@/components/bill-lineage";
 
 export default async function BillPage({ params }: { params: Promise<{ billId: string }> }) {
   const { billId: raw } = await params;
@@ -45,6 +47,8 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
 
       <h1 className="font-display text-2xl font-black text-foreground sm:text-3xl">{bill.nameHe}</h1>
 
+      {bill.splitParent && <BillLineage parent={bill.splitParent} className="mt-2" />}
+
       {meta.length > 0 && (
         <dl className="mt-5 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2">
           {meta.map((m) => (
@@ -62,6 +66,8 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
           <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{bill.summaryLaw}</p>
         </>
       )}
+
+      <EnactedLawPanel laws={bill.enactedLaws} />
 
       {bill.initiators.length > 0 && (
         <>

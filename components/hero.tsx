@@ -6,6 +6,7 @@ import { formatCount, pct, pctLabel, timeUntil } from "@/lib/format";
 import { formatDate } from "@/lib/time";
 import { catTint } from "@/lib/cat";
 import { AgendaSplitBar, InitiatorCluster, type AgendaCommunity, type AgendaStance } from "@/components/agenda-card";
+import { BillLineage } from "@/components/bill-lineage";
 import { CategoryBadge, HotBadge } from "@/components/badges";
 import { OddsBar } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
@@ -245,9 +246,11 @@ export function AgendaHeroSpotlight({
         )}
       </div>
 
-      <h2 className="mb-4 font-display text-2xl font-black leading-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+      <h2 className="mb-2 font-display text-2xl font-black leading-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
         {item.titleHe}
       </h2>
+
+      {item.splitParent && <BillLineage parent={item.splitParent} asLink={false} className="mb-4" />}
 
       {item.initiators.length > 0 && (
         <div className="mb-4">

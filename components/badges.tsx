@@ -22,6 +22,16 @@ export function HotBadge() {
   );
 }
 
+/** Official topic tag (KNS_IsraelLawClassificiation) — a subtle Rubik pill.
+ *  Tokens only; reads as a sibling of CategoryBadge without the leading dot. */
+export function TopicBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-accent text-xs font-bold text-muted-foreground">
+      {label}
+    </span>
+  );
+}
+
 export function Countdown({ closeAt }: { closeAt: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
