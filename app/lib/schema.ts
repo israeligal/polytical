@@ -230,6 +230,84 @@ export const billSponsors = pgTable(
   ],
 );
 
+// --- Enacted laws (KNS_IsraelLaw family) + bill genealogy (KNS_BillSplit) ---
+// Distinct from `bills`: a bill (proposal) can become an enacted law on the
+// books. Topic tags live ONLY here (KNS_IsraelLawClassificiation) — bills/votes
+// have no topic taxonomy. The law↔bill link (israel_law_bills) joins on
+// KNS_IsraelLawName.LawID = KNS_Bill.BillID (verified). See docs/decisions/knesset-data.md.
+
+export const israelLaws = pgTable(
+  "israel_laws",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    israelLawId: integer("israelLawId").notNull().unique(), // KNS_IsraelLaw.IsraelLawID
+    knessetNum: integer("knessetNum"),
+    nameHe: text("nameHe").notNull(),                       // KNS_IsraelLaw.Name
+    isBasicLaw: boolean("isBasicLaw"),
+    isBudgetLaw: boolean("isBudgetLaw"),
+    isFavoriteLaw: boolean("isFavoriteLaw"),
+    validityDesc: text("validityDesc"),                     // LawValidityDesc — בתוקף / פקע
+    publicationDate: timestamp("publicationDate"),
+    validityStart: timestamp("validityStart"),
+    validityFinish: timestamp("validityFinish"),
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [index("israel_laws_knesset_idx").on(t.knessetNum)],
+);
+
+// Topic tags on an enacted law — the only official topic taxonomy in the service.
+export const israelLawTopics = pgTable(
+  "israel_law_topics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    israelLawId: integer("israelLawId").notNull(),          // -> israel_laws.israelLawId (FK-by-value)
+    classificationId: integer("classificationId").notNull(), // KNS_IsraelLawClassificiation.ClassificiationID
+    descHe: text("descHe").notNull(),                       // ClassificiationDesc (ביטחון/בריאות/…)
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [
+    unique("israel_law_topics_law_class_uq").on(t.israelLawId, t.classificationId),
+    index("israel_law_topics_law_idx").on(t.israelLawId),
+  ],
+);
+
+// Junction: enacted law ↔ source bill. From KNS_IsraelLawName (LawID = BillID).
+// MANY-to-many: a bill can yield several laws; a law can amend several bills.
+export const israelLawBills = pgTable(
+  "israel_law_bills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    israelLawId: integer("israelLawId").notNull(),          // -> israel_laws.israelLawId
+    billId: integer("billId").notNull(),                    // -> bills.billId (= KNS_IsraelLawName.LawID)
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [
+    unique("israel_law_bills_law_bill_uq").on(t.israelLawId, t.billId),
+    index("israel_law_bills_bill_idx").on(t.billId),        // bill-page lookup direction
+  ],
+);
+
+// Bill genealogy: a split child (splitBillId) split off a parent (mainBillId).
+export const billSplits = pgTable(
+  "bill_splits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    splitBillId: integer("splitBillId").notNull().unique(), // KNS_BillSplit.SplitBillID (the child)
+    mainBillId: integer("mainBillId").notNull(),            // KNS_BillSplit.MainBillID (the parent)
+    nameHe: text("nameHe"),                                 // KNS_BillSplit.Name (the child's name at split time)
+    sourceDataset: text("sourceDataset").notNull(),
+    sourceUrl: text("sourceUrl").notNull(),
+    fetchedAt: timestamp("fetchedAt").notNull(),
+  },
+  (t) => [index("bill_splits_main_idx").on(t.mainBillId)],
+);
+
 export const queries = pgTable(
   "queries",
   {
