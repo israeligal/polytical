@@ -12,7 +12,7 @@ import { makePrediction } from "@/app/lib/markets/service";
 let h: Awaited<ReturnType<typeof createTestDb>>;
 
 async function seedUsers(ids: string[]) {
-  await h.db.insert(users).values(ids.map((id) => ({ id, name: id, email: `${id}@x.co` })));
+  await h.db.insert(users).values(ids.map((id) => ({ id, name: id, handle: id, email: `${id}@x.co` })));
 }
 async function notifs(userId: string, type: string) {
   return h.db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.type, type as never)));
@@ -37,7 +37,7 @@ test("joinGroup notifies existing members, not the joiner", async () => {
   const ownerN = await notifs("owner", "group_member_joined");
   expect(ownerN).toHaveLength(1);
   expect(ownerN[0].refGroupId).toBe(g.id);
-  expect(ownerN[0].bodyHe).toContain("joiner"); // actor name in the body
+  expect(ownerN[0].bodyHe).toContain("@joiner"); // actor @handle in the body, never the real name
   expect(await notifs("joiner", "group_member_joined")).toHaveLength(0); // not self
 });
 

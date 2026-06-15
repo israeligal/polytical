@@ -107,7 +107,10 @@ export async function joinGroup({
     await repo.setDefaultGroupIfUnset({ tx, userId, groupId: group.id });
     // Notify existing active members that someone joined (excluding the joiner).
     const members = await repo.listActiveMembers({ db: tx, groupId: group.id });
-    const actorName = members.find((m) => m.userId === userId)?.name ?? "חבר/ה חדש/ה";
+    // Shown by public @-handle, never the real name (handle is set at onboarding,
+    // so a joiner effectively always has one; the human fallback is defensive).
+    const joinerHandle = members.find((m) => m.userId === userId)?.handle;
+    const actorName = joinerHandle ? `@${joinerHandle}` : "חבר/ה חדש/ה";
     const events: NotificationEvent[] = members
       .filter((m) => m.userId !== userId)
       .map((m) => ({
