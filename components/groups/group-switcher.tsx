@@ -10,9 +10,9 @@ export interface SwitcherGroup {
 }
 
 /**
- * Header switcher between the general view and the viewer's groups. A native
- * <details> disclosure — no JS state, SSR-safe, RTL-fine. The current group is
- * derived from the path (/g/[slug]); anything else reads as "כללי".
+ * Header switcher between the national (ארצי) view and the viewer's groups.
+ * A native <details> disclosure — no JS state, SSR-safe, RTL-fine. The current
+ * group is derived from the path (/g/[slug]); anything else reads as "ארצי".
  */
 export function GroupSwitcher({ groups }: { groups: SwitcherGroup[] }) {
   const pathname = usePathname();
@@ -21,16 +21,16 @@ export function GroupSwitcher({ groups }: { groups: SwitcherGroup[] }) {
 
   return (
     <details className="group relative">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-bold text-foreground transition-colors hover:border-primary">
-        <span className="max-w-32 truncate">{active ? `${active.emblem ?? "🏛️"} ${active.nameHe}` : "כללי"}</span>
-        <span aria-hidden className="text-xs text-muted-foreground">▾</span>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-hover">
+        <span className="max-w-32 truncate">{active ? `${active.emblem ?? "🏛️"} ${active.nameHe}` : "ארצי"}</span>
+        <span aria-hidden className="text-xs text-accent-foreground/70">▾</span>
       </summary>
-      <div className="absolute end-0 z-40 mt-2 min-w-52 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+      <div className="absolute start-0 z-40 mt-2 min-w-52 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
         <Link
           href="/?view=general"
           className={`block px-4 py-2.5 text-sm transition-colors hover:bg-muted ${active ? "text-foreground" : "font-bold text-primary"}`}
         >
-          כללי
+          ארצי
         </Link>
         {groups.length > 0 && <div className="border-t border-line-soft" />}
         {groups.map((g) => (

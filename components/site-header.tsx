@@ -36,10 +36,15 @@ export async function SiteHeader() {
       style={{ backgroundColor: "var(--header-bg)" }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <PolyticalLogo className="h-9 w-9" />
-          <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2.5">
+            <PolyticalLogo className="h-9 w-9" />
+            <span className="font-display text-2xl leading-none text-foreground">פוליטיקל</span>
+          </Link>
+          {user && (
+            <GroupSwitcher groups={myGroups.map((g) => ({ slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }))} />
+          )}
+        </div>
 
         <nav className="hidden items-center gap-6 md:flex">
           {NAV.map((n) => (
@@ -66,7 +71,6 @@ export async function SiteHeader() {
             <ThemeToggle initial={theme} />
             {user ? (
               <>
-                <GroupSwitcher groups={myGroups.map((g) => ({ slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }))} />
                 <NotificationBell unreadCount={unread} />
                 <Link
                   href="/profile"
