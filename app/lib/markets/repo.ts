@@ -7,6 +7,7 @@ import * as schema from "@/app/lib/schema";
 import { bets, marketPoliticians, markets, outcomes, politicians, users } from "@/app/lib/schema";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
 import { requireUserId } from "@/app/lib/errors";
+import { coalitionScope } from "./scope";
 
 // Market repository: scope-guarded, tx-aware DB access for the prediction service.
 //
@@ -338,14 +339,17 @@ export async function markClosingSoonNotified({
 export async function listOpenMarkets({
   db = defaultDb,
   category,
+  groupScope = null,
 }: {
   db?: DB;
   category?: string;
+  /** Active-coalition scope: null = national feed (isNull), id = that coalition's motions. */
+  groupScope?: string | null;
 } = {}): Promise<MarketRow[]> {
-  // isNull(groupId): global feed never shows group-only motions (feed isolation).
+  const scope = coalitionScope({ groupId: groupScope });
   const where = category
-    ? and(eq(markets.status, "open"), eq(markets.category, category), isNull(markets.groupId))
-    : and(eq(markets.status, "open"), isNull(markets.groupId));
+    ? and(eq(markets.status, "open"), eq(markets.category, category), scope)
+    : and(eq(markets.status, "open"), scope);
   return db.select().from(markets).where(where).orderBy(sql`${markets.createdAt} desc`);
 }
 
@@ -364,17 +368,20 @@ export async function listUnpredictedOpenMarkets({
   excludeMarketId,
   limit = 8,
   now = new Date(),
+  groupScope = null,
 }: {
   db?: DB;
   userId: string;
   excludeMarketId?: string;
   limit?: number;
   now?: Date;
+  /** Active-coalition scope: null = national answer-deck, id = that coalition's motions. */
+  groupScope?: string | null;
 }): Promise<MarketRow[]> {
   const uid = requireUserId(userId);
   const conditions = [
     eq(markets.status, "open"),
-    isNull(markets.groupId), // global answer-deck never includes group motions
+    coalitionScope({ groupId: groupScope }), // null = national answer-deck; never mixes feeds
     gt(markets.closeAt, now),
     notExists(
       db
@@ -400,12 +407,17 @@ export async function listUnpredictedOpenMarkets({
  */
 export async function getMarketOfTheDay({
   db = defaultDb,
-}: { db?: DB } = {}): Promise<MarketRow | null> {
+  groupScope = null,
+}: {
+  db?: DB;
+  /** Active-coalition scope: null = national MOTD, id = that coalition's hottest motion. */
+  groupScope?: string | null;
+} = {}): Promise<MarketRow | null> {
   const [row] = await db
     .select({ market: markets, betCount: sql<number>`count(${bets.id})::int` })
     .from(markets)
     .leftJoin(bets, eq(bets.marketId, markets.id))
-    .where(and(eq(markets.status, "open"), isNull(markets.groupId)))
+    .where(and(eq(markets.status, "open"), coalitionScope({ groupId: groupScope })))
     .groupBy(markets.id)
     .orderBy(desc(sql`count(${bets.id})`), desc(markets.createdAt))
     .limit(1);
@@ -539,9 +551,12 @@ export interface PortfolioPrediction {
 export async function getUserPredictions({
   db = defaultDb,
   userId,
+  groupScope = null,
 }: {
   db?: DB;
   userId: string;
+  /** Active-coalition scope: null = national portfolio, id = that coalition's picks. */
+  groupScope?: string | null;
 }): Promise<PortfolioPrediction[]> {
   return db
     .select({
@@ -558,8 +573,8 @@ export async function getUserPredictions({
     .from(bets)
     .innerJoin(markets, eq(markets.id, bets.marketId))
     .innerJoin(outcomes, eq(outcomes.id, bets.outcomeId))
-    // Global profile portfolio excludes sandboxed group-motion picks.
-    .where(and(eq(bets.userId, userId), isNull(markets.groupId)))
+    // Scoped to the active audience: national portfolio (null) or one coalition's picks.
+    .where(and(eq(bets.userId, userId), coalitionScope({ groupId: groupScope })))
     .orderBy(desc(bets.createdAt));
 }
 
@@ -657,9 +672,12 @@ export async function createMarket({
 export async function getMarketsForPolitician({
   db = defaultDb,
   personId,
+  groupScope = null,
 }: {
   db?: DB;
   personId: number;
+  /** Active-coalition scope: null = national markets, id = that coalition's motions. */
+  groupScope?: string | null;
 }): Promise<{ market: MarketRow; outcomes: OutcomeRow[]; personIds: number[] }[]> {
   const links = await db
     .select({ marketId: marketPoliticians.marketId })
@@ -672,7 +690,7 @@ export async function getMarketsForPolitician({
     db
       .select()
       .from(markets)
-      .where(and(inArray(markets.id, ids), eq(markets.status, "open"), isNull(markets.groupId)))
+      .where(and(inArray(markets.id, ids), eq(markets.status, "open"), coalitionScope({ groupId: groupScope })))
       .orderBy(desc(markets.createdAt)),
     db.select().from(outcomes).where(inArray(outcomes.marketId, ids)).orderBy(asc(outcomes.ordinal)),
     db.select().from(marketPoliticians).where(inArray(marketPoliticians.marketId, ids)),
@@ -696,10 +714,13 @@ export async function searchMarkets({
   db = defaultDb,
   q,
   limit = 20,
+  groupScope = null,
 }: {
   db?: DB;
   q: string;
   limit?: number;
+  /** Active-coalition scope: null = national search, id = search within that coalition. */
+  groupScope?: string | null;
 }): Promise<MarketRow[]> {
   const needle = q.trim();
   if (!needle) return [];
@@ -709,7 +730,7 @@ export async function searchMarkets({
     .where(
       and(
         inArray(markets.status, ["open", "closed", "resolved"]),
-        isNull(markets.groupId), // group motions are never globally searchable
+        coalitionScope({ groupId: groupScope }), // null = national; a coalition scopes search to its motions
         sql`${markets.searchText} ILIKE ${"%" + needle + "%"}`,
       ),
     )
