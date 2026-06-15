@@ -12,11 +12,13 @@ import { getUnreadCount } from "@/app/lib/notifications/service";
 import { listMyGroups } from "@/app/lib/groups/service";
 
 // Core product surfaces. האוסף + עונה live on /profile; פוליטיקאים is reachable
-// from every card and the homepage section.
-const NAV = [
+// from every card and the homepage section. קואליציות is highlighted (purple) to
+// surface the private-clubs feature; it links to /g (redirects to login if out).
+const NAV: { href: string; label: string; highlight?: boolean }[] = [
   { href: "/markets", label: "תחזיות" },
   { href: "/votes", label: "הצבעות" },
   { href: "/agenda", label: "על סדר היום" },
+  { href: "/g", label: "קואליציות", highlight: true },
   { href: "/#leaderboard", label: "טבלת מובילים" },
 ];
 
@@ -25,8 +27,6 @@ export async function SiteHeader() {
   const user = session?.user ?? null;
   const unread = user ? await getUnreadCount({ userId: user.id }) : 0;
   const myGroups = user ? await listMyGroups({ userId: user.id }) : [];
-  // Logged-in users get a "my groups" entry in the mobile menu.
-  const mobileNav = user ? [...NAV, { href: "/g", label: "הקואליציות שלי" }] : NAV;
   const initial = user?.name?.trim()?.[0]?.toUpperCase() ?? "?";
   const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
 
@@ -46,7 +46,11 @@ export async function SiteHeader() {
             <Link
               key={n.href}
               href={n.href}
-              className="inline-flex items-center py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              className={
+                n.highlight
+                  ? "inline-flex items-center rounded-full bg-purple/10 px-3 py-1.5 text-sm font-bold text-purple transition-colors hover:bg-purple/20"
+                  : "inline-flex items-center py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              }
             >
               {n.label}
             </Link>
@@ -97,7 +101,7 @@ export async function SiteHeader() {
           {/* Mobile (<md): the bell stays one tap away; everything else folds into the menu. */}
           <div className="flex items-center gap-2 md:hidden">
             {user && <NotificationBell unreadCount={unread} />}
-            <MobileMenu nav={mobileNav} theme={theme} loggedIn={!!user} />
+            <MobileMenu nav={NAV} theme={theme} loggedIn={!!user} />
           </div>
         </div>
       </div>

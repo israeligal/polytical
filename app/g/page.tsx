@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { listMyGroups } from "@/app/lib/groups/service";
 import { EmptyState } from "@/components/empty-state";
+import { CoalitionExplainer } from "@/components/groups/coalition-explainer";
 import { GROUPS_CONTAINER } from "@/components/skeletons/containers";
 
 export default async function MyGroupsPage() {
@@ -26,9 +27,12 @@ export default async function MyGroupsPage() {
       </header>
 
       {groups.length === 0 ? (
-        <EmptyState>
-          עדיין אינכם בקואליציה. צרו אחת, או הצטרפו דרך קישור הזמנה שקיבלתם מחבר/ה.
-        </EmptyState>
+        <div className="space-y-4">
+          <EmptyState>
+            עדיין אינכם בקואליציה. צרו אחת, או הצטרפו דרך קישור הזמנה שקיבלתם מחבר/ה.
+          </EmptyState>
+          <CoalitionExplainer />
+        </div>
       ) : (
         <ul className="space-y-3">
           {groups.map((g) => (

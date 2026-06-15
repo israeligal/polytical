@@ -26,6 +26,11 @@ export function StanceSharingToggle({
 
   function toggle() {
     const next = !shared;
+    // Turning sharing OFF hides past directions from the group — confirm first
+    // (turning ON needs no friction).
+    if (!next && !window.confirm("לכבות שיתוף עמדות? העמדות שלכם יוסתרו מיד מחברי הקואליציה.")) {
+      return;
+    }
     setMessage(null);
     startTransition(async () => {
       const res = await toggleGroupStanceSharingAction({ groupId, slug, share: next });

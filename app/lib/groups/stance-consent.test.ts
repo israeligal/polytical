@@ -5,9 +5,9 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 // joinGroup fans out pushes after commit — mock the boundary.
 vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 
-import { users, userStances, groupStanceConsent } from "@/app/lib/schema";
+import { users, userStances, groupStanceConsent, agendaItems, agendaStances } from "@/app/lib/schema";
 import { createGroup, joinGroup, leaveGroup } from "./service";
-import { setStanceSharing, getGroupVoteStances, getStanceSharing, getStanceShareStats } from "./stance-service";
+import { setStanceSharing, getGroupVoteStances, getGroupAgendaStances, getStanceSharing, getStanceShareStats } from "./stance-service";
 import { NotGroupMemberError } from "@/app/lib/errors";
 
 const VOTE = 5000;
@@ -53,6 +53,41 @@ test("the 4-way reveal gate: directions surface only to consenting members about
 
   // stranger (non-member) → nothing.
   expect(await getGroupVoteStances({ db: h.db, groupId: g.id, voteId: VOTE, viewerId: "stranger" })).toHaveLength(0);
+});
+
+test("agenda (pre-vote) reveal: same 4-way gate, reading agenda_stances", async () => {
+  await seedUsers(["owner", "alice", "bob", "stranger"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "alice", inviteCode: g.inviteCode });
+  await joinGroup({ db: h.db, userId: "bob", inviteCode: g.inviteCode });
+  const [item] = await h.db
+    .insert(agendaItems)
+    .values({
+      titleHe: "הצעת חוק כלשהי",
+      addedBy: "ingest",
+      status: "announced",
+      sourceDataset: "test",
+      sourceUrl: "https://example.test",
+      fetchedAt: new Date("2026-06-14T00:00:00Z"),
+    })
+    .returning({ id: agendaItems.id });
+  await h.db.insert(agendaStances).values([
+    { userId: "owner", agendaItemId: item.id, stance: "for" },
+    { userId: "alice", agendaItemId: item.id, stance: "against" },
+    { userId: "bob", agendaItemId: item.id, stance: "for" }, // not consenting
+  ]);
+  await setStanceSharing({ db: h.db, groupId: g.id, userId: "owner", share: true });
+  await setStanceSharing({ db: h.db, groupId: g.id, userId: "alice", share: true });
+
+  // owner (consenting) sees owner + alice, NOT bob.
+  const ownerView = await getGroupAgendaStances({ db: h.db, groupId: g.id, agendaItemId: item.id, viewerId: "owner" });
+  expect(ids(ownerView)).toEqual(["alice", "owner"]);
+  expect(ownerView.find((s) => s.userId === "alice")?.stance).toBe("against");
+
+  // bob (member, NOT consenting) → nothing (viewer-consent gate).
+  expect(await getGroupAgendaStances({ db: h.db, groupId: g.id, agendaItemId: item.id, viewerId: "bob" })).toHaveLength(0);
+  // stranger (non-member) → nothing.
+  expect(await getGroupAgendaStances({ db: h.db, groupId: g.id, agendaItemId: item.id, viewerId: "stranger" })).toHaveLength(0);
 });
 
 test("a consenting member who LEAVES disappears from the reveal (active filter)", async () => {

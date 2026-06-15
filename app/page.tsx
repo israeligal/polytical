@@ -12,6 +12,7 @@ import { HeroSpotlight, HotRail } from "@/components/hero";
 import { MarketCard } from "@/components/market-card";
 import { EmptyState } from "@/components/empty-state";
 import { CaricatureCard } from "@/components/caricature-card";
+import { CoalitionExplainer } from "@/components/groups/coalition-explainer";
 import { LeaderboardRow } from "@/components/leaderboard-row";
 import { ArrowForward, Ballot, Trophy } from "@/components/icons";
 import { VoteRow } from "@/components/vote-row";
@@ -167,6 +168,31 @@ export default async function Home({
             ) : (
               <EmptyState>אין תחזיות פתוחות בקטגוריה הזו כרגע.</EmptyState>
             )}
+          </div>
+        </section>
+
+        {/* COALITIONS — private prediction clubs (discovery band; purple sets it
+            apart from the gold "הצעה לסדר" CTA and the techelet primary). */}
+        <section id="coalitions" className="scroll-mt-24 border-y border-border bg-purple/5">
+          <div className={HOME_SECTION_INNER}>
+            <div className="grid items-center gap-6 lg:grid-cols-2">
+              <div>
+                <p className="text-sm font-bold text-purple">חדש</p>
+                <h2 className="font-display text-3xl font-bold text-foreground">קואליציות</h2>
+                <p className="mt-2 max-w-prose text-muted-foreground">
+                  מועדון תחזיות פרטי לכם ולחברים: הצעות לסדר משלכם, לוח תוצאות נפרד, ומליאה לדיון —
+                  הכול בהזמנה בלבד.
+                </p>
+                <Link
+                  href={me ? "/g" : "/g/new"}
+                  className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-purple px-5 py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-purple/90"
+                >
+                  {me ? "לקואליציות שלי" : "צרו קואליציה"}
+                  <ArrowForward className="h-5 w-5" />
+                </Link>
+              </div>
+              <CoalitionExplainer />
+            </div>
           </div>
         </section>
 

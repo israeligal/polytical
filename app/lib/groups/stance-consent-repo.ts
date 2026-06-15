@@ -2,7 +2,7 @@ import { and, count, eq } from "drizzle-orm";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
-import { groupMembers, groupStanceConsent, userStances, users } from "@/app/lib/schema";
+import { agendaStances, groupMembers, groupStanceConsent, userStances, users } from "@/app/lib/schema";
 import { requireUserId } from "@/app/lib/errors";
 
 // Phase 2 stance-sharing repo. The ONLY place a member's Knesset-vote stance
@@ -129,4 +129,39 @@ export async function getGroupVoteStances({
     )
     .innerJoin(users, eq(users.id, userStances.userId))
     .where(eq(userStances.voteId, voteId));
+}
+
+/**
+ * The agenda (pre-vote) twin of getGroupVoteStances — same 4-way gate, but reads
+ * `agenda_stances` (positions on an UPCOMING bill, keyed by agendaItemId) instead
+ * of decisive `user_stances`. Lets coalition members compare pre-vote positions
+ * immediately, before the plenum vote exists. Once the item resolves, the sweep
+ * adopts these into user_stances and the decisive reveal takes over.
+ */
+export async function getGroupAgendaStances({
+  db = defaultDb,
+  groupId,
+  agendaItemId,
+  viewerId,
+}: {
+  db?: AppDb;
+  groupId: string;
+  agendaItemId: string;
+  viewerId: string;
+}): Promise<GroupVoteStance[]> {
+  if (!(await isActiveMember(db, groupId, viewerId))) return [];
+  if (!(await hasConsent(db, groupId, viewerId))) return [];
+  return db
+    .select({ userId: agendaStances.userId, name: users.name, handle: users.handle, stance: agendaStances.stance })
+    .from(agendaStances)
+    .innerJoin(
+      groupStanceConsent,
+      and(eq(groupStanceConsent.userId, agendaStances.userId), eq(groupStanceConsent.groupId, groupId)),
+    )
+    .innerJoin(
+      groupMembers,
+      and(eq(groupMembers.userId, agendaStances.userId), eq(groupMembers.groupId, groupId), eq(groupMembers.status, "active")),
+    )
+    .innerJoin(users, eq(users.id, agendaStances.userId))
+    .where(eq(agendaStances.agendaItemId, agendaItemId));
 }

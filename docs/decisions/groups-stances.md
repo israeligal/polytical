@@ -1,6 +1,18 @@
 # Decision Log — Group stance sharing (Phase 2)
 
-> Newest on top. Entries are immutable: supersede, don't edit. Spec: `docs/superpowers/specs/2026-06-15-groups-followups-design.md`. Branch `feat/groups-followups`. ⚠️ The privacy copy + this carve-out need product/legal sign-off before the feature is publicized.
+> Newest on top. Entries are immutable: supersede, don't edit. Spec: `docs/superpowers/specs/2026-06-15-groups-followups-design.md`. Branches `feat/groups-followups` → `feat/groups-discovery`. ✅ Product owner accepted the carve-out (see 2026-06-15 entry below) — no formal legal counsel review.
+
+---
+
+## 2026-06-15 — Product owner accepts the carve-out; pre-votes shared immediately; un-share confirmed
+
+**Decision (product owner).** Ship the consent-gated stance-sharing carve-out as designed, **without a formal legal-counsel review.** Rationale given: Polytical does not sell data, does not share personal information with any external party, and runs no analytics/ad tracking (per `app/privacy/page.tsx`); the only exposure is a member's own direction to fellow members of a private group, and only when **both** sides explicitly, mutually, and revocably opt in. This entry records the owner's risk acceptance — it is **not itself a legal opinion.** The earlier "needs product/legal sign-off" gate (see header + the 2026-06-15 carve-out entry's "Open" item) is hereby **closed by product decision.**
+
+**Two refinements decided in the same call:**
+1. **Agenda (pre-vote) stances are now shareable IMMEDIATELY in-group** — superseding the prior "v1: decisive `user_stances` only" choice. A new `getGroupAgendaStances` (the agenda twin of `getGroupVoteStances`, same 4-way gate, reads `agenda_stances` by `agendaItemId`) surfaces fellow consenting members' pre-vote positions on the bill page ("עמדת הקואליציה"), before the plenum vote exists. The global k≥10 floor on the public agenda aggregate (`agenda-stances/service.ts`) stays untouched — the waiver remains strictly in-group. On resolution the sweep still adopts pre-votes into `user_stances`, after which the decisive reveal takes over (and `getAnnouncedAgendaItemByBill` returns null, so the agenda reveal stops rendering — clean handoff, no double-display).
+2. **Turning sharing OFF now requires a confirmation** (`StanceSharingToggle`) — "לכבות שיתוף עמדות? העמדות שלכם יוסתרו מיד מחברי הקואליציה." Turning it ON stays frictionless.
+
+**Still strictly scoped.** Default OFF; reveal returns `[]` on any gate failure (never an error); cascade-deleted with the account and the group; nothing leaves the private group.
 
 ---
 

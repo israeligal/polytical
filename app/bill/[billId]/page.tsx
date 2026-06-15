@@ -4,7 +4,11 @@ import { getBillById } from "@/app/lib/bills/repo";
 import { knessetBillUrl } from "@/app/lib/bills/external";
 import { getAnnouncedAgendaItemByBill } from "@/app/lib/agenda/read-repo";
 import { getAgendaStanceState } from "@/app/lib/agenda-stances/service";
+import { getMyGroupsAgendaStances } from "@/app/lib/groups/stance-service";
 import { AgendaStanceWidget } from "@/components/agenda-stance-widget";
+import { GroupVoteStances } from "@/components/groups/group-vote-stances";
+import { PoliticianPortrait } from "@/components/politician-portrait";
+import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getSession } from "@/lib/auth";
 import { ChevronForward, ArrowUpRight, Document } from "@/components/icons";
 import { formatDate } from "@/lib/time";
@@ -26,6 +30,11 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
   const agendaState = agendaItem && session?.user
     ? await getAgendaStanceState({ userId: session.user.id, agendaItemId: agendaItem.id })
     : null;
+  // "Coalition's position" — pre-vote positions of fellow consenting members,
+  // only for groups where the viewer shares (the service gate drops the rest).
+  const myGroupAgendaStances = agendaItem && session?.user
+    ? await getMyGroupsAgendaStances({ userId: session.user.id, agendaItemId: agendaItem.id })
+    : [];
 
   const meta: { label: string; value: string }[] = [];
   if (bill.subTypeDesc) meta.push({ label: "סוג", value: bill.subTypeDesc });
@@ -71,11 +80,14 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
               <li key={i.personId}>
                 <Link
                   href={`/politician/${i.personId}`}
-                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 ${
+                  className={`inline-flex items-center gap-1.5 rounded-full border py-1 pe-3 ps-1 text-sm font-semibold transition-colors hover:bg-muted/60 ${
                     i.isInitiator ? "border-primary text-primary" : "border-border text-foreground"
                   }`}
                 >
-                  {i.nameHe}
+                  <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full">
+                    <PoliticianPortrait politician={dbToCard(i)} size="sm" />
+                  </span>
+                  <span>{i.nameHe}</span>
                   {i.isInitiator && <span className="text-xs text-muted-foreground">· יוזם</span>}
                 </Link>
               </li>
@@ -133,6 +145,7 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
             initialAggregate={agendaState?.aggregate ?? null}
             loggedIn={Boolean(session?.user)}
           />
+          <GroupVoteStances groups={myGroupAgendaStances} title="עמדת הקואליציה" />
         </>
       )}
 

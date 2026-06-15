@@ -7,7 +7,9 @@ import { bills, billSponsors, billDocuments, billStatuses, politicians, knessetV
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
-export type BillInitiator = { personId: number; nameHe: string; isInitiator: boolean };
+// Full politician row (for PoliticianPortrait/dbToCard) + whether they're the
+// lead initiator. Mirrors agenda's AgendaInitiator so both render identically.
+export type BillInitiator = typeof politicians.$inferSelect & { isInitiator: boolean };
 export type BillDocument = { documentBillId: number; format: string | null; groupTypeDesc: string | null; filePath: string };
 export type BillDetail = {
   billId: number;
@@ -42,12 +44,13 @@ export async function getBillById({
     .limit(1);
   if (!bill) return null;
 
-  const initiators = await db
-    .select({ personId: politicians.personId, nameHe: politicians.nameHe, isInitiator: billSponsors.isInitiator })
+  const initiatorRows = await db
+    .select({ p: politicians, isInitiator: billSponsors.isInitiator })
     .from(billSponsors)
     .innerJoin(politicians, eq(politicians.personId, billSponsors.personId))
     .where(eq(billSponsors.billId, billId))
     .orderBy(desc(billSponsors.isInitiator), asc(billSponsors.ordinal));
+  const initiators: BillInitiator[] = initiatorRows.map((r) => ({ ...r.p, isInitiator: r.isInitiator }));
 
   const documents = await db
     .select({

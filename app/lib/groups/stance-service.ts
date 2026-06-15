@@ -29,6 +29,7 @@ export async function setStanceSharing({
 
 export const getStanceSharing = consent.getConsent;
 export const getGroupVoteStances = consent.getGroupVoteStances;
+export const getGroupAgendaStances = consent.getGroupAgendaStances;
 export const getStanceShareStats = consent.getShareStats;
 
 export interface GroupVoteStancesView {
@@ -56,6 +57,31 @@ export async function getMyGroupsVoteStances({
   const out: GroupVoteStancesView[] = [];
   for (const g of groups) {
     const stances = await consent.getGroupVoteStances({ db, groupId: g.id, voteId, viewerId: userId });
+    if (stances.length === 0) continue; // viewer not sharing here, or nothing to show
+    const stats = await consent.getShareStats({ db, groupId: g.id });
+    out.push({ group: { id: g.id, slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }, stances, stats });
+  }
+  return out;
+}
+
+/**
+ * The agenda (pre-vote) twin of getMyGroupsVoteStances: for the bill page's
+ * "coalition's position" block, the revealed pre-vote positions on `agendaItemId`
+ * across the viewer's sharing groups. Same gate, same view shape.
+ */
+export async function getMyGroupsAgendaStances({
+  db = defaultDb,
+  userId,
+  agendaItemId,
+}: {
+  db?: AppDb;
+  userId: string;
+  agendaItemId: string;
+}): Promise<GroupVoteStancesView[]> {
+  const groups = await listMyGroups({ db, userId });
+  const out: GroupVoteStancesView[] = [];
+  for (const g of groups) {
+    const stances = await consent.getGroupAgendaStances({ db, groupId: g.id, agendaItemId, viewerId: userId });
     if (stances.length === 0) continue; // viewer not sharing here, or nothing to show
     const stats = await consent.getShareStats({ db, groupId: g.id });
     out.push({ group: { id: g.id, slug: g.slug, nameHe: g.nameHe, emblem: g.emblem }, stances, stats });

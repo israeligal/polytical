@@ -6,11 +6,17 @@ import type { GroupVoteStancesView } from "@/app/lib/groups/stance-service";
  * members' directions on this vote. Presentational; the data is already gated
  * (only sharing groups, only consenting active members) by the service.
  */
-export function GroupVoteStances({ groups }: { groups: GroupVoteStancesView[] }) {
+export function GroupVoteStances({
+  groups,
+  title = "איך הקואליציה הצביעה",
+}: {
+  groups: GroupVoteStancesView[];
+  title?: string;
+}) {
   if (groups.length === 0) return null;
   return (
     <section className="mt-6 space-y-4">
-      <h2 className="font-display text-xl font-bold text-foreground">איך הקואליציה הצביעה</h2>
+      <h2 className="font-display text-xl font-bold text-foreground">{title}</h2>
       {groups.map(({ group, stances, stats }) => (
         <div key={group.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
