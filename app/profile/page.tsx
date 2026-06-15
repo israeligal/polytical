@@ -24,6 +24,7 @@ import { dbToCard } from "@/app/lib/politicians/adapter";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
+import { ChangeHandleForm } from "@/components/profile/change-handle-form";
 
 /** Whether a resolved prediction picked the winning outcome. */
 function isCorrect(p: PortfolioPrediction): boolean {
@@ -93,6 +94,7 @@ export default async function ProfilePage() {
               <bdi>@{handle}</bdi>
             </h1>
             <p className="text-sm text-muted-foreground">הפרופיל שלך</p>
+            <ChangeHandleForm currentHandle={user.handle ?? ""} />
           </div>
         </div>
 
