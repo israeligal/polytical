@@ -13,6 +13,7 @@ import { Countdown } from "@/components/badges";
 import { EmptyState } from "@/components/empty-state";
 import { GroupNotFoundError, NotGroupMemberError } from "@/app/lib/errors";
 import { GROUP_CONTAINER, GROUP_GRID } from "@/components/skeletons/containers";
+import { groupIcon, groupTextOnly } from "@/lib/group-display";
 
 const STATUS_HE: Record<string, { label: string; tone: "positive" | "neutral" | "negative" }> = {
   open: { label: "פתוחה", tone: "positive" },
@@ -52,9 +53,9 @@ export default async function GroupHomePage({ params }: { params: Promise<{ slug
     <main className={GROUP_CONTAINER}>
       <header className="mb-6">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="text-3xl leading-none">{group.emblem ?? "🏛️"}</span>
+          <span aria-hidden className="text-3xl leading-none">{groupIcon(group)}</span>
           <div className="min-w-0">
-            <h1 className="truncate font-display text-3xl text-foreground sm:text-4xl">{group.nameHe}</h1>
+            <h1 className="truncate font-display text-3xl text-foreground sm:text-4xl">{groupTextOnly(group)}</h1>
             <p className="text-sm text-muted-foreground">
               <span className="nums font-bold text-foreground">{roster.length}</span> חברים ·{" "}
               {membership.role === "owner" ? "אתם הבעלים" : membership.role === "admin" ? "אתם מנהלים" : "אתם חברים"}

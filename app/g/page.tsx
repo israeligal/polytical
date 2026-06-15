@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { listMyGroups } from "@/app/lib/groups/service";
 import { EmptyState } from "@/components/empty-state";
 import { GROUPS_CONTAINER } from "@/components/skeletons/containers";
+import { groupIcon, groupTextOnly } from "@/lib/group-display";
 
 export default async function MyGroupsPage() {
   const session = await getSession();
@@ -37,9 +38,9 @@ export default async function MyGroupsPage() {
                 href={`/g/${g.slug}`}
                 className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary"
               >
-                <span aria-hidden className="text-2xl leading-none">{g.emblem ?? "🏛️"}</span>
+                <span aria-hidden className="text-2xl leading-none">{groupIcon(g)}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-display text-lg font-bold text-foreground">{g.nameHe}</span>
+                  <span className="block truncate font-display text-lg font-bold text-foreground">{groupTextOnly(g)}</span>
                   <span className="text-xs text-muted-foreground">
                     {g.role === "owner" ? "בעלים" : g.role === "admin" ? "מנהל/ת" : "חבר/ה"}
                   </span>

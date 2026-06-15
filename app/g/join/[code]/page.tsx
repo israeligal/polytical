@@ -4,6 +4,7 @@ import { getGroupByInviteCode, getMembership, countActiveMembers } from "@/app/l
 import { JoinGroupButton } from "@/components/groups/join-group-button";
 import { EmptyState } from "@/components/empty-state";
 import { GROUPS_CONTAINER } from "@/components/skeletons/containers";
+import { groupIcon, groupTextOnly } from "@/lib/group-display";
 
 // Invite-preview page: a non-member opening an invite link sees a lightweight
 // preview (name, member count) + Join. An existing member is sent straight in.
@@ -29,8 +30,8 @@ export default async function JoinGroupPage({ params }: { params: Promise<{ code
   return (
     <main className={GROUPS_CONTAINER}>
       <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
-        <div aria-hidden className="text-4xl">{group.emblem ?? "🏛️"}</div>
-        <h1 className="mt-2 font-display text-3xl text-foreground">{group.nameHe}</h1>
+        <div aria-hidden className="text-4xl">{groupIcon(group)}</div>
+        <h1 className="mt-2 font-display text-3xl text-foreground">{groupTextOnly(group)}</h1>
         {group.descriptionHe && <p className="mt-2 text-sm text-muted-foreground">{group.descriptionHe}</p>}
         <p className="mt-2 text-sm text-muted-foreground">
           <span className="nums font-bold text-foreground">{memberCount}</span> חברים

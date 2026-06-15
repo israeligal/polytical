@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { groupLabel } from "@/lib/group-display";
 
 export interface SwitcherGroup {
   slug: string;
@@ -22,7 +23,7 @@ export function GroupSwitcher({ groups }: { groups: SwitcherGroup[] }) {
   return (
     <details className="group relative">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent-hover">
-        <span className="max-w-32 truncate">{active ? `${active.emblem ?? "🏛️"} ${active.nameHe}` : "ארצי"}</span>
+        <span className="max-w-32 truncate">{active ? groupLabel(active) : "ארצי"}</span>
         <span aria-hidden className="text-xs text-accent-foreground/70">▾</span>
       </summary>
       <div className="absolute start-0 z-40 mt-2 min-w-52 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
@@ -39,7 +40,7 @@ export function GroupSwitcher({ groups }: { groups: SwitcherGroup[] }) {
             href={`/g/${g.slug}`}
             className={`block truncate px-4 py-2.5 text-sm transition-colors hover:bg-muted ${g.slug === activeSlug ? "font-bold text-primary" : "text-foreground"}`}
           >
-            {g.emblem ?? "🏛️"} {g.nameHe}
+            {groupLabel(g)}
           </Link>
         ))}
         <div className="border-t border-line-soft" />

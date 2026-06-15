@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { cloneForecastToGroupAction } from "@/app/actions/groups";
 import { useHydrated } from "@/lib/use-hydrated";
 import { nowLocalInput } from "@/lib/time";
+import { groupLabel } from "@/lib/group-display";
 
 export interface PickerGroup {
   id: string;
@@ -82,7 +83,7 @@ export function CloneToGroupButton({ sourceMarketId, groups }: { sourceMarketId:
                     onClick={() => clone(g)}
                     className="block w-full truncate rounded-lg px-3 py-2 text-start text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-60"
                   >
-                    {g.emblem ?? "🏛️"} {g.nameHe}
+                    {groupLabel(g)}
                   </button>
                 </li>
               ))}

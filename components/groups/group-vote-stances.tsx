@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { GroupVoteStancesView } from "@/app/lib/groups/stance-service";
+import { groupLabel } from "@/lib/group-display";
 
 /**
  * "איך הקואליציה הצביעה" — per the viewer's sharing groups, fellow consenting
@@ -15,7 +16,7 @@ export function GroupVoteStances({ groups }: { groups: GroupVoteStancesView[] })
         <div key={group.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
             <Link href={`/g/${group.slug}`} className="min-w-0 truncate font-display text-base font-bold text-foreground hover:text-primary">
-              {group.emblem ?? "🏛️"} {group.nameHe}
+              {groupLabel(group)}
             </Link>
             <span className="shrink-0 text-xs text-muted-foreground">
               <span className="nums">{stats.sharing}</span> מתוך <span className="nums">{stats.total}</span> שיתפו
