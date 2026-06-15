@@ -27,7 +27,7 @@
 
 **What it is:** A user creates a private קואליציה (prediction club), gives it a name with an emoji, and the coalition's icon/name render consistently across the header switcher, the /g list, the group page and the invite/join page. Members raise group-only הצעות, predict, and see a sandboxed scoreboard.
 
-**Last walked:** 2026-06-15 `237a588`. **Walks:** 1. **Coverage:** 5/8
+**Last walked:** 2026-06-15 `25d3df6`. **Walks:** 2. **Coverage:** 5/8
 
 **Steps:**
 - ✅ /g/new render: single name field, inline 😊 emoji button (no stray emblem box), description, submit
@@ -40,6 +40,7 @@
 - ❌ stance sharing toggle + clone-to-group (groupLabel display wired, flow not walked)
 
 **Notable history:**
+- `25d3df6` (2026-06-15): REDESIGN baseline walk (read-only) for `feat/coalition-global-context`. Confirmed today's model on prod: an authenticated member hitting `/` is redirected to `/g/[slug]` (proxy landing); `/g/[slug]` is a 2-col page = motions feed (RTL-right) + scoreboard/roster/stance-sharing aside (RTL-left); `?view=general` escapes to the national feed. Planned redesign makes the switcher a sticky global scope so this feed re-scopes inline and the side page is removed. Spec/plan: `docs/superpowers/{specs,plans}/2026-06-15-coalition-global-context-*`.
 - `237a588` (2026-06-15): create-form redesigned to one name field + inline emoji picker; coalition icon derived from the name's leading emoji via shared lib/group-display helpers (groupIcon/groupTextOnly/groupLabel); name/emblem validated by code points. QA walk created+deleted a prod test group (cleanup-qa-group.ts).
 
 **Known gaps:** join/invite flow, motion lifecycle, scoreboard, and stance-sharing/clone not yet walked. Minor UX nit: focus does not return to the name input after picking an emoji from the popover (user must click back in to continue typing).
