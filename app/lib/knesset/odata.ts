@@ -24,7 +24,11 @@ export type KnsEntity =
   | "KNS_DocumentBill"
   | "KNS_Status"
   | "KNS_Agenda"
-  | "KNS_DocumentAgenda";
+  | "KNS_DocumentAgenda"
+  | "KNS_IsraelLaw"
+  | "KNS_IsraelLawClassificiation"
+  | "KNS_IsraelLawName"
+  | "KNS_BillSplit";
 
 interface BuildUrlArgs {
   entity: KnsEntity;

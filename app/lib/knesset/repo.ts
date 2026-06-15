@@ -2,10 +2,12 @@ import { eq } from "drizzle-orm";
 import { chunk, sqlExcluded, type AppDb } from "@/app/lib/db-utils";
 import {
   politicians, factions, bills, billSponsors, billDocuments, billStatuses, queries, committees, committeeMemberships, factionStints,
+  israelLaws, israelLawTopics, israelLawBills, billSplits,
 } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import type {
   MemberRow, FactionRow, BillRow, BillDocumentRow, BillStatusRow, BillSponsorRow, QueryRow, CommitteeRow, CommitteeMembershipRow, FactionStintRow,
+  IsraelLawRow, IsraelLawTopicRow, IsraelLawBillRow, BillSplitRow,
 } from "./normalize";
 
 export type KnessetDb = AppDb;
@@ -145,6 +147,73 @@ export async function upsertBillStatuses({ db, rows }: { db: DB; rows: BillStatu
     n += batch.length;
   }
   logger.info("knesset.repo.upsert", { entity: "bill_statuses", rows: n });
+  return n;
+}
+
+export async function upsertIsraelLaws({ db, rows }: { db: DB; rows: IsraelLawRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(israelLaws).values(batch).onConflictDoUpdate({
+      target: israelLaws.israelLawId,
+      set: {
+        knessetNum: sqlExcluded("knessetNum"), nameHe: sqlExcluded("nameHe"),
+        isBasicLaw: sqlExcluded("isBasicLaw"), isBudgetLaw: sqlExcluded("isBudgetLaw"),
+        isFavoriteLaw: sqlExcluded("isFavoriteLaw"), validityDesc: sqlExcluded("validityDesc"),
+        publicationDate: sqlExcluded("publicationDate"), validityStart: sqlExcluded("validityStart"),
+        validityFinish: sqlExcluded("validityFinish"), sourceDataset: sqlExcluded("sourceDataset"),
+        sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "israel_laws", rows: n });
+  return n;
+}
+
+export async function upsertIsraelLawTopics({ db, rows }: { db: DB; rows: IsraelLawTopicRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(israelLawTopics).values(batch).onConflictDoUpdate({
+      target: [israelLawTopics.israelLawId, israelLawTopics.classificationId],
+      set: {
+        descHe: sqlExcluded("descHe"), sourceDataset: sqlExcluded("sourceDataset"),
+        sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "israel_law_topics", rows: n });
+  return n;
+}
+
+export async function upsertIsraelLawBills({ db, rows }: { db: DB; rows: IsraelLawBillRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(israelLawBills).values(batch).onConflictDoUpdate({
+      target: [israelLawBills.israelLawId, israelLawBills.billId],
+      set: {
+        sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "israel_law_bills", rows: n });
+  return n;
+}
+
+export async function upsertBillSplits({ db, rows }: { db: DB; rows: BillSplitRow[] }): Promise<number> {
+  let n = 0;
+  for (const batch of chunk(rows)) {
+    await db.insert(billSplits).values(batch).onConflictDoUpdate({
+      target: billSplits.splitBillId,
+      set: {
+        mainBillId: sqlExcluded("mainBillId"), nameHe: sqlExcluded("nameHe"),
+        sourceDataset: sqlExcluded("sourceDataset"), sourceUrl: sqlExcluded("sourceUrl"), fetchedAt: sqlExcluded("fetchedAt"),
+      },
+    });
+    n += batch.length;
+  }
+  logger.info("knesset.repo.upsert", { entity: "bill_splits", rows: n });
   return n;
 }
 

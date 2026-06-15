@@ -1,5 +1,6 @@
 import type {
   KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsBill, KnsBillInitiator, KnsDocumentBill, KnsStatus, KnsBillInitiatorExpanded, KnsQuery, KnsCommittee,
+  KnsIsraelLaw, KnsIsraelLawClassificiation, KnsIsraelLawName, KnsBillSplit,
 } from "./odata-types";
 import { normalizeSearchName } from "./search-name";
 import { logger } from "@/app/lib/logger";
@@ -384,6 +385,87 @@ export function normalizeBillSponsors(
     billInitiatorId: r.BillInitiatorID, billId: r.BillID, personId: r.PersonID,
     isInitiator: r.IsInitiator ?? false, ordinal: r.Ordinal ?? null,
     sourceDataset: "KNS_BillInitiator", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+  }));
+}
+
+// --- Enacted laws (KNS_IsraelLaw family) + bill genealogy (KNS_BillSplit) ---
+
+export interface IsraelLawRow {
+  israelLawId: number; knessetNum: number | null; nameHe: string;
+  isBasicLaw: boolean | null; isBudgetLaw: boolean | null; isFavoriteLaw: boolean | null;
+  validityDesc: string | null; publicationDate: Date | null;
+  validityStart: Date | null; validityFinish: Date | null;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+export function normalizeIsraelLaws(raw: KnsIsraelLaw[], prov: Prov): IsraelLawRow[] {
+  return raw.map((l) => ({
+    israelLawId: l.IsraelLawID, knessetNum: l.KnessetNum ?? null, nameHe: l.Name ?? "",
+    isBasicLaw: l.IsBasicLaw ?? null, isBudgetLaw: l.IsBudgetLaw ?? null, isFavoriteLaw: l.IsFavoriteLaw ?? null,
+    validityDesc: l.LawValidityDesc ?? null, publicationDate: parseODataDate(l.PublicationDate),
+    validityStart: parseODataDate(l.ValidityStartDate), validityFinish: parseODataDate(l.ValidityFinishDate),
+    sourceDataset: "KNS_IsraelLaw", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+  }));
+}
+
+export interface IsraelLawTopicRow {
+  israelLawId: number; classificationId: number; descHe: string;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+/** Topic tags; `validLawIds` (the stored K25 laws) drops rows for laws we don't keep. */
+export function normalizeIsraelLawTopics(
+  raw: KnsIsraelLawClassificiation[],
+  prov: Prov,
+  validLawIds?: ReadonlySet<number>,
+): IsraelLawTopicRow[] {
+  return raw
+    .filter((c) => c.ClassificiationID != null && (c.ClassificiationDesc ?? "") !== "")
+    .filter((c) => !validLawIds || validLawIds.has(c.IsraelLawID))
+    .map((c) => ({
+      israelLawId: c.IsraelLawID, classificationId: c.ClassificiationID as number, descHe: c.ClassificiationDesc as string,
+      sourceDataset: "KNS_IsraelLawClassificiation", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+    }));
+}
+
+export interface IsraelLawBillRow {
+  israelLawId: number; billId: number;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+/** Law↔bill link (KNS_IsraelLawName.LawID = BillID). `validLawIds` scopes to
+ *  stored laws; dedupes (israelLawId, billId) since a law can repeat a bill. */
+export function normalizeIsraelLawBills(
+  raw: KnsIsraelLawName[],
+  prov: Prov,
+  validLawIds?: ReadonlySet<number>,
+): IsraelLawBillRow[] {
+  const seen = new Set<string>();
+  const out: IsraelLawBillRow[] = [];
+  for (const n of raw) {
+    if (validLawIds && !validLawIds.has(n.IsraelLawID)) continue;
+    const key = `${n.IsraelLawID}:${n.LawID}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      israelLawId: n.IsraelLawID, billId: n.LawID,
+      sourceDataset: "KNS_IsraelLawName", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
+    });
+  }
+  return out;
+}
+
+export interface BillSplitRow {
+  splitBillId: number; mainBillId: number; nameHe: string | null;
+  sourceDataset: string; sourceUrl: string; fetchedAt: Date;
+}
+/** Split lineage; `validBillIds` keeps only splits whose CHILD is a stored bill. */
+export function normalizeBillSplits(
+  raw: KnsBillSplit[],
+  prov: Prov,
+  validBillIds?: ReadonlySet<number>,
+): BillSplitRow[] {
+  const rows = validBillIds ? raw.filter((s) => validBillIds.has(s.SplitBillID)) : raw;
+  return rows.map((s) => ({
+    splitBillId: s.SplitBillID, mainBillId: s.MainBillID, nameHe: s.Name ?? null,
+    sourceDataset: "KNS_BillSplit", sourceUrl: prov.sourceUrl, fetchedAt: prov.fetchedAt,
   }));
 }
 

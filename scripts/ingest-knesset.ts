@@ -1,23 +1,26 @@
 import { eq } from "drizzle-orm";
 import { assertNonProductionDb } from "@/app/lib/db-guards";
 import { db } from "@/app/lib/db";
-import { bills, politicians } from "@/app/lib/schema";
+import { bills, politicians, israelLaws } from "@/app/lib/schema";
 import { logger } from "@/app/lib/logger";
 import {
   fetchAll, fetchCount, fetchOknessetCsv, PARLIAMENT_BASE, buildODataUrl, CURRENT_KNESSET,
 } from "@/app/lib/knesset/odata";
 import type {
   KnsBill, KnsBillInitiator, KnsBillInitiatorExpanded, KnsCommittee, KnsFaction, KnsPerson, KnsPersonToPosition, KnsPosition, KnsQuery, KnsStatus,
+  KnsIsraelLaw, KnsIsraelLawClassificiation, KnsIsraelLawName, KnsBillSplit,
 } from "@/app/lib/knesset/odata-types";
 import {
   buildPositionLabelMap, normalizeFactions, normalizeK25Members, normalizeFactionStints, applyEnglishNames,
   normalizeBills, normalizeBillSponsors, normalizeBillDocuments, normalizeBillStatuses, splitExpandedInitiators,
   normalizeQueries, normalizeCommittees, normalizeCommitteeMemberships,
+  normalizeIsraelLaws, normalizeIsraelLawTopics, normalizeIsraelLawBills, normalizeBillSplits,
   SENTINEL_FACTION_ID,
 } from "@/app/lib/knesset/normalize";
 import {
   upsertFactions, upsertMembers, upsertBills, upsertBillSponsors, upsertBillDocuments, upsertBillStatuses, upsertQueries,
   upsertCommittees, upsertCommitteeMemberships, upsertFactionStints, upsertActivityCounts,
+  upsertIsraelLaws, upsertIsraelLawTopics, upsertIsraelLawBills, upsertBillSplits,
 } from "@/app/lib/knesset/repo";
 import type { ActivityCountsRow } from "@/app/lib/knesset/repo";
 import { runAgendaCuration } from "@/app/lib/agenda/curate";
@@ -139,6 +142,63 @@ async function ingestQueries(prov: { fetchedAt: Date }) {
   const raw = await fetchAll<KnsQuery>({ entity: "KNS_Query", filter });
   const n = await upsertQueries({ db, rows: normalizeQueries(raw, { sourceUrl, fetchedAt: prov.fetchedAt }) });
   logger.info("knesset.ingest.entity_done", { entity: "queries", fetched: raw.length, upserted: n });
+}
+
+/** The set of stored K25 enacted-law ids — scopes the topic/name fetches. */
+async function loadIsraelLawIds(): Promise<Set<number>> {
+  const rows = await db.select({ israelLawId: israelLaws.israelLawId }).from(israelLaws);
+  return new Set(rows.map((r) => r.israelLawId));
+}
+
+async function ingestIsraelLaws(prov: { fetchedAt: Date }) {
+  const filter = `KnessetNum eq ${KNESSET_NUM}`;
+  const sourceUrl = buildODataUrl({ entity: "KNS_IsraelLaw", filter });
+  const raw = await fetchAll<KnsIsraelLaw>({ entity: "KNS_IsraelLaw", filter });
+  const n = await upsertIsraelLaws({ db, rows: normalizeIsraelLaws(raw, { sourceUrl, fetchedAt: prov.fetchedAt }) });
+  logger.info("knesset.ingest.entity_done", { entity: "israel_laws", fetched: raw.length, upserted: n });
+}
+
+// Topic tags + law↔bill links, scoped to the stored K25 laws (israel_laws must run first).
+// KNS_IsraelLawClassificiation/Name have no KnessetNum — fetch all (small) and drop
+// rows for laws we don't keep (the validBillIds pattern).
+async function ingestIsraelLawTopics(prov: { fetchedAt: Date }) {
+  const validLawIds = await loadIsraelLawIds();
+  if (validLawIds.size === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "israel_law_topics", reason: "israel_laws empty — run israelLaws first" });
+    return;
+  }
+  const sourceUrl = buildODataUrl({ entity: "KNS_IsraelLawClassificiation" });
+  const raw = await fetchAll<KnsIsraelLawClassificiation>({ entity: "KNS_IsraelLawClassificiation" });
+  const rows = normalizeIsraelLawTopics(raw, { sourceUrl, fetchedAt: prov.fetchedAt }, validLawIds);
+  const n = await upsertIsraelLawTopics({ db, rows });
+  logger.info("knesset.ingest.entity_done", { entity: "israel_law_topics", fetched: raw.length, kept: rows.length, upserted: n });
+}
+
+async function ingestIsraelLawBills(prov: { fetchedAt: Date }) {
+  const validLawIds = await loadIsraelLawIds();
+  if (validLawIds.size === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "israel_law_bills", reason: "israel_laws empty — run israelLaws first" });
+    return;
+  }
+  const sourceUrl = buildODataUrl({ entity: "KNS_IsraelLawName" });
+  const raw = await fetchAll<KnsIsraelLawName>({ entity: "KNS_IsraelLawName" });
+  const rows = normalizeIsraelLawBills(raw, { sourceUrl, fetchedAt: prov.fetchedAt }, validLawIds);
+  const n = await upsertIsraelLawBills({ db, rows });
+  logger.info("knesset.ingest.entity_done", { entity: "israel_law_bills", fetched: raw.length, kept: rows.length, upserted: n });
+}
+
+// Split-bill genealogy, scoped to splits whose CHILD is a stored K25 bill (bills first).
+async function ingestBillSplits(prov: { fetchedAt: Date }) {
+  const validBillIds = await loadK25BillIds();
+  if (validBillIds.size === 0) {
+    logger.warn("knesset.ingest.skip", { entity: "bill_splits", reason: "bills table empty — run bills first" });
+    return;
+  }
+  const sourceUrl = buildODataUrl({ entity: "KNS_BillSplit" });
+  const raw = await fetchAll<KnsBillSplit>({ entity: "KNS_BillSplit" });
+  const rows = normalizeBillSplits(raw, { sourceUrl, fetchedAt: prov.fetchedAt }, validBillIds);
+  const n = await upsertBillSplits({ db, rows });
+  logger.info("knesset.ingest.entity_done", { entity: "bill_splits", fetched: raw.length, kept: rows.length, upserted: n });
 }
 
 // Per-MK parliamentary-activity counts (card-critical, cheap). For EVERY politician on
@@ -273,6 +333,10 @@ async function main() {
     bills: () => ingestBills(prov),
     billSponsors: () => ingestBillSponsors(prov),
     lifetimeBills: () => ingestLifetimeBills(prov),
+    israelLaws: () => ingestIsraelLaws(prov),
+    israelLawTopics: () => ingestIsraelLawTopics(prov),
+    israelLawBills: () => ingestIsraelLawBills(prov),
+    billSplits: () => ingestBillSplits(prov),
     agendaCuration: async () => { await runAgendaCuration({ db, fetchedAt: prov.fetchedAt }); },
     agendaResolution: async () => { await resolveAgendaItems({ db }); },
     queries: () => ingestQueries(prov),
@@ -287,12 +351,14 @@ async function main() {
   // Heavy entities (~7387 bills / ~1538 queries + bulk membership CSV) only on --full.
   // agendaCuration/agendaResolution depend on a fresh bills table (statusId) so they
   // ride --full too; both are idempotent and cheap.
-  const heavy = ["bills", "billSponsors", "lifetimeBills", "agendaCuration", "agendaResolution", "queries", "committeeMemberships"];
+  const heavy = ["bills", "billSponsors", "lifetimeBills", "israelLaws", "israelLawTopics", "israelLawBills", "billSplits", "agendaCuration", "agendaResolution", "queries", "committeeMemberships"];
   // Run order keeps dependency order; heavy steps appended when --full is set.
   // Curation after bills (reads statusId); resolution after curation (+ uses any
   // decisive votes the votes pipeline has already landed).
+  // israelLaws after bills (loadK25BillIds for splits); israelLawTopics/Bills after
+  // israelLaws (loadIsraelLawIds); billSplits after bills. All idempotent.
   const order = full
-    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "lifetimeBills", "agendaCuration", "agendaResolution", "queries", "committees", "committeeMemberships"]
+    ? ["factions", "members", "activityCounts", "bills", "billSponsors", "lifetimeBills", "israelLaws", "israelLawTopics", "israelLawBills", "billSplits", "agendaCuration", "agendaResolution", "queries", "committees", "committeeMemberships"]
     : bounded;
 
   // A specific --only=<entity> always runs that one (even a heavy one), bypassing the bound.
