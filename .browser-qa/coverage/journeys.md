@@ -4,6 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [groups-coalition](#groups-coalition) | 2026-06-15 `237a588` | 1 | 5/8 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 2 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
@@ -20,6 +21,28 @@
 | [browse-markets](#browse-markets) | 2026-06-01 `8649d61` | 1 | 3/4 |
 | [place-bet-resolve](#place-bet-resolve) | 2026-06-09 `d738eab+wip` | 2 | 4/4 |
 | [leaderboard-profile](#leaderboard-profile) | 2026-06-01 `38d344e` | 1 | 4/4 |
+
+
+## groups-coalition
+
+**What it is:** A user creates a private קואליציה (prediction club), gives it a name with an emoji, and the coalition's icon/name render consistently across the header switcher, the /g list, the group page and the invite/join page. Members raise group-only הצעות, predict, and see a sandboxed scoreboard.
+
+**Last walked:** 2026-06-15 `237a588`. **Walks:** 1. **Coverage:** 5/8
+
+**Steps:**
+- ✅ /g/new render: single name field, inline 😊 emoji button (no stray emblem box), description, submit
+- ✅ emoji picker: popover preset grid opens, pick inserts into name via component state, code-point counter (emoji=1 char)
+- ✅ create → redirect to /g/[slug]; header shows icon once + name (leading emoji stripped from title text)
+- ✅ icon/name display no-double-emoji: switcher chip (groupLabel), /g list row (groupIcon avatar + groupTextOnly), group header — all show the emoji exactly once
+- ✅ switcher reads "ארצי" (gold) when not inside a group; group path activates the group
+- ❌ /g/join/[code] invite-accept flow (icon+name display path wired via groupIcon/groupTextOnly but not walked)
+- ❌ group motion create → predict → scoreboard (unchanged by 237a588, never walked)
+- ❌ stance sharing toggle + clone-to-group (groupLabel display wired, flow not walked)
+
+**Notable history:**
+- `237a588` (2026-06-15): create-form redesigned to one name field + inline emoji picker; coalition icon derived from the name's leading emoji via shared lib/group-display helpers (groupIcon/groupTextOnly/groupLabel); name/emblem validated by code points. QA walk created+deleted a prod test group (cleanup-qa-group.ts).
+
+**Known gaps:** join/invite flow, motion lifecycle, scoreboard, and stance-sharing/clone not yet walked. Minor UX nit: focus does not return to the name input after picking an emoji from the popover (user must click back in to continue typing).
 
 
 ## knesset-votes-loop
