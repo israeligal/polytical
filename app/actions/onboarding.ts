@@ -77,6 +77,35 @@ export async function setHandleAction({
   return { ok: true };
 }
 
+/** Profile: change the public @handle after onboarding. Unlike setHandleAction
+ *  (used mid-wizard, where completeOnboardingAction later refreshes the cookie),
+ *  this re-issues the session cookie itself so the header avatar + /profile reflect
+ *  the new handle immediately. Setting the cookie also makes Next re-render the
+ *  current page + layouts; revalidatePath + the client's router.refresh() keep it
+ *  belt-and-suspenders. */
+export async function changeHandleAction({
+  handle,
+}: {
+  handle: string;
+}): Promise<ActionResult & { handle?: string }> {
+  const s = await getSession();
+  if (!s?.user) return { ok: false, message: "התחברו" };
+  const limit = checkRateLimit({ key: `handle-change:${s.user.id}`, max: 5, windowMs: 60_000 });
+  if (!limit.allowed) return { ok: false, message: "האטו לרגע" };
+  let normalized: string;
+  try {
+    ({ handle: normalized } = await setHandle({ userId: s.user.id, handle }));
+  } catch (e) {
+    if (e instanceof InvalidHandleError) return { ok: false, message: "כינוי לא תקין — 3–20 תווים בעברית או באנגלית (בלי לערבב): אותיות, ספרות ו-_" };
+    if (e instanceof HandleTakenError) return { ok: false, message: "הכינוי תפוס — בחרו אחר" };
+    throw e;
+  }
+  await refreshSession(); // re-issue the cookie so session.user.handle updates (header + profile)
+  revalidatePath("/profile");
+  revalidatePath("/", "layout"); // header avatar initial
+  return { ok: true, handle: normalized };
+}
+
 /** Picks the arena and clears the onboarding gate. */
 export async function completeOnboardingAction({
   arena,
