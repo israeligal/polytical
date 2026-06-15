@@ -31,3 +31,10 @@ export const createGroupSchema = z.object({
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+
+// The active-coalition switch: a coalition's uuid, or null for ארצי (national).
+export const setActiveCoalitionSchema = z.object({
+  groupId: z.string().uuid().nullable(),
+});
+
+export type SetActiveCoalitionInput = z.infer<typeof setActiveCoalitionSchema>;
