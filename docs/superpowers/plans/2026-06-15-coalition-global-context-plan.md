@@ -155,3 +155,23 @@ Already created: `feat/coalition-global-context`. Per CLAUDE.md, all isolation-s
 2. `/wrap-up` — **not present in this repo**; substitute: `/log-decisions` → write `docs/decisions/coalition-global-context.md`, then refresh the `groups` skill `SKILL.md` (routes/switcher/scope section) + the root `CLAUDE.md` groups bullet via `/evergreen-documentation`.
 3. `/code-review` before any push. Never `--no-verify`.
 4. **No merge** — per the owner's instruction this branch stays a plan/spec/QA artifact until they return.
+
+## 9. Pre-implementation confirmation (2026-06-15) — verification + amendments
+
+Ran a full re-verification before implementation. Outcome: **plan is sound, with 3 corrections below.** Branch was rebased onto current `origin/main` and deps installed.
+
+**Resolved:**
+- **Branch rebased** onto `origin/main` (was 2 behind). The 2 commits are #89 *"never show real name — @handle everywhere"* and #90 *enacted-law badges*. #89 changed `app/lib/groups/repo.ts`, `service.ts`, `schema.ts`, `app/market/[id]/page.tsx`, `group-vote-stances.tsx`. **Consequence:** the kept management surface (roster/scoreboard) MUST render `@handle` only (never `users.name`) per the new AGENTS.md rule — repos already return handle post-#89.
+- **Deps installed** in the worktree (`pnpm install`, exit 0) — typecheck/tests/lint now runnable here.
+- **HARD GATE 1 (`?view=general`) — CLEARED.** Only 2 consumers: `group-switcher.tsx:31` (rewritten anyway) and `proxy.ts:70,74` (retired anyway). Safe to remove.
+
+**Corrections to the plan (apply during impl):**
+- **CORRECTION 1 — do NOT retire `/g/by-id/[id]`.** Audit shows it is load-bearing beyond the proxy: `components/notifications/notification-feed.tsx:48` routes memberless group events (`refGroupId`) through it, and `app/market/[id]/page.tsx:126,212` use it as the motion "back to feed" `feedHref`. **Keep the `/g/by-id/[id]` resolver**; change only its *destination* — instead of redirecting to `/g/[slug]`, it should set the active-coalition context and redirect to `/` (scoped). Step 11 is amended: retire the **`/`→`/g/by-id` proxy redirect** and `?view=general`, but keep the resolver route and repoint the market back-link `feedHref` to "set coalition + go to scoped feed".
+- **CORRECTION 2 — `listUnseenResolvedPredictions` (`app/lib/bets/repo.ts:45`) STAYS national** (do not flip). It's the global "your prediction resolved" deck; group-motion resolutions surface via `group_motion_resolved` notifications, not this deck. Moves from the "flip" list (§5 step 3) to the "stay hardcoded" list (§5 step 4). Net flip set = **6 functions**: `listOpenMarkets`, `listUnpredictedOpenMarkets`, `getMarketOfTheDay`, `getMarketsForPolitician`, `searchMarkets`, `getUserPredictions`. Stay-hardcoded = `listMarketsClosingSoon` (cron), `listManageableMarkets` (admin), `seasons.getSeasonCorrect`, `bets.listUnseenResolvedPredictions`.
+- **Scope-spine exact count:** 11 textual `isNull(markets.groupId)` sites = `bets/repo.ts:45` + `markets/repo.ts:{281,347,348,377,408,428,562,675,712}` + `seasons/repo.ts:76`. (347+348 are the two branches of `listOpenMarkets`'s one logical filter.) Verified line-by-line.
+
+**Still open (non-blocking for starting, but resolve early):**
+- **HARD GATE 2 (cookie API):** verification result recorded in the session; confirm `cookies().set(name, value, { httpOnly, sameSite:"lax", path:"/", maxAge })` against `node_modules/next` before writing the action.
+- Owner decisions (spec Open Questions): season/card copy when scoped; management-surface home.
+
+**Recommended FIRST implementation steps (in order):** (1) branch already rebased ✅; (2) deps installed ✅; (3) `pnpm lint && pnpm typecheck` to capture a green baseline; (4) begin §5 step 2 (`scope.ts`) TDD.
