@@ -3,12 +3,25 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { bills, billSponsors, billDocuments, billStatuses, politicians, knessetVotes } from "@/app/lib/schema";
+import {
+  bills, billSponsors, billDocuments, billStatuses, politicians, knessetVotes,
+  israelLaws, israelLawBills, israelLawTopics, billSplits,
+} from "@/app/lib/schema";
+import { inArray } from "drizzle-orm";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
 export type BillInitiator = { personId: number; nameHe: string; isInitiator: boolean };
 export type BillDocument = { documentBillId: number; format: string | null; groupTypeDesc: string | null; filePath: string };
+/** An enacted law this bill produced (a bill can yield several — budget bills do),
+ *  with its own official topic tags. */
+export type BillEnactedLaw = {
+  israelLawId: number;
+  nameHe: string;
+  validityDesc: string | null;   // בתוקף / פקע
+  publicationDate: Date | null;
+  topics: string[];
+};
 export type BillDetail = {
   billId: number;
   nameHe: string;
@@ -20,6 +33,10 @@ export type BillDetail = {
   initiators: BillInitiator[];
   documents: BillDocument[];
   linkedVote: { voteId: number; titleHe: string | null; voteDate: Date | null } | null;
+  /** Enacted laws this bill became (KNS_IsraelLawName link). Empty for most bills. */
+  enactedLaws: BillEnactedLaw[];
+  /** When this bill is a split child, the parent it split off — else null. */
+  splitParent: { billId: number; nameHe: string } | null;
 };
 
 /** One bill by its stable KNS_Bill.BillID, with human status, ordered initiators
@@ -65,5 +82,41 @@ export async function getBillById({
     .orderBy(desc(knessetVotes.voteDate))
     .limit(1);
 
-  return { ...bill, initiators, documents, linkedVote: linkedVote ?? null };
+  // Enacted laws this bill produced (israel_law_bills link), each with its tags.
+  const lawRows = await db
+    .select({
+      israelLawId: israelLaws.israelLawId, nameHe: israelLaws.nameHe,
+      validityDesc: israelLaws.validityDesc, publicationDate: israelLaws.publicationDate,
+    })
+    .from(israelLawBills)
+    .innerJoin(israelLaws, eq(israelLaws.israelLawId, israelLawBills.israelLawId))
+    .where(eq(israelLawBills.billId, billId))
+    .orderBy(desc(israelLaws.publicationDate));
+  const lawIds = lawRows.map((l) => l.israelLawId);
+  const topicRows = lawIds.length
+    ? await db
+        .select({ israelLawId: israelLawTopics.israelLawId, descHe: israelLawTopics.descHe })
+        .from(israelLawTopics)
+        .where(inArray(israelLawTopics.israelLawId, lawIds))
+    : [];
+  const topicsByLaw = new Map<number, string[]>();
+  for (const t of topicRows) {
+    const list = topicsByLaw.get(t.israelLawId) ?? [];
+    if (!list.includes(t.descHe)) list.push(t.descHe);
+    topicsByLaw.set(t.israelLawId, list);
+  }
+  const enactedLaws: BillEnactedLaw[] = lawRows.map((l) => ({ ...l, topics: topicsByLaw.get(l.israelLawId) ?? [] }));
+
+  // Split lineage: if this bill is a split child, the parent it split off.
+  const [parent] = await db
+    .select({ billId: bills.billId, nameHe: bills.nameHe })
+    .from(billSplits)
+    .innerJoin(bills, eq(bills.billId, billSplits.mainBillId))
+    .where(eq(billSplits.splitBillId, billId))
+    .limit(1);
+
+  return {
+    ...bill, initiators, documents, linkedVote: linkedVote ?? null,
+    enactedLaws, splitParent: parent ?? null,
+  };
 }

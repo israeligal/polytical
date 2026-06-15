@@ -7,7 +7,8 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
-import { agendaItems, agendaStances, billSponsors, billStatuses, bills, politicians } from "@/app/lib/schema";
+import { agendaItems, agendaStances, billSplits, billSponsors, billStatuses, bills, politicians } from "@/app/lib/schema";
+import { alias } from "drizzle-orm/pg-core";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 
@@ -32,6 +33,9 @@ export interface AgendaFeedItem {
   initiators: AgendaInitiator[];
   /** True number of initiators (drives the "+N" overflow chip). */
   initiatorCount: number;
+  /** When the agenda item's bill is a split child, its parent bill — else null.
+   *  Most budget-split agenda items have no initiators but DO have a parent. */
+  splitParent: { billId: number; nameHe: string } | null;
 }
 
 /** The announced (still pre-vote) agenda item for a bill, if any — drives the
@@ -71,7 +75,8 @@ export async function getAgendaFeed({
 
   const billIds = [...new Set(items.map((i) => i.billId).filter((b): b is number => b != null))];
 
-  const [counts, sponsorRows] = await Promise.all([
+  const parentBill = alias(bills, "parent_bill");
+  const [counts, sponsorRows, splitRows] = await Promise.all([
     db
       .select({ agendaItemId: agendaStances.agendaItemId, stance: agendaStances.stance, n: count() })
       .from(agendaStances)
@@ -85,7 +90,16 @@ export async function getAgendaFeed({
           .where(and(inArray(billSponsors.billId, billIds), eq(billSponsors.isInitiator, true)))
           .orderBy(sql`${billSponsors.ordinal} asc nulls last`, asc(politicians.nameHe))
       : Promise.resolve([] as { billId: number; p: AgendaInitiator }[]),
+    billIds.length
+      ? db
+          .select({ splitBillId: billSplits.splitBillId, parentId: parentBill.billId, parentName: parentBill.nameHe })
+          .from(billSplits)
+          .innerJoin(parentBill, eq(parentBill.billId, billSplits.mainBillId))
+          .where(inArray(billSplits.splitBillId, billIds))
+      : Promise.resolve([] as { splitBillId: number; parentId: number; parentName: string }[]),
   ]);
+  const splitParentByBill = new Map<number, { billId: number; nameHe: string }>();
+  for (const s of splitRows) splitParentByBill.set(s.splitBillId, { billId: s.parentId, nameHe: s.parentName });
 
   const byItem = new Map<string, { forCount: number; againstCount: number }>();
   for (const c of counts) {
@@ -112,6 +126,7 @@ export async function getAgendaFeed({
       againstCount: byItem.get(i.id)?.againstCount ?? 0,
       initiators: all.slice(0, MAX_INITIATORS_PER_ITEM),
       initiatorCount: all.length,
+      splitParent: i.billId != null ? (splitParentByBill.get(i.billId) ?? null) : null,
     };
   });
 }

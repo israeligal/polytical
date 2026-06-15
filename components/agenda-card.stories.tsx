@@ -69,6 +69,7 @@ const baseItem: AgendaFeedItem = {
   againstCount: 7,
   initiators,
   initiatorCount: 3,
+  splitParent: null,
 };
 
 export const CommunitySplitShown: Story = {
