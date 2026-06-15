@@ -20,8 +20,8 @@ let marketId: string;
  *  particular market status — they're allowed on any market). */
 async function seed() {
   await h.db.insert(users).values([
-    { id: UID, name: "גל", email: "g@x.co" },
-    { id: UID2, name: "דנה", email: "d@x.co" },
+    { id: UID, name: "גל", handle: "gal_h", email: "g@x.co" },
+    { id: UID2, name: "דנה", handle: "dana_h", email: "d@x.co" },
   ]);
   const [m] = await h.db
     .insert(markets)
@@ -43,14 +43,14 @@ afterEach(async () => {
   await h.close();
 });
 
-test("postComment inserts and the comment appears in getComments with author name", async () => {
+test("postComment inserts and the comment appears in getComments with author handle", async () => {
   const { id } = await postComment({ db: h.db, marketId, userId: UID, body: "  דעה חמה  " });
 
   const list = await getComments({ db: h.db, marketId, viewerId: UID });
   expect(list).toHaveLength(1);
   expect(list[0].id).toBe(id);
   expect(list[0].body).toBe("דעה חמה"); // trimmed
-  expect(list[0].authorName).toBe("גל");
+  expect(list[0].authorHandle).toBe("gal_h");
   expect(list[0].upvotes).toBe(0);
   expect(list[0].mineUpvoted).toBe(false);
 });

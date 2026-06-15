@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { toggleCommentUpvote, hideComment } from "@/app/lib/comments/service";
 import { postGroupAwareComment } from "@/app/lib/groups/discussion";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { EmptyCommentError, CommentTooLongError, NotGroupMemberError } from "@/app/lib/errors";
 import { isForeignKeyViolation } from "@/app/lib/pg-errors";
 
@@ -14,8 +15,10 @@ export async function postCommentAction({ marketId, body }: { marketId: string; 
   if (!limit.allowed) return { ok: false, message: "יותר מדי תגובות — נסו שוב מאוחר יותר" };
   try {
     // Group-aware: on a group motion this gates membership + emits @-mention
-    // notifications (מליאה); on a global market it's a plain comment.
-    await postGroupAwareComment({ marketId, userId: s.user.id, actorName: s.user.name, body });
+    // notifications (מליאה); on a global market it's a plain comment. The actor
+    // is shown by public @-handle, never the real name.
+    const actorName = `@${s.user.handle ?? FALLBACK_HANDLE}`;
+    await postGroupAwareComment({ marketId, userId: s.user.id, actorName, body });
     revalidatePath(`/market/${marketId}`);
     return { ok: true };
   } catch (e) {

@@ -5,6 +5,7 @@ import { formatCount } from "@/lib/format";
 import { db } from "@/app/lib/db";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
 import { getMembership, getGroupMotionPicks } from "@/app/lib/groups/repo";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { listMyGroups } from "@/app/lib/groups/service";
 import { CopyMotionLink } from "@/components/groups/copy-motion-link";
 import { CloneToGroupButton } from "@/components/groups/clone-to-group-button";
@@ -298,7 +299,7 @@ export default async function MarketPage({
                     key={p.userId}
                     className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm"
                   >
-                    <span className="min-w-0 truncate text-foreground">{p.handle ? `@${p.handle}` : p.name}</span>
+                    <span className="min-w-0 truncate text-foreground"><bdi>@{p.handle ?? FALLBACK_HANDLE}</bdi></span>
                     <span className="shrink-0 font-semibold text-primary">{p.outcomeLabelHe}</span>
                   </li>
                 ))}

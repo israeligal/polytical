@@ -5,6 +5,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
 import * as schema from "@/app/lib/schema";
 import { commentVotes, comments, users } from "@/app/lib/schema";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 
 // Comments repository: per-market discussion. NO coin movement — these helpers
 // are pure discussion data. Mirrors the markets repo's two access modes:
@@ -23,12 +24,13 @@ type DB = PgDatabase<
 
 export type CommentRow = typeof comments.$inferSelect;
 
-/** A comment joined to its author name, plus whether the viewer upvoted it. */
+/** A comment joined to its author's public @-handle (never the real name),
+ *  plus whether the viewer upvoted it. */
 export interface CommentView {
   id: string;
   marketId: string;
   userId: string;
-  authorName: string;
+  authorHandle: string;
   body: string;
   upvotes: number;
   hidden: boolean;
@@ -76,7 +78,7 @@ export async function listComments({
       id: comments.id,
       marketId: comments.marketId,
       userId: comments.userId,
-      authorName: users.name,
+      authorHandle: sql<string>`coalesce(${users.handle}, ${FALLBACK_HANDLE})`,
       body: comments.body,
       upvotes: comments.upvotes,
       hidden: comments.hidden,

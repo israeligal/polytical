@@ -77,7 +77,7 @@ export default async function AdminPage() {
                 suggestionId={s.id}
                 questionHe={s.questionHe}
                 categoryHe={categoryLabel(s.category)}
-                proposerName={s.proposerName}
+                proposerHandle={s.proposerHandle}
                 personName={s.personId != null ? nameByPersonId.get(s.personId) ?? null : null}
                 outcomeLabels={
                   s.outcomes?.map((o) =>

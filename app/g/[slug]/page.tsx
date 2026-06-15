@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/empty-state";
 import { GroupNotFoundError, NotGroupMemberError } from "@/app/lib/errors";
 import { GROUP_CONTAINER, GROUP_GRID } from "@/components/skeletons/containers";
 import { groupIcon, groupTextOnly } from "@/lib/group-display";
+import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 
 const STATUS_HE: Record<string, { label: string; tone: "positive" | "neutral" | "negative" }> = {
   open: { label: "פתוחה", tone: "positive" },
@@ -124,7 +125,7 @@ export default async function GroupHomePage({ params }: { params: Promise<{ slug
                   <li key={e.userId} className="flex items-center gap-3 text-sm">
                     <span className="nums w-5 text-center font-bold text-muted-foreground">{e.rank}</span>
                     <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
-                      {e.handle ? `@${e.handle}` : e.name}
+                      <bdi>@{e.handle ?? FALLBACK_HANDLE}</bdi>
                     </span>
                     <span className="nums font-bold text-positive">{e.groupWins}</span>
                     <span className="nums text-xs text-muted-foreground">{e.accuracy}%</span>
@@ -139,7 +140,7 @@ export default async function GroupHomePage({ params }: { params: Promise<{ slug
             <ul className="space-y-2">
               {roster.map((m) => (
                 <li key={m.userId} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="min-w-0 truncate text-foreground">{m.handle ? `@${m.handle}` : m.name}</span>
+                  <span className="min-w-0 truncate text-foreground"><bdi>@{m.handle ?? FALLBACK_HANDLE}</bdi></span>
                   {m.role !== "member" && (
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {m.role === "owner" ? "בעלים" : "מנהל/ת"}

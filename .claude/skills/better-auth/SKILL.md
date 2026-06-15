@@ -48,7 +48,8 @@ import { getSession } from "@/lib/auth"
 import { useSession } from "@/lib/auth-client"
 
 const { data: session, isPending } = useSession()
-// session?.user.id, session?.user.email, session?.user.name
+// session?.user.id, session?.user.email, session?.user.handle
+// NB: use `handle` for any user-facing display — NEVER `user.name` (see "User identity" below)
 ```
 
 ### Sign In
@@ -107,6 +108,24 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000     # Client base URL (public)
 
 4 tables in `app/lib/schema.ts`: `user`, `session`, `account`, `verification`.
 All use `text` primary keys, `timestamp` dates, CASCADE on delete for foreign keys.
+
+## User identity — NEVER display `name`, ALWAYS `handle`
+
+The `user` row carries two identity fields:
+
+| Field | Source | Use |
+|-------|--------|-----|
+| `name` | Google OAuth / sign-up — the **real personal name** | **Never shown in the UI.** Internal only. |
+| `handle` | the public **@-nickname** picked in onboarding | The one and only user-facing identity. |
+
+**Rule: we NEVER surface `users.name` to anyone — every user-facing identity is the public `@handle`.** (profile, header avatar, leaderboard, comments, admin screens, onboarding greeting). This is a hard product rule; a `users.name` in any display path (or a repo `select` that returns `users.name` for rendering) is a bug.
+
+- Render `@{handle}` with bidi isolation — `<bdi>@{handle}</bdi>` — and derive avatar initials from `handle`, never `name`.
+- `handle`, `arena`, `onboardedAt` are Better Auth `additionalFields` in `lib/auth.ts` (so they're on the session `user` server- and client-side). `handle` is nullable.
+- For nullable `handle` (legacy / mid-onboarding rows) coalesce to `FALLBACK_HANDLE` ("משתמש") from `app/lib/onboarding/handle.ts`:
+  - SQL select: `authorHandle: sql<string>\`coalesce(${users.handle}, ${FALLBACK_HANDLE})\``
+  - TS: `user.handle ?? FALLBACK_HANDLE`
+- Repositories `select` `users.handle` (e.g. `app/lib/leaderboard/repo.ts`, `app/lib/comments/repo.ts`, `app/lib/suggestions/repo.ts`) — never `users.name`.
 
 ## Rate Limiting
 

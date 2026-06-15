@@ -14,7 +14,6 @@ export type GroupStance = (typeof userStances.$inferSelect)["stance"]; // "for" 
 /** A revealed stance row inside a consenting group. */
 export interface GroupVoteStance {
   userId: string;
-  name: string;
   handle: string | null;
   stance: GroupStance;
 }
@@ -117,7 +116,7 @@ export async function getGroupVoteStances({
   if (!(await isActiveMember(db, groupId, viewerId))) return [];
   if (!(await hasConsent(db, groupId, viewerId))) return [];
   return db
-    .select({ userId: userStances.userId, name: users.name, handle: users.handle, stance: userStances.stance })
+    .select({ userId: userStances.userId, handle: users.handle, stance: userStances.stance })
     .from(userStances)
     .innerJoin(
       groupStanceConsent,

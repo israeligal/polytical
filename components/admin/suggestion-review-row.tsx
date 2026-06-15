@@ -19,7 +19,7 @@ export function SuggestionReviewRow({
   questionHe,
   outcomeLabels,
   categoryHe,
-  proposerName,
+  proposerHandle,
   personName,
   createdAtIso,
   proposedCloseAtIso,
@@ -28,7 +28,7 @@ export function SuggestionReviewRow({
   suggestionId: string;
   questionHe: string;
   categoryHe: string;
-  proposerName: string;
+  proposerHandle: string;
   personName: string | null;
   /** Proposed multi-outcome labels (politician-linked ones pre-suffixed by the page); null = binary. */
   outcomeLabels: string[] | null;
@@ -109,7 +109,7 @@ export function SuggestionReviewRow({
         </span>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        הציע/ה: {proposerName}
+        הציע/ה: <bdi>@{proposerHandle}</bdi>
         {personName ? <> · קשור ל{personName}</> : null} · {created}
       </p>
       {resolutionSourceNote && (

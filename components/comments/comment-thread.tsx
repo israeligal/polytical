@@ -47,7 +47,7 @@ export async function CommentThread({
               key={c.id}
               marketId={marketId}
               commentId={c.id}
-              authorName={c.authorName}
+              authorHandle={c.authorHandle}
               body={c.body}
               createdAtIso={c.createdAt.toISOString()}
               upvotes={c.upvotes}

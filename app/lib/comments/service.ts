@@ -39,7 +39,7 @@ export async function postComment({
   return repo.insertComment({ db, marketId, userId, body: trimmed });
 }
 
-/** Visible comments on a market, with author name + the viewer's vote state. */
+/** Visible comments on a market, with the author's @-handle + the viewer's vote state. */
 export async function getComments({
   db = defaultDb,
   marketId,

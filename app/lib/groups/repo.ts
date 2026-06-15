@@ -30,7 +30,6 @@ export interface MyGroup {
 /** A roster row: the member's identity + their sandboxed group record. */
 export interface GroupMemberView {
   userId: string;
-  name: string;
   handle: string | null;
   role: GroupRole;
   groupWins: number;
@@ -125,7 +124,6 @@ export async function listActiveMembers({ db = defaultDb, groupId }: { db?: AppD
   return db
     .select({
       userId: groupMembers.userId,
-      name: users.name,
       handle: users.handle,
       role: groupMembers.role,
       groupWins: groupMembers.groupWins,
@@ -373,7 +371,6 @@ export async function findSuccessor({
 export interface GroupScoreEntry {
   rank: number;
   userId: string;
-  name: string;
   handle: string | null;
   groupWins: number;
   groupResolved: number;
@@ -395,7 +392,6 @@ export async function getGroupScoreboard({ db = defaultDb, groupId }: { db?: App
   const rows = await db
     .select({
       userId: groupMembers.userId,
-      name: users.name,
       handle: users.handle,
       groupWins: groupMembers.groupWins,
       groupResolved: groupMembers.groupResolved,
@@ -430,7 +426,6 @@ export async function listGroupMarkets({
 
 export interface GroupPick {
   userId: string;
-  name: string;
   handle: string | null;
   outcomeId: string;
   outcomeLabelHe: string;
@@ -473,7 +468,6 @@ export async function getGroupMotionPicks({
   const picks = await db
     .select({
       userId: bets.userId,
-      name: users.name,
       handle: users.handle,
       outcomeId: bets.outcomeId,
       outcomeLabelHe: outcomes.labelHe,

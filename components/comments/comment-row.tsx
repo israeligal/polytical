@@ -5,7 +5,7 @@ import { upvoteCommentAction, hideCommentAction } from "@/app/actions/comments";
 import { formatDate } from "@/lib/time";
 
 /**
- * A single comment: author initial + name, posted date, body, an upvote pill
+ * A single comment: author initial + @-handle, posted date, body, an upvote pill
  * (filled when the viewer already upvoted), and — for admins only — a small
  * "הסתר" moderation button.
  *
@@ -18,7 +18,7 @@ import { formatDate } from "@/lib/time";
 export function CommentRow({
   marketId,
   commentId,
-  authorName,
+  authorHandle,
   body,
   createdAtIso,
   upvotes,
@@ -27,7 +27,7 @@ export function CommentRow({
 }: {
   marketId: string;
   commentId: string;
-  authorName: string;
+  authorHandle: string;
   body: string;
   createdAtIso: string;
   upvotes: number;
@@ -40,7 +40,7 @@ export function CommentRow({
   const [, startVote] = useTransition();
   const [, startHide] = useTransition();
 
-  const initial = authorName.trim().charAt(0) || "?";
+  const initial = authorHandle.trim().charAt(0).toUpperCase() || "?";
 
   function toggleVote() {
     // Optimistic flip; the action reconciles via revalidatePath. Roll back by
@@ -89,7 +89,7 @@ export function CommentRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-bold text-foreground">{authorName}</span>
+          <span className="font-bold text-foreground"><bdi>@{authorHandle}</bdi></span>
           <span className="text-border">•</span>
           <time dateTime={createdAtIso} className="text-muted-foreground">
             {formatDate(createdAtIso)}
