@@ -150,7 +150,7 @@ export default async function ProfilePage() {
             className="group flex items-center justify-between gap-3 rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary"
           >
             <span>
-              <span className="block font-accent text-sm font-bold text-primary">מי מצביע כמוכם?</span>
+              <span className="block font-accent text-sm font-bold text-primary">ח״כים וסיעות שמצביעים כמוכם</span>
               <span className="mt-1 block text-xs text-muted-foreground">
                 ההתאמה בין העמדות שלכם להצבעות האמיתיות במליאה
               </span>

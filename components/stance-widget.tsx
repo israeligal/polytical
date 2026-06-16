@@ -112,11 +112,11 @@ export function StanceWidget({
       {progress &&
         (remaining! > 0 ? (
           <p className="mt-2 text-xs font-semibold text-primary">
-            עוד <span className="nums">{remaining}</span> עמדות לפתיחת ״מי מצביע כמוכם״
+            עוד <span className="nums">{remaining}</span> עמדות כדי לגלות אילו ח״כים וסיעות מצביעים כמוכם
           </p>
         ) : (
           <Link href="/my-match" className="mt-2 inline-block text-xs font-bold text-primary hover:underline">
-            ההתאמה שלכם מוכנה — מי מצביע כמוכם? ←
+            ההתאמה שלכם מוכנה — אילו ח״כים וסיעות מצביעים כמוכם? ←
           </Link>
         ))}
     </div>
