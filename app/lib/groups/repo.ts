@@ -237,6 +237,28 @@ export async function insertGroup({
   return row;
 }
 
+/** Updates a coalition's name + derived emblem (icon). The owner/admin gate lives
+ *  in the service. */
+export async function updateGroup({
+  tx,
+  db = defaultDb,
+  groupId,
+  nameHe,
+  emblem,
+}: {
+  tx?: Tx;
+  db?: AppDb;
+  groupId: string;
+  nameHe: string;
+  emblem?: string | null;
+}): Promise<void> {
+  const exec = tx ?? db;
+  await exec
+    .update(groups)
+    .set({ nameHe, emblem: emblem ?? null })
+    .where(eq(groups.id, groupId));
+}
+
 /**
  * Adds a member, or reactivates a `left` row (rejoin restores the frozen
  * counters since the row is preserved). Idempotent: an already-active member is

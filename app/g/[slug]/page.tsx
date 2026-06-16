@@ -8,7 +8,7 @@ import { StanceSharingToggle } from "@/components/groups/stance-sharing-toggle";
 import { GroupActionBar } from "@/components/groups/group-action-bar";
 import { GroupNotFoundError, NotGroupMemberError } from "@/app/lib/errors";
 import { GROUP_CONTAINER } from "@/components/skeletons/containers";
-import { groupIcon, groupTextOnly } from "@/lib/group-display";
+import { EditGroupName } from "@/components/groups/edit-group-name";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { Ballot } from "@/components/icons";
 
@@ -42,16 +42,17 @@ export default async function GroupManagePage({ params }: { params: Promise<{ sl
   return (
     <main className={GROUP_CONTAINER}>
       <header className="mb-6">
-        <div className="flex items-center gap-3">
-          <span aria-hidden className="text-3xl leading-none">{groupIcon(group)}</span>
-          <div className="min-w-0">
-            <h1 className="truncate font-display text-3xl text-foreground sm:text-4xl">{groupTextOnly(group)}</h1>
-            <p className="text-sm text-muted-foreground">
-              <span className="nums font-bold text-foreground">{roster.length}</span> חברים ·{" "}
-              {membership.role === "owner" ? "אתם הבעלים" : membership.role === "admin" ? "אתם מנהלים" : "אתם חברים"}
-            </p>
-          </div>
-        </div>
+        <EditGroupName
+          groupId={group.id}
+          slug={group.slug}
+          nameHe={group.nameHe}
+          emblem={group.emblem}
+          canEdit={membership.role === "owner" || membership.role === "admin"}
+        />
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          <span className="nums font-bold text-foreground">{roster.length}</span> חברים ·{" "}
+          {membership.role === "owner" ? "אתם הבעלים" : membership.role === "admin" ? "אתם מנהלים" : "אתם חברים"}
+        </p>
         {group.descriptionHe && <p className="mt-2 text-sm text-muted-foreground">{group.descriptionHe}</p>}
         <div className="mt-4">
           <GroupActionBar groupId={group.id} inviteCode={group.inviteCode} />

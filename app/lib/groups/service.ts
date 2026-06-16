@@ -2,7 +2,8 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 import * as repo from "@/app/lib/groups/repo";
 import type { GroupRow, GroupMemberRow } from "@/app/lib/groups/repo";
-import { createGroupSchema, type CreateGroupInput } from "@/app/lib/groups/schemas";
+import { createGroupSchema, updateGroupSchema, type CreateGroupInput } from "@/app/lib/groups/schemas";
+import { leadingEmoji } from "@/lib/group-display";
 import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
 import { dispatchPush } from "@/app/lib/push/service";
 import { logger } from "@/app/lib/logger";
@@ -74,6 +75,32 @@ export async function createGroup({
     await repo.addOrReactivateMember({ tx, groupId: group.id, userId, role: "owner" });
     await repo.setDefaultGroupIfUnset({ tx, userId, groupId: group.id });
     return group;
+  });
+}
+
+/** Owner/admin edits a coalition's name. The icon is the name's leading emoji,
+ *  so changing the name (and its emoji) changes both at once. */
+export async function updateGroup({
+  db = defaultDb,
+  userId,
+  groupId,
+  nameHe,
+}: {
+  db?: AppDb;
+  userId: string;
+  groupId: string;
+  nameHe: string;
+}): Promise<void> {
+  const parsed = updateGroupSchema.safeParse({ groupId, nameHe });
+  if (!parsed.success) throw new GroupNameError();
+  const membership = await repo.getMembership({ db, groupId: parsed.data.groupId, userId });
+  if (!membership || membership.status !== "active") throw new NotGroupMemberError();
+  if (membership.role !== "owner" && membership.role !== "admin") throw new InsufficientGroupRoleError();
+  await repo.updateGroup({
+    db,
+    groupId: parsed.data.groupId,
+    nameHe: parsed.data.nameHe,
+    emblem: leadingEmoji(parsed.data.nameHe),
   });
 }
 
