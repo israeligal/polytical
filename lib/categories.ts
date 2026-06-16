@@ -7,6 +7,7 @@ export const CATEGORIES: { key: Category; he: string }[] = [
   { key: "legislation", he: "חקיקה" },
   { key: "personnel", he: "מינויים" },
   { key: "scandals", he: "פרשות" },
+  { key: "other", he: "אחר" },
 ];
 
 // Accepts a raw string (DB columns store category as free text) and falls back
