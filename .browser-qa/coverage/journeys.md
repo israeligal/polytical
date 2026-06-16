@@ -5,7 +5,7 @@
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
-| [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 2 | 9/9 |
+| [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
 | [seasons-claim](#seasons-claim) | 2026-06-02 `c36fc23` | 1 | 5/5 |
@@ -54,12 +54,12 @@
 
 **What it is:** A user browses real Knesset roll-calls (/votes), opens a motion to see who voted what, sets their own עמדה, and unlocks "מי מצביע כמוכם" after 5 stances. Admin curates featured motions + agenda + the identity queue.
 
-**Last walked:** 2026-06-11 `worktree-knesset-votes`. **Walks:** 1. **Coverage:** 8/9
+**Last walked:** 2026-06-16 `f631964`. **Walks:** 3. **Coverage:** 8/9
 
 **Steps:**
 - ✅ /votes feed: real data, totals bars, ?before= pagination, freshness line
 - ✅ /vote/[id]: faction-grouped breakdown, chips → politician pages, source link, siblings
-- ✅ stance set → flip → retract (optimistic, disabled-while-pending)
+- ✅ stance set → flip → retract (optimistic, disabled-while-pending); deck pills: cursor:pointer, hover glow (mint/coral), selected נגד→coral glow + בעד→mint glow [f631964]
 - ✅ k-gate: aggregate hidden under 10 stancers
 - ✅ match unlock at 5th scoreable stance → /my-match (partial mode, basis lines, low-confidence)
 - ✅ politician page הצבעות אחרונות columns
@@ -69,6 +69,7 @@
 
 **Notable history:**
 - `worktree-knesset-votes` (2026-06-11): first walk — 2 bugs found+fixed in-pass (raw-sql Date crash in getFeaturedVotes; worst-party tie contradiction on /my-match).
+- `f631964` (2026-06-16, PR #100): deck BinaryPills glow/cursor polish — added cursor-pointer (v4 Preflight dropped btn→pointer), hover:shadow-glow-mint/coral, and shadow-glow-coral on the selected נגד pill (previously no glow). Verified live on prod.
 
 **Known gaps:** panels-mode /my-match (needs 6+ qualified MKs — requires stances on contested votes); withheld-attribution line (queue is empty — data too clean!).
 

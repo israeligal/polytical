@@ -2,6 +2,7 @@
 
 | Date (UTC) | Commit | Surface / Flow | Outcome | Notes |
 |---|---|---|---|---|
+| 2026-06-16 | f631964 | deck vote pills (נגד/בעד BinaryPills) glow+cursor (PR #100, user report) | ✅ | prod /vote/46131: both pills `cursor:pointer` (v4 dropped btn default); בעד hover→shadow-glow-mint live; selected נגד→shadow-glow-coral live (new); 0 console errs; no stance mutation |
 | 2026-06-16 | 2879102 | coalition global-context — full feature walk (localhost:3210 branch, @commenter_qa) | ✅ | switcher click on / STAYS on / + scopes (the bug fix); חזרה לארצי; scope sticky to /markets; /g/[slug] management-only (no motions feed); /g/by-id enters scoped feed; scoped hero=coalition motion; reveal gate; profile scope-note + stays national. 0 console errs. Created test group "QA בדיקת סקופ" + 1 motion. Nit: 0-pred odds bar shows "לא 100%" (pre-existing). Deferred: search(code-verified) + mobile(code-responsive). |
 | 2026-06-15 | 25d3df6 | coalition global-context REDESIGN baseline (prod, read-only) | ✅ | before-shots for feat/coalition-global-context: `/`→redirect `/g/djowNrd8` (proxy landing); side-page = motions feed (RTL-right) + scoreboard/roster/stance aside (RTL-left); `?view=general` shows national feed reused by scoped feed. No prod mutation; viewed existing QA group. 0 console errs |
 | 2026-06-15 | 237a588 | /g/new create-coalition emoji picker (prod) | ✅ | broken empty box gone → 😊 btn inside name field; picker preset grid; pick 🦁→counter 39 (emoji=1 cp); type rest→24, submit enabled |
