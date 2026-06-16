@@ -80,7 +80,7 @@ async function main() {
     } else {
       const handle = row.handle ?? (await generateAvailableHandle({ userId }));
       if (!row.handle) await setHandle({ userId, handle });
-      await completeOnboarding({ userId, arena: CATEGORIES[0].key });
+      await completeOnboarding({ userId, arenas: [CATEGORIES[0].key] });
       console.log(`Onboarded as @${handle} (arena: ${CATEGORIES[0].key}).`);
     }
   }

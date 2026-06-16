@@ -106,20 +106,20 @@ export async function changeHandleAction({
   return { ok: true, handle: normalized };
 }
 
-/** Picks the arena and clears the onboarding gate. */
+/** Picks the focus categories (1–3) and clears the onboarding gate. */
 export async function completeOnboardingAction({
-  arena,
+  arenas,
 }: {
-  arena: string;
+  arenas: string[];
 }): Promise<ActionResult> {
   const s = await getSession();
   if (!s?.user) return { ok: false, message: "התחברו" };
   const limit = checkRateLimit({ key: `onboard:${s.user.id}`, max: 15, windowMs: 60_000 });
   if (!limit.allowed) return { ok: false, message: "האטו לרגע" };
   try {
-    await completeOnboarding({ userId: s.user.id, arena });
+    await completeOnboarding({ userId: s.user.id, arenas });
   } catch (e) {
-    if (e instanceof InvalidArenaError) return { ok: false, message: "בחרו תחום עניין מהרשימה" };
+    if (e instanceof InvalidArenaError) return { ok: false, message: "בחרו 1–3 תחומי עניין מהרשימה" };
     if (e instanceof HandleRequiredError) return { ok: false, message: "בחרו קודם כינוי" };
     if (e instanceof AlreadyOnboardedError) {
       // Already onboarded (terminal) — but THIS caller's cookie may still be

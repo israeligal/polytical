@@ -5,8 +5,8 @@ import * as schema from "@/app/lib/schema";
 import * as repo from "@/app/lib/onboarding/repo";
 import type { OnboardingState } from "@/app/lib/onboarding/repo";
 import { lockUser } from "@/app/lib/users/repo";
-import { CATEGORIES } from "@/lib/categories";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
+import { formatArenas } from "@/app/lib/onboarding/arenas";
 import { generateHandleCandidate } from "@/app/lib/onboarding/handle-generator";
 import { isUniqueViolation } from "@/app/lib/pg-errors";
 import {
@@ -14,13 +14,10 @@ import {
   HandleGenerationError,
   HandleRequiredError,
   HandleTakenError,
-  InvalidArenaError,
   InvalidHandleError,
 } from "@/app/lib/errors";
 
 type DB = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
-
-const ARENA_KEYS = new Set<string>(CATEGORIES.map((c) => c.key));
 
 /** Normalize + validate; throws on a malformed handle (errors over fallbacks). */
 function requireValidHandle(raw: string): string {
@@ -95,18 +92,19 @@ export async function setHandle({
   return { handle: normalized };
 }
 
-/** Clears the onboarding gate: validates arena, requires a handle, stamps
- *  onboardedAt. Terminal — a second call throws AlreadyOnboardedError. */
+/** Clears the onboarding gate: validates the chosen arenas (1..MAX), requires a
+ *  handle, stamps onboardedAt. The focus set is stored comma-joined in the single
+ *  `arena` column. Terminal — a second call throws AlreadyOnboardedError. */
 export async function completeOnboarding({
   db = defaultDb,
   userId,
-  arena,
+  arenas,
 }: {
   db?: DB;
   userId: string;
-  arena: string;
+  arenas: string[];
 }): Promise<{ onboardedAt: Date }> {
-  if (!ARENA_KEYS.has(arena)) throw new InvalidArenaError();
+  const arena = formatArenas(arenas); // validates 1..MAX + known keys; throws InvalidArenaError
   return db.transaction(async (tx) => {
     const u = await lockUser({ tx, userId }); // lock FIRST, then read state under the lock
     if (u.onboardedAt) throw new AlreadyOnboardedError(); // terminal — never re-onboard
