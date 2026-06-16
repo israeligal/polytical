@@ -12,7 +12,8 @@
 import { useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PoliticianCombobox } from "@/components/politician-combobox";
-import { SelectField } from "@/components/select-field";
+import { CategoryChips } from "@/components/category-chips";
+import { DateTimeField } from "@/components/date-time-field";
 import type { PoliticianOption } from "@/lib/types";
 import type { ActionResult } from "@/app/actions/types";
 import { nowLocalInput } from "@/lib/time";
@@ -285,20 +286,14 @@ export function SuggestMarketWizard({
 
                 {step === 2 && (
                   <>
-                    <motion.div variants={fieldItem} className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className={LABEL} htmlFor="wcat">קטגוריה</label>
-                        <SelectField id="wcat" value={category} onChange={(e) => setCategory(e.target.value)} className={FIELD}>
-                          {categories.map((c) => <option key={c.key} value={c.key}>{c.he}</option>)}
-                        </SelectField>
-                      </div>
-                      <div>
-                        <label className={LABEL} htmlFor="wclose">מתי השאלה תוכרע?</label>
-                        <input
-                          id="wclose" type="datetime-local" dir="ltr" required min={minLocal}
-                          value={closeAt} onChange={(e) => setCloseAt(e.target.value)} className={FIELD}
-                        />
-                      </div>
+                    <motion.div variants={fieldItem}>
+                      <span className={LABEL}>קטגוריה</span>
+                      <CategoryChips categories={categories} value={category} onChange={setCategory} />
+                    </motion.div>
+
+                    <motion.div variants={fieldItem}>
+                      <span className={LABEL}>מתי השאלה תוכרע?</span>
+                      <DateTimeField value={closeAt} onChange={setCloseAt} min={minLocal} />
                     </motion.div>
 
                     {!isMulti && (

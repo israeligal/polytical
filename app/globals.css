@@ -111,6 +111,8 @@
  * root layout sets data-theme server-side so there's no flash).
  */
 :root {
+  /* Native form controls (date/time pickers, scrollbars) follow the theme. */
+  color-scheme: light;
   /* Canvas — clean white (surfaces separated by border + soft shadow) */
   --background: #ffffff;
   --bg-sunken: #eef2f8;   /* inputs / wells */
@@ -186,6 +188,7 @@
 
 /* Dark "trading floor" — opt-in via the toggle (data-theme="dark"). */
 [data-theme="dark"] {
+  color-scheme: dark;
   --background: #0b1020;
   --bg-sunken: #080c1a;
   --bg-800: #121831;
