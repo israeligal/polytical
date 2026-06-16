@@ -12,6 +12,21 @@ import { BILL_CONTAINER } from "@/components/skeletons/containers";
 import { EnactedLawPanel } from "@/components/enacted-law-panel";
 import { BillLineage } from "@/components/bill-lineage";
 
+function InitiatorChip({ personId, nameHe, muted = false }: { personId: number; nameHe: string; muted?: boolean }) {
+  return (
+    <li>
+      <Link
+        href={`/politician/${personId}`}
+        className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 ${
+          muted ? "border-border text-muted-foreground" : "border-primary text-primary"
+        }`}
+      >
+        {nameHe}
+      </Link>
+    </li>
+  );
+}
+
 export default async function BillPage({ params }: { params: Promise<{ billId: string }> }) {
   const { billId: raw } = await params;
   const billId = Number(raw);
@@ -34,6 +49,9 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
   if (bill.statusDesc) meta.push({ label: "סטטוס", value: bill.statusDesc });
   if (bill.knessetNum != null) meta.push({ label: "כנסת", value: `ה-${bill.knessetNum}` });
   if (bill.publicationDate) meta.push({ label: "פורסם", value: formatDate(bill.publicationDate) });
+
+  const proposers = bill.initiators.filter((i) => i.isInitiator);
+  const coSigners = bill.initiators.filter((i) => !i.isInitiator);
 
   return (
     <main className={BILL_CONTAINER}>
@@ -69,22 +87,23 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
 
       <EnactedLawPanel laws={bill.enactedLaws} />
 
-      {bill.initiators.length > 0 && (
+      {proposers.length > 0 && (
         <>
           <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">יוזמי ההצעה</h2>
           <ul className="flex flex-wrap gap-2">
-            {bill.initiators.map((i) => (
-              <li key={i.personId}>
-                <Link
-                  href={`/politician/${i.personId}`}
-                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 ${
-                    i.isInitiator ? "border-primary text-primary" : "border-border text-foreground"
-                  }`}
-                >
-                  {i.nameHe}
-                  {i.isInitiator && <span className="text-xs text-muted-foreground">· יוזם</span>}
-                </Link>
-              </li>
+            {proposers.map((i) => (
+              <InitiatorChip key={i.personId} personId={i.personId} nameHe={i.nameHe} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {coSigners.length > 0 && (
+        <>
+          <h2 className="mb-3 mt-8 font-display text-xl font-bold text-foreground">חתומים על ההצעה</h2>
+          <ul className="flex flex-wrap gap-2">
+            {coSigners.map((i) => (
+              <InitiatorChip key={i.personId} personId={i.personId} nameHe={i.nameHe} muted />
             ))}
           </ul>
         </>
@@ -148,7 +167,7 @@ export default async function BillPage({ params }: { params: Promise<{ billId: s
         rel="noopener noreferrer"
         className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
       >
-        בדף ההצעה באתר הכנסת
+        דף ההצעה באתר הכנסת
         <ArrowUpRight className="h-4 w-4" />
       </a>
       <p className="mt-3 text-xs text-muted-foreground">נתונים ממקור רשמי · הכנסת (OData)</p>
