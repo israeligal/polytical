@@ -25,7 +25,7 @@ export function CoalitionScopeBanner({ label, slug }: { label: string; slug: str
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
       <p className="text-sm text-foreground">
-        צופים בתחזיות הקואליציה <span className="font-bold">{label}</span>
+        הזירה של <span className="font-bold">{label}</span> — תנו מנדט, טפסו ללוח
       </p>
       <div className="flex items-center gap-2">
         <Link
