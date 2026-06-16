@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [groups-coalition](#groups-coalition) | 2026-06-15 `237a588` | 1 | 5/8 |
+| [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-11 `worktree-knesset-votes` | 2 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
 | [notifications-push](#notifications-push) | 2026-06-09 `fabb59a` | 1 | 3/5 |
@@ -27,19 +27,23 @@
 
 **What it is:** A user creates a private קואליציה (prediction club), gives it a name with an emoji, and the coalition's icon/name render consistently across the header switcher, the /g list, the group page and the invite/join page. Members raise group-only הצעות, predict, and see a sandboxed scoreboard.
 
-**Last walked:** 2026-06-15 `25d3df6`. **Walks:** 2. **Coverage:** 5/8
+**Last walked:** 2026-06-16 `2879102` (global-context redesign). **Walks:** 3. **Coverage:** 9/11
 
-**Steps:**
-- ✅ /g/new render: single name field, inline 😊 emoji button (no stray emblem box), description, submit
-- ✅ emoji picker: popover preset grid opens, pick inserts into name via component state, code-point counter (emoji=1 char)
-- ✅ create → redirect to /g/[slug]; header shows icon once + name (leading emoji stripped from title text)
-- ✅ icon/name display no-double-emoji: switcher chip (groupLabel), /g list row (groupIcon avatar + groupTextOnly), group header — all show the emoji exactly once
-- ✅ switcher reads "ארצי" (gold) when not inside a group; group path activates the group
-- ❌ /g/join/[code] invite-accept flow (icon+name display path wired via groupIcon/groupTextOnly but not walked)
-- ❌ group motion create → predict → scoreboard (unchanged by 237a588, never walked)
-- ❌ stance sharing toggle + clone-to-group (groupLabel display wired, flow not walked)
+**Steps (global-context model — `feat/coalition-global-context`):**
+- ✅ /g/new render + create → lands on the **management page** /g/[slug]
+- ✅ create-coalition motion (/g/[slug]/new): question + yes/no + datetime close → motion live, reveal gate ("בחרו תשובה...") shown
+- ✅ **switcher click on / STAYS on / and re-scopes the feed** (NO jump to /g/[slug]) — the headline fix
+- ✅ scoped feed: hero = the coalition's motion; CoalitionScopeBanner "צופים בתחזיות... · ניהול · חזרה לארצי"
+- ✅ "חזרה לארצי" (banner) → national feed returns in place, banner gone, chip → ארצי
+- ✅ scope is sticky across nav (/ → /markets both scoped)
+- ✅ /g/[slug] is **management-only**: scoreboard + roster (@handle) + copy-invite + stance toggle — NO motions feed
+- ✅ /g/by-id ("צפו בתחזיות הקואליציה") sets context + lands on scoped / (not the management page)
+- ✅ profile shows CoalitionScopeNote when scoped; profile portfolio stays NATIONAL
+- ❌ /g/join/[code] invite-accept flow (not walked this pass)
+- ❌ stance sharing toggle + clone-to-group (not walked this pass)
 
 **Notable history:**
+- `2879102` (2026-06-16): GLOBAL-CONTEXT redesign walked end-to-end on the branch (localhost:3210, @commenter_qa, test group "QA בדיקת סקופ"). Switcher is now a context-setter (no nav); /g/[slug] slimmed to management; /g/by-id enters the scoped feed; profile scope-note. All green, 0 console errors. Nit: 0-prediction odds bar shows "לא 100%" (pre-existing, not coalition-specific). Confusing "הקואליציה היא הבית שלי" home button flagged for removal.
 - `25d3df6` (2026-06-15): REDESIGN baseline walk (read-only) for `feat/coalition-global-context`. Confirmed today's model on prod: an authenticated member hitting `/` is redirected to `/g/[slug]` (proxy landing); `/g/[slug]` is a 2-col page = motions feed (RTL-right) + scoreboard/roster/stance-sharing aside (RTL-left); `?view=general` escapes to the national feed. Planned redesign makes the switcher a sticky global scope so this feed re-scopes inline and the side page is removed. Spec/plan: `docs/superpowers/{specs,plans}/2026-06-15-coalition-global-context-*`.
 - `237a588` (2026-06-15): create-form redesigned to one name field + inline emoji picker; coalition icon derived from the name's leading emoji via shared lib/group-display helpers (groupIcon/groupTextOnly/groupLabel); name/emblem validated by code points. QA walk created+deleted a prod test group (cleanup-qa-group.ts).
 

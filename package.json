@@ -23,6 +23,7 @@
     "ingest:votes:backfill": "tsx --env-file=.env scripts/ingest-votes.ts --backfill",
     "enrich:vote-items": "tsx --env-file=.env scripts/enrich-vote-items.ts",
     "user:create": "tsx --env-file=.env scripts/create-user.ts",
+    "qa:coalition": "tsx --env-file=.env scripts/seed-qa-coalition.ts",
     "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts",
     "seed:season": "tsx --env-file=.env scripts/seed-season.ts",
     "backfill:market-search": "tsx --env-file=.env scripts/backfill-market-search.ts",
