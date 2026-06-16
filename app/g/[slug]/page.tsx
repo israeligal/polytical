@@ -39,8 +39,6 @@ export default async function GroupManagePage({ params }: { params: Promise<{ sl
     getStanceSharing({ groupId: group.id, userId }),
   ]);
 
-  const isHome = session.user.defaultGroupId === group.id;
-
   return (
     <main className={GROUP_CONTAINER}>
       <header className="mb-6">
@@ -56,7 +54,7 @@ export default async function GroupManagePage({ params }: { params: Promise<{ sl
         </div>
         {group.descriptionHe && <p className="mt-2 text-sm text-muted-foreground">{group.descriptionHe}</p>}
         <div className="mt-4">
-          <GroupActionBar groupId={group.id} inviteCode={group.inviteCode} isHome={isHome} />
+          <GroupActionBar groupId={group.id} inviteCode={group.inviteCode} />
         </div>
       </header>
 

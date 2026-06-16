@@ -4,7 +4,6 @@ import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { createGroup, joinGroup, leaveGroup } from "@/app/lib/groups/service";
 import { createGroupMotion, resolveGroupMotion } from "@/app/lib/groups/motions";
-import { setDefaultGroup, getMembership } from "@/app/lib/groups/repo";
 import { getMarketBundle } from "@/app/lib/markets/repo";
 import {
   GroupNotFoundError,
@@ -115,26 +114,6 @@ export async function leaveGroupAction({ groupId }: { groupId: string }): Promis
   await refreshSession();
   revalidatePath("/", "layout");
   return { ok: true, message: "עזבתם את הקואליציה" };
-}
-
-/** Sets (groupId) or clears (null) the user's home group — the landing toggle.
- *  refreshSession + layout revalidate so the proxy sees it without a stale cookie. */
-export async function setHomeGroupAction({ groupId }: { groupId: string | null }): Promise<ActionResult> {
-  const s = await getSession();
-  if (!s?.user) return { ok: false, message: "התחברו" };
-  const limit = checkRateLimit({ key: `group-home:${s.user.id}`, max: 20, windowMs: 10 * 60 * 1000 });
-  if (!limit.allowed) return { ok: false, message: "האטו לרגע ונסו שוב" };
-  // Only your own active groups can be your home — a forged/foreign id would
-  // otherwise brick the bare-home redirect (proxy → /g/by-id → notFound) or
-  // FK-violate on a non-existent id.
-  if (groupId) {
-    const m = await getMembership({ groupId, userId: s.user.id });
-    if (!m || m.status !== "active") return { ok: false, message: "אינכם חברים בקואליציה הזו" };
-  }
-  await setDefaultGroup({ userId: s.user.id, groupId });
-  await refreshSession();
-  revalidatePath("/", "layout");
-  return { ok: true };
 }
 
 type MotionActionResult = ActionResult & { marketId?: string };

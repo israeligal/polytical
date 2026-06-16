@@ -2,21 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setHomeGroupAction, leaveGroupAction } from "@/app/actions/groups";
+import { leaveGroupAction } from "@/app/actions/groups";
 
 /**
- * Member controls on the group page: share the invite link (any member can),
- * toggle the group as your home landing, and leave. The owner "leaving" hands
- * off / archives server-side (see leaveGroup).
+ * Member controls on the coalition management page: share the invite link (any
+ * member can) and leave. The owner "leaving" hands off / archives server-side
+ * (see leaveGroup). (The old "make this my home" toggle was removed with the
+ * global-context redesign — the active-coalition cookie handles stickiness.)
  */
 export function GroupActionBar({
   groupId,
   inviteCode,
-  isHome,
 }: {
   groupId: string;
   inviteCode: string;
-  isHome: boolean;
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -31,13 +30,6 @@ export function GroupActionBar({
       },
       () => setCopied(false),
     );
-  }
-
-  function toggleHome() {
-    startTransition(async () => {
-      await setHomeGroupAction({ groupId: isHome ? null : groupId });
-      router.refresh();
-    });
   }
 
   function leave() {
@@ -55,14 +47,6 @@ export function GroupActionBar({
         className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary"
       >
         {copied ? "הקישור הועתק ✓" : "🔗 העתיקו קישור הזמנה"}
-      </button>
-      <button
-        type="button"
-        onClick={toggleHome}
-        disabled={pending}
-        className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:border-primary disabled:opacity-60"
-      >
-        {isHome ? "🏠 הקואליציה היא הבית שלי" : "הפכו לבית שלי"}
       </button>
       <button
         type="button"
