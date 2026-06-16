@@ -6,7 +6,8 @@ export type Category =
   | "security"
   | "legislation"
   | "personnel"
-  | "scandals";
+  | "scandals"
+  | "other";
 
 /** Categorical color slot (1–8) — assigned to a party / multi-option outcome from data. */
 export type CatColor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;

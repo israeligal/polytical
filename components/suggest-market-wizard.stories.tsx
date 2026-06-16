@@ -14,6 +14,7 @@ const CATEGORIES = [
   { key: "legislation", he: "חקיקה" },
   { key: "security", he: "ביטחון וחוץ" },
   { key: "economy", he: "כלכלה" },
+  { key: "other", he: "אחר" },
 ];
 
 const POLS: PoliticianOption[] = [

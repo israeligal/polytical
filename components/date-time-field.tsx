@@ -1,23 +1,18 @@
 "use client";
 
-// "When is it decided?" split into a native date field + a native time field.
-// Deliberately native <input type="date"|"time">: on mobile they open the OS
-// wheel/calendar (the best touch date-entry there is) and on desktop they're
-// directly typeable — exactly the "people can just enter it" brief. We only
-// dress them in the form's look and add a Hebrew confirmation line; the pickers
-// themselves stay native so they behave perfectly on every device.
+// "When is it decided?" — quick-pick deadline buttons over a single combined
+// date+time control. The pickers stay native (one <input type="datetime-local">
+// keeps the date and the hour on the SAME control, opens the OS picker on
+// mobile, and stays directly typeable on desktop). The quick-picks are the fun
+// part: tap "שבוע" / "חודש" / "יום הבחירות" to drop the close date in one go.
 //
-// Emits the same `YYYY-MM-DDTHH:mm` local-wall-clock string the old
-// datetime-local produced (so `new Date(value).toISOString()` upstream is
-// unchanged). Fully controlled — date and time are derived straight from
-// `value`. Touching one field auto-completes the other (a new date defaults to
-// an end-of-day deadline; a new time defaults the date to today) so `value` is
-// always either whole or empty, which keeps the wizard's "can advance" gate
-// honest without any local mirror state.
+// Value is the native `YYYY-MM-DDTHH:mm` local-wall-clock string throughout, so
+// `new Date(value).toISOString()` upstream is unchanged. Fully controlled.
 
-import { useId } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Calendar, Clock } from "@/components/icons";
+import { useHydrated } from "@/lib/use-hydrated";
+import { ELECTION_DATE } from "@/lib/election";
 
 export interface DateTimeFieldProps {
   /** `YYYY-MM-DDTHH:mm` or "" */
@@ -29,7 +24,8 @@ export interface DateTimeFieldProps {
 
 const FIELD =
   "w-full rounded-lg border border-border bg-card ps-3 pe-3 py-2.5 text-base text-foreground outline-none transition-colors focus:border-primary";
-const SUBLABEL = "mb-1 flex items-center gap-1.5 text-xs font-bold text-muted-foreground";
+
+const DEFAULT_TIME = "23:59"; // quick-picks land on an end-of-day deadline
 
 const HE_MONTHS = [
   "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
@@ -37,68 +33,149 @@ const HE_MONTHS = [
 ];
 const HE_WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
-// Date math here is pure calendar arithmetic on the *displayed* wall clock — it
-// never crosses into an instant/timezone, so plain local Date is intentional.
-function previewHe(date: string, time: string): string | null {
-  const [y, mo, d] = date.split("-").map(Number);
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// Pure calendar arithmetic on the *displayed* wall clock — never an instant, so
+// a plain local Date is intentional (and matches what datetime-local speaks).
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+function addMonths(base: Date, months: number): Date {
+  const d = new Date(base);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+function displayHe(ymd: string, withYear = false): string {
+  const [y, mo, d] = ymd.split("-").map(Number);
+  return `${d} ב${HE_MONTHS[mo - 1]}${withYear ? ` ${y}` : ""}`;
+}
+function previewHe(ymd: string, time: string): string | null {
+  const [y, mo, d] = ymd.split("-").map(Number);
   if (!y || !mo || !d) return null;
   const weekday = new Date(y, mo - 1, d).getDay();
   return `התחזית תיסגר ביום ${HE_WEEKDAYS[weekday]}, ${d} ב${HE_MONTHS[mo - 1]} ${y} בשעה ${time}`;
 }
 
-const DEFAULT_TIME = "23:59"; // a new date defaults to an end-of-day deadline
+interface QuickPick {
+  key: string;
+  label: string;
+  date: string; // YYYY-MM-DD
+  display: string;
+  recommended?: boolean;
+}
 
 export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
   const reduce = useReducedMotion();
-  const ids = useId();
-  const date = value.slice(0, 10);
-  const time = value.slice(11, 16);
-  const minDate = min?.slice(0, 10);
-  const minTime = min?.slice(11, 16);
+  const hydrated = useHydrated();
 
-  function onDateChange(d: string) {
-    onChange(d ? `${d}T${time || DEFAULT_TIME}` : "");
-  }
-  function onTimeChange(t: string) {
-    const d = date || minDate;
-    onChange(t && d ? `${d}T${t}` : "");
+  // now-relative dates are client-only (the host tz isn't the user's on SSR).
+  const picks = useMemo<QuickPick[]>(() => {
+    if (!hydrated) return [];
+    const now = new Date();
+    const week = toYMD(addDays(now, 7));
+    const month = toYMD(addMonths(now, 1));
+    const list: QuickPick[] = [
+      { key: "week", label: "עוד שבוע", date: week, display: displayHe(week) },
+      { key: "month", label: "עוד חודש", date: month, display: displayHe(month), recommended: true },
+    ];
+    if (ELECTION_DATE) {
+      list.push({ key: "election", label: "יום הבחירות", date: ELECTION_DATE, display: displayHe(ELECTION_DATE, true) });
+    }
+    return list;
+  }, [hydrated]);
+
+  const selectedDate = value.slice(0, 10);
+  const selectedTime = value.slice(11, 16);
+  const preview = selectedDate && selectedTime ? previewHe(selectedDate, selectedTime) : null;
+
+  function choose(ymd: string) {
+    onChange(`${ymd}T${selectedTime || DEFAULT_TIME}`);
   }
 
-  const preview = date && time ? previewHe(date, time) : null;
+  const rowVariants = {
+    hidden: {},
+    show: { transition: reduce ? {} : { staggerChildren: 0.06 } },
+  };
+  const itemVariants = {
+    hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 8 },
+    show: { opacity: 1, y: 0 },
+  };
+  const spring = reduce ? { duration: 0 } : { type: "spring" as const, stiffness: 480, damping: 38 };
 
   return (
-    <div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className={SUBLABEL} htmlFor={`${ids}-date`}>
-            <Calendar className="h-3.5 w-3.5" /> תאריך
-          </label>
-          <input
-            id={`${ids}-date`}
-            type="date"
-            dir="ltr"
-            required
-            min={minDate}
-            value={date}
-            onChange={(e) => onDateChange(e.target.value)}
-            className={`${FIELD} text-start`}
-          />
-        </div>
-        <div>
-          <label className={SUBLABEL} htmlFor={`${ids}-time`}>
-            <Clock className="h-3.5 w-3.5" /> שעה
-          </label>
-          <input
-            id={`${ids}-time`}
-            type="time"
-            dir="ltr"
-            required
-            min={date && minDate && date === minDate ? minTime : undefined}
-            value={time}
-            onChange={(e) => onTimeChange(e.target.value)}
-            className={`${FIELD} text-start`}
-          />
-        </div>
+    <div className="space-y-3">
+      {picks.length > 0 && (
+        <motion.div
+          variants={rowVariants}
+          initial="hidden"
+          animate="show"
+          className={`grid gap-2 ${picks.length >= 3 ? "grid-cols-3" : "grid-cols-2"}`}
+          role="group"
+          aria-label="בחירה מהירה של מועד"
+        >
+          {picks.map((p) => {
+            const active = selectedDate === p.date;
+            return (
+              <motion.button
+                key={p.key}
+                type="button"
+                variants={itemVariants}
+                onClick={() => choose(p.date)}
+                aria-pressed={active}
+                whileHover={reduce ? undefined : { y: -2 }}
+                whileTap={reduce ? undefined : { scale: 0.96 }}
+                className={`relative isolate flex flex-col items-center gap-0.5 rounded-xl border px-2 py-3 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                  active
+                    ? "border-primary text-primary-foreground"
+                    : `border-border text-foreground hover:border-primary/60 ${p.recommended ? "ring-1 ring-primary/40" : ""}`
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="quick-pick-active"
+                    aria-hidden="true"
+                    className="absolute inset-0 -z-10 rounded-xl bg-primary"
+                    transition={spring}
+                  />
+                )}
+                {p.recommended && (
+                  <span
+                    className={`absolute -top-2 end-2 rounded-full px-1.5 py-px text-[10px] font-bold ${
+                      active ? "bg-card text-primary" : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    מומלץ
+                  </span>
+                )}
+                <span className="text-sm font-bold">{p.label}</span>
+                <span className={`nums text-xs ${active ? "text-primary-foreground/85" : "text-muted-foreground"}`}>
+                  {p.display}
+                </span>
+              </motion.button>
+            );
+          })}
+        </motion.div>
+      )}
+
+      <div>
+        <label className="mb-1 block text-xs font-bold text-muted-foreground" htmlFor="wclose">
+          או בחרו תאריך ושעה מדויקים
+        </label>
+        <input
+          id="wclose"
+          type="datetime-local"
+          dir="ltr"
+          required
+          min={min}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${FIELD} text-start`}
+        />
       </div>
 
       <AnimatePresence mode="wait">
@@ -110,7 +187,7 @@ export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="mt-2 text-xs font-semibold text-primary"
+            className="text-xs font-semibold text-primary"
           >
             {preview}
           </motion.p>

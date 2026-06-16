@@ -15,6 +15,7 @@ const CATEGORIES = [
   { key: "legislation", he: "חקיקה" },
   { key: "personnel", he: "מינויים" },
   { key: "scandals", he: "פרשות" },
+  { key: "other", he: "אחר" },
 ];
 
 function Demo({ initial }: { initial: string }) {
