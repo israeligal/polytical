@@ -14,6 +14,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PoliticianCombobox } from "@/components/politician-combobox";
 import { CategoryChips } from "@/components/category-chips";
 import { DateTimeField } from "@/components/date-time-field";
+import { TextField, type InputVariant } from "@/components/text-field";
 import type { PoliticianOption } from "@/lib/types";
 import type { ActionResult } from "@/app/actions/types";
 import { nowLocalInput } from "@/lib/time";
@@ -25,8 +26,6 @@ const MAX_OUTCOME_LABEL_LEN = 40;
 const MIN_OUTCOMES = 2;
 const MAX_OUTCOMES = 8;
 
-const FIELD =
-  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 const LABEL = "mb-1 block text-sm font-bold text-foreground";
 
 interface OutcomeDraft {
@@ -38,6 +37,10 @@ interface OutcomeDraft {
 export interface SuggestMarketWizardProps {
   categories: { key: string; he: string }[];
   defaultPolitician?: PoliticianOption | null;
+  /** Input chrome for the secondary text fields (answers, source). */
+  inputVariant?: InputVariant;
+  /** Input chrome for the hero question (defaults to inputVariant). */
+  heroVariant?: InputVariant;
   /** Server action (or a story noop) — searches politicians for the comboboxes. */
   searchPoliticians: (args: { q: string }) => Promise<PoliticianOption[]>;
   /** Server action (or a story noop) — submits the proposal. */
@@ -60,10 +63,14 @@ const STEPS = [
 export function SuggestMarketWizard({
   categories,
   defaultPolitician,
+  inputVariant = "default",
+  heroVariant,
   searchPoliticians,
   onSubmit,
 }: SuggestMarketWizardProps) {
   const reduce = useReducedMotion();
+  const fieldV = inputVariant;
+  const heroV = heroVariant ?? inputVariant;
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1); // 1 = forward, -1 = back (drives slide direction)
 
@@ -185,12 +192,14 @@ export function SuggestMarketWizard({
                 {step === 0 && (
                   <motion.div variants={fieldItem}>
                     <label className={LABEL} htmlFor="wq">שאלת התחזית</label>
-                    <input
+                    <TextField
                       id="wq"
                       autoFocus
+                      variant={heroV}
                       value={question}
-                      onChange={(e) => setQuestion(e.target.value.slice(0, MAX_SUGGESTION_LEN))}
-                      className={`${FIELD} text-base`}
+                      onChange={setQuestion}
+                      maxLength={MAX_SUGGESTION_LEN}
+                      ariaLabel="שאלת התחזית"
                       placeholder="קצר וחד: ״מי יוביל את הליכוד בבחירות הבאות?״"
                     />
                     <p className="mt-1.5 text-start text-xs text-muted-foreground">
@@ -237,12 +246,15 @@ export function SuggestMarketWizard({
                             <div key={i} className="flex items-start gap-2">
                               <span className="nums mt-2.5 w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{i + 1}</span>
                               <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                                <input
+                                <TextField
+                                  variant={fieldV}
                                   value={o.labelHe}
-                                  onChange={(e) => setOutcomeLabel(i, e.target.value.slice(0, MAX_OUTCOME_LABEL_LEN))}
-                                  className={`${FIELD} min-w-40 flex-1`}
+                                  onChange={(v) => setOutcomeLabel(i, v)}
+                                  maxLength={MAX_OUTCOME_LABEL_LEN}
+                                  withIcon={false}
+                                  className="min-w-40 flex-1"
                                   placeholder="תשובה (או בחרו פוליטיקאי ←)"
-                                  aria-label={`תשובה ${i + 1}`}
+                                  ariaLabel={`תשובה ${i + 1}`}
                                 />
                                 <div className="min-w-44 flex-1 sm:max-w-56">
                                   <PoliticianCombobox
@@ -311,10 +323,13 @@ export function SuggestMarketWizard({
 
                     <motion.div variants={fieldItem}>
                       <label className={LABEL} htmlFor="wsrc">מקור הכרעה (לא חובה)</label>
-                      <input
-                        id="wsrc" value={source}
-                        onChange={(e) => setSource(e.target.value.slice(0, MAX_SOURCE_NOTE_LEN))}
-                        className={FIELD}
+                      <TextField
+                        id="wsrc"
+                        variant={fieldV}
+                        value={source}
+                        onChange={setSource}
+                        maxLength={MAX_SOURCE_NOTE_LEN}
+                        ariaLabel="מקור הכרעה"
                         placeholder="למשל: אתר הכנסת, פרסום ברשומות, הודעה רשמית…"
                       />
                     </motion.div>
