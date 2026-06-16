@@ -38,14 +38,14 @@ function toneFromIdOrIndex(id: string, index: number): OptionTone {
 // which can be imperceptible on the dark card surface.  The /15 alpha of the full
 // token gives a clearly distinct tint without relying on the -soft variable.
 const pillIdle: Record<OptionTone, string> = {
-  positive: "border-positive/35 bg-positive/15 text-positive hover:border-positive/70",
-  negative: "border-negative/35 bg-negative/15 text-negative hover:border-negative/70",
-  neutral: "border-border bg-sunken text-foreground hover:border-primary",
+  positive: "border-positive/35 bg-positive/15 text-positive hover:border-positive hover:shadow-glow-mint",
+  negative: "border-negative/35 bg-negative/15 text-negative hover:border-negative hover:shadow-glow-coral",
+  neutral: "border-border bg-sunken text-foreground hover:border-primary hover:shadow-glow-mint",
 };
 
 const pillActive: Record<OptionTone, string> = {
   positive: "border-positive bg-positive text-positive-foreground shadow-glow-mint",
-  negative: "border-negative bg-negative text-negative-foreground",
+  negative: "border-negative bg-negative text-negative-foreground shadow-glow-coral",
   neutral: "border-primary bg-primary text-primary-foreground shadow-glow-mint",
 };
 
@@ -74,8 +74,8 @@ export function BinaryPills({ options, answerId, pending, pendingId, onAnswer }:
             disabled={pending}
             aria-pressed={isActive}
             className={[
-              "h-[52px] flex-1 rounded-[14px] border-[1.5px] px-3 text-base font-black transition-all duration-150",
-              "active:scale-[0.98] disabled:opacity-60",
+              "h-[52px] flex-1 cursor-pointer rounded-[14px] border-[1.5px] px-3 text-base font-black transition-all duration-150",
+              "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60",
               isActive ? pillActive[tone] : pillIdle[tone],
             ].join(" ")}
           >
