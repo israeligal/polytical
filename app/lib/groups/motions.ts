@@ -38,6 +38,9 @@ const VALID_CATEGORIES = new Set<string>(CATEGORIES.map((c) => c.key));
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Per-(user, group) motions/day (DB-authoritative). */
 export const MAX_GROUP_MOTIONS_PER_DAY = 10;
+/** Starter forecasts: how many latest national forecasts a new coalition clones. */
+export const STARTER_TOP_N = 10;
+export type StarterCount = "top10" | "all";
 
 const BINARY_OUTCOMES = [
   { labelHe: "כן", ordinal: 0 },
@@ -139,6 +142,57 @@ export async function createGroupMotion({
     logger.error("push.group_motion_posted_dispatch_failed", { groupId, err: String(e) });
   }
   return result;
+}
+
+/**
+ * Seed a freshly-created coalition with clones of the latest OPEN national
+ * forecasts, so its feed isn't empty on day one. SYSTEM action (not a member
+ * filing motions): bypasses the per-day motion cap AND the per-motion "new
+ * motion" pings (the owner is the only member yet). Copies only the
+ * question/outcomes/featured-MKs — never bets or comments; the coalition
+ * predicts fresh. Each clone is its own market tx (createMarket with `db`, no
+ * shared tx), so one bad source skips + logs rather than failing group create.
+ */
+export async function seedGroupFromNational({
+  db = defaultDb,
+  groupId,
+  ownerId,
+  count,
+}: {
+  db?: AppDb;
+  groupId: string;
+  ownerId: string;
+  count: StarterCount;
+}): Promise<{ seeded: number }> {
+  const open = await marketsRepo.listOpenMarkets({ db, groupScope: null }); // national, newest-first
+  const sources = count === "all" ? open : open.slice(0, STARTER_TOP_N);
+  if (sources.length === 0) return { seeded: 0 };
+
+  const bundles = await marketsRepo.getMarketBundles({ db, marketIds: sources.map((m) => m.id) });
+  let seeded = 0;
+  for (const b of bundles) {
+    try {
+      const isMulti = b.market.type === "multi";
+      const { rows, multi } = buildOutcomeRows(
+        isMulti ? b.outcomes.map((o) => ({ labelHe: o.labelHe, personId: o.personId ?? undefined })) : null,
+      );
+      await marketsRepo.createMarket({
+        db,
+        groupId,
+        questionHe: b.market.questionHe,
+        category: b.market.category,
+        type: multi ? "multi" : "binary",
+        closeAt: b.market.closeAt,
+        createdBy: ownerId,
+        outcomes: rows,
+        personIds: b.personIds,
+      });
+      seeded++;
+    } catch (e) {
+      logger.error("groups.seed_motion_failed", { groupId, sourceMarketId: b.market.id, err: String(e) });
+    }
+  }
+  return { seeded };
 }
 
 /**

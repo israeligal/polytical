@@ -7,7 +7,7 @@ vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 
 import { users, markets, outcomes, bets, cardProgress, marketPoliticians } from "@/app/lib/schema";
 import { createGroup, joinGroup, leaveGroup } from "./service";
-import { createGroupMotion, resolveGroupMotion } from "./motions";
+import { createGroupMotion, resolveGroupMotion, seedGroupFromNational } from "./motions";
 import { getGroupScoreboard, getGroupMotionPicks, listGroupMarkets, getMembership } from "./repo";
 import { makePrediction, resolveMarket } from "@/app/lib/markets/service";
 import {
@@ -138,6 +138,35 @@ test("coalition scope: groupScope re-scopes the display reads to ONLY that coali
   await makePrediction({ db: h.db, userId: "owner", marketId: groupMid, outcomeId: grpYes });
   expect((await getUserPredictions({ db: h.db, userId: "owner", groupScope: null })).map((p) => p.marketId)).toEqual([globalId]);
   expect((await getUserPredictions({ db: h.db, userId: "owner", groupScope: g.id })).map((p) => p.marketId)).toEqual([groupMid]);
+});
+
+test("seedGroupFromNational top10: clones the 10 latest national forecasts; national untouched", async () => {
+  await seedUsers(["owner"]);
+  for (let i = 0; i < 12; i++) await seedGlobalMarket(`גלובלית מספר ${i}`);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+
+  const { seeded } = await seedGroupFromNational({ db: h.db, groupId: g.id, ownerId: "owner", count: "top10" });
+
+  expect(seeded).toBe(10);
+  expect(await listGroupMarkets({ db: h.db, groupId: g.id })).toHaveLength(10); // coalition feed populated
+  expect(await listOpenMarkets({ db: h.db, groupScope: null })).toHaveLength(12); // national untouched
+  expect(await listOpenMarkets({ db: h.db, groupScope: g.id })).toHaveLength(10); // clones are group-scoped
+});
+
+test("seedGroupFromNational all: clones every open national forecast", async () => {
+  await seedUsers(["owner"]);
+  for (let i = 0; i < 3; i++) await seedGlobalMarket(`גלובלית ${i}`);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  const { seeded } = await seedGroupFromNational({ db: h.db, groupId: g.id, ownerId: "owner", count: "all" });
+  expect(seeded).toBe(3);
+});
+
+test("seedGroupFromNational with no open national forecasts seeds nothing", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  const { seeded } = await seedGroupFromNational({ db: h.db, groupId: g.id, ownerId: "owner", count: "top10" });
+  expect(seeded).toBe(0);
+  expect(await listGroupMarkets({ db: h.db, groupId: g.id })).toHaveLength(0);
 });
 
 test("makePrediction: non-members are rejected on a group motion", async () => {

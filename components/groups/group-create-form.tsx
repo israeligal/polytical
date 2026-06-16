@@ -30,6 +30,8 @@ export function GroupCreateForm() {
   const router = useRouter();
   const [nameHe, setNameHe] = useState("");
   const [descriptionHe, setDescriptionHe] = useState("");
+  const [seedForecasts, setSeedForecasts] = useState(true);
+  const [seedCount, setSeedCount] = useState<"top10" | "all">("top10");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -83,6 +85,8 @@ export function GroupCreateForm() {
           descriptionHe: descriptionHe.trim() || null,
           // The group's icon is the leading emoji of the name (if any).
           emblem: leadingEmoji(trimmed),
+          seedForecasts,
+          seedCount,
         });
         if (res.ok && res.slug) {
           router.push(`/g/${res.slug}`);
@@ -163,6 +167,49 @@ export function GroupCreateForm() {
           className={FIELD}
           placeholder="על מה הקואליציה הזו?"
         />
+      </div>
+
+      {/* Starter forecasts — on by default so the new coalition isn't an empty
+          room; clones the latest national forecasts in. */}
+      <div className="rounded-lg border border-border bg-muted p-3">
+        <label className="flex items-start gap-2.5 text-sm font-semibold text-foreground">
+          <input
+            type="checkbox"
+            checked={seedForecasts}
+            onChange={(e) => setSeedForecasts(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span>
+            התחילו עם התחזיות הלאומיות האחרונות
+            <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              כדי שהקואליציה לא תתחיל ריקה — אפשר להכריע או למחוק בהמשך.
+            </span>
+          </span>
+        </label>
+        {seedForecasts && (
+          <div className="mt-3 flex gap-2 ps-6">
+            {(
+              [
+                ["top10", "10 האחרונות"],
+                ["all", "כל הפתוחות"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSeedCount(value)}
+                aria-pressed={seedCount === value}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+                  seedCount === value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-muted-foreground ring-1 ring-border hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
