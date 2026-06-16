@@ -32,6 +32,14 @@ export const createGroupSchema = z.object({
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 
+// Editing a coalition's name (the icon is the name's leading emoji). Owner/admin
+// only — enforced in the service.
+export const updateGroupSchema = createGroupSchema
+  .pick({ nameHe: true })
+  .extend({ groupId: z.string().uuid() });
+
+export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
+
 // The active-coalition switch: a coalition's uuid, or null for ארצי (national).
 export const setActiveCoalitionSchema = z.object({
   groupId: z.string().uuid().nullable(),
