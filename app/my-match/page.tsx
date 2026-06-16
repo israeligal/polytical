@@ -8,7 +8,7 @@ import { track } from "@/app/lib/track";
 import { MY_MATCH_CONTAINER } from "@/components/skeletons/containers";
 
 export const metadata = {
-  title: "מי מצביע כמוכם? — פוליטיקל",
+  title: "ח״כים וסיעות שמצביעים כמוכם — פוליטיקל",
   description: "ההתאמה בין העמדות שלכם להצבעות האמיתיות של חברי הכנסת.",
 };
 
@@ -46,7 +46,7 @@ export default async function MyMatchPage() {
   return (
     <main className={MY_MATCH_CONTAINER}>
       <p className="text-sm font-bold text-primary">העמדות שלכם מול המליאה</p>
-      <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">מי מצביע כמוכם?</h1>
+      <h1 className="font-display text-3xl font-black text-foreground sm:text-4xl">ח״כים וסיעות שמצביעים כמוכם</h1>
       <p className="mt-2 mb-8 text-muted-foreground">
         ההתאמה מחושבת מהשוואת העמדות שלכם להצבעות האמיתיות של חברי הכנסת — רק על ההצבעות המכריעות.
       </p>

@@ -10,7 +10,7 @@ import { signIn } from "@/lib/auth-client";
 // Contextual "why am I here" notes per gated destination (matched by prefix).
 const CALLBACK_NOTES: { prefix: string; note: string }[] = [
   { prefix: "/suggest", note: "התחברו כדי להגיש הצעה לסדר משלכם — ההצעה תישלח לאישור ותיפתח לכל הקהילה" },
-  { prefix: "/vote", note: "התחברו כדי לקבוע עמדה על הצבעות אמיתיות במליאה — ולגלות מי מצביע כמוכם" },
+  { prefix: "/vote", note: "התחברו כדי לקבוע עמדה על הצבעות אמיתיות במליאה — ולגלות אילו ח״כים וסיעות מצביעים כמוכם" },
   { prefix: "/my-match", note: "התחברו כדי לראות איזה חברי כנסת מצביעים הכי קרוב לעמדות שלכם" },
 ];
 
