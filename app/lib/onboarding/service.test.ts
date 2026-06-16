@@ -71,21 +71,29 @@ test("checkHandleAvailable flags malformed handles as invalid", async () => {
 });
 
 test("completeOnboarding requires a handle first", async () => {
-  await expect(completeOnboarding({ db: h.db, userId: "u1", arena: "coalition" })).rejects.toBeInstanceOf(
+  await expect(completeOnboarding({ db: h.db, userId: "u1", arenas: ["coalition"] })).rejects.toBeInstanceOf(
     HandleRequiredError,
   );
 });
 
-test("completeOnboarding rejects an arena outside CATEGORIES", async () => {
+test("completeOnboarding rejects an unknown category", async () => {
   await setHandle({ db: h.db, userId: "u1", handle: "gal" });
-  await expect(completeOnboarding({ db: h.db, userId: "u1", arena: "weather" })).rejects.toBeInstanceOf(
+  await expect(completeOnboarding({ db: h.db, userId: "u1", arenas: ["weather"] })).rejects.toBeInstanceOf(
     InvalidArenaError,
   );
 });
 
-test("completeOnboarding sets arena + onboardedAt and is terminal", async () => {
+test("completeOnboarding rejects an empty selection and more than the cap", async () => {
   await setHandle({ db: h.db, userId: "u1", handle: "gal" });
-  const { onboardedAt } = await completeOnboarding({ db: h.db, userId: "u1", arena: "security" });
+  await expect(completeOnboarding({ db: h.db, userId: "u1", arenas: [] })).rejects.toBeInstanceOf(InvalidArenaError);
+  await expect(
+    completeOnboarding({ db: h.db, userId: "u1", arenas: ["elections", "coalition", "security", "legislation"] }),
+  ).rejects.toBeInstanceOf(InvalidArenaError);
+});
+
+test("completeOnboarding stores a single category + onboardedAt and is terminal", async () => {
+  await setHandle({ db: h.db, userId: "u1", handle: "gal" });
+  const { onboardedAt } = await completeOnboarding({ db: h.db, userId: "u1", arenas: ["security"] });
   expect(onboardedAt).toBeInstanceOf(Date);
 
   const state = await readOnboardingState({ db: h.db, userId: "u1" });
@@ -93,9 +101,16 @@ test("completeOnboarding sets arena + onboardedAt and is terminal", async () => 
   expect(state?.onboardedAt).not.toBeNull();
 
   // Second call is rejected — never re-onboard.
-  await expect(completeOnboarding({ db: h.db, userId: "u1", arena: "elections" })).rejects.toBeInstanceOf(
+  await expect(completeOnboarding({ db: h.db, userId: "u1", arenas: ["elections"] })).rejects.toBeInstanceOf(
     AlreadyOnboardedError,
   );
+});
+
+test("completeOnboarding stores multiple categories comma-joined", async () => {
+  await setHandle({ db: h.db, userId: "u2", handle: "dana" });
+  await completeOnboarding({ db: h.db, userId: "u2", arenas: ["elections", "security", "coalition"] });
+  const state = await readOnboardingState({ db: h.db, userId: "u2" });
+  expect(state?.arena).toBe("elections,security,coalition");
 });
 
 test("generateAvailableHandle returns a valid, unclaimed handle", async () => {

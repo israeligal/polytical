@@ -1,8 +1,9 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import type { Category } from "@/lib/types";
 import { HANDLE_RE, normalizeHandle } from "@/app/lib/onboarding/handle";
+import { MAX_ARENAS } from "@/app/lib/onboarding/arenas";
 import {
   setHandleAction,
   checkHandleAction,
@@ -40,8 +41,16 @@ export function OnboardingWizard({
   // that lost the race is dropped instead of clobbering fresher state.
   const availSeq = useRef(0);
 
-  // Step 2 — arena
-  const [arena, setArena] = useState<string | null>(null);
+  // Step 2 — focus categories (1..MAX_ARENAS). Each pick lights its own color.
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggleArena = (key: string) =>
+    setSelected((prev) =>
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : prev.length < MAX_ARENAS
+          ? [...prev, key]
+          : prev, // at cap — ignore extra picks (deselect one first)
+    );
 
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -104,10 +113,10 @@ export function OnboardingWizard({
   }
 
   function finish() {
-    if (!arena) return;
+    if (selected.length === 0) return;
     setError(null);
     startTransition(async () => {
-      const res = await completeOnboardingAction({ arena });
+      const res = await completeOnboardingAction({ arenas: selected });
       if (res.ok) {
         router.push("/");
         router.refresh();
@@ -199,30 +208,47 @@ export function OnboardingWizard({
         <section>
           <h2 className="font-display text-xl text-foreground">מה מעניין אתכם?</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            בחרו את הזירה שהכי בוערת לכם — נמליץ עליה לכם בפיד.
+            בחרו עד {MAX_ARENAS} זירות שהכי בוערות לכם — נמליץ עליהן בפיד שלכם. כל בחירה נדלקת בצבע משלה.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {arenas.map((a, i) => {
-              const active = arena === a.key;
+              const active = selected.includes(a.key);
+              const atCap = selected.length >= MAX_ARENAS;
               return (
                 <button
                   key={a.key}
                   type="button"
-                  onClick={() => setArena(a.key)}
+                  onClick={() => toggleArena(a.key)}
                   aria-pressed={active}
-                  className={`flex items-center gap-2.5 rounded-[14px] border-2 px-3 py-3 text-start font-bold transition-all ${
+                  // Each category lights in its own hue (theme-aware --cat-N token),
+                  // plumbed via --aura so the static utility classes can read it.
+                  style={{ "--aura": `var(--cat-${i + 1})` } as CSSProperties}
+                  className={`relative flex items-center gap-2.5 rounded-[14px] border-2 px-3 py-3 text-start font-bold transition-all duration-200 motion-reduce:transition-none ${
                     active
-                      ? "border-primary bg-primary/10 text-foreground shadow-glow-mint"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                      ? "border-[color:var(--aura)] bg-[color-mix(in_oklab,var(--aura)_14%,transparent)] text-foreground shadow-[0_0_26px_-6px_var(--aura)]"
+                      : atCap
+                        ? "border-border bg-background text-muted-foreground opacity-60"
+                        : "border-border bg-background text-muted-foreground hover:border-[color:var(--aura)]"
                   }`}
                 >
-                  <Crest suit={ARENA_SUITS[i % ARENA_SUITS.length]} className="h-5 w-5 shrink-0" />
-                  <span>{a.he}</span>
+                  <Crest
+                    suit={ARENA_SUITS[i % ARENA_SUITS.length]}
+                    className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-[color:var(--aura)]" : "text-muted-foreground"}`}
+                  />
+                  <span className="flex-1">{a.he}</span>
+                  {active && (
+                    <span aria-hidden="true" className="text-[color:var(--aura)] leading-none">
+                      ◉
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-          {error && <p className="mt-3 text-sm font-semibold text-negative">{error}</p>}
+          <p className="mt-3 text-xs text-muted-foreground">
+            נבחרו <span className="nums font-bold text-foreground">{selected.length}</span> מתוך {MAX_ARENAS}
+          </p>
+          {error && <p className="mt-2 text-sm font-semibold text-negative">{error}</p>}
           <div className="mt-5 flex gap-3">
             <button
               type="button"
@@ -233,8 +259,8 @@ export function OnboardingWizard({
             </button>
             <button
               type="button"
-              onClick={() => arena && setStep(2)}
-              disabled={!arena}
+              onClick={() => selected.length > 0 && setStep(2)}
+              disabled={selected.length === 0}
               className="flex-1 rounded-full bg-primary px-4 py-3 font-display text-lg text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               המשך
