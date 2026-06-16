@@ -66,7 +66,6 @@ interface QuickPick {
   label: string;
   date: string; // YYYY-MM-DD
   display: string;
-  recommended?: boolean;
 }
 
 export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
@@ -81,7 +80,7 @@ export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
     const month = toYMD(addMonths(now, 1));
     const list: QuickPick[] = [
       { key: "week", label: "עוד שבוע", date: week, display: displayHe(week) },
-      { key: "month", label: "עוד חודש", date: month, display: displayHe(month), recommended: true },
+      { key: "month", label: "עוד חודש", date: month, display: displayHe(month) },
     ];
     if (ELECTION_DATE) {
       list.push({ key: "election", label: "יום הבחירות", date: ELECTION_DATE, display: displayHe(ELECTION_DATE, true) });
@@ -132,7 +131,7 @@ export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
                 className={`relative isolate flex flex-col items-center gap-0.5 rounded-xl border px-2 py-3 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
                   active
                     ? "border-primary text-primary-foreground"
-                    : `border-border text-foreground hover:border-primary/60 ${p.recommended ? "ring-1 ring-primary/40" : ""}`
+                    : "border-border text-foreground hover:border-primary/60"
                 }`}
               >
                 {active && (
@@ -142,15 +141,6 @@ export function DateTimeField({ value, onChange, min }: DateTimeFieldProps) {
                     className="absolute inset-0 -z-10 rounded-xl bg-primary"
                     transition={spring}
                   />
-                )}
-                {p.recommended && (
-                  <span
-                    className={`absolute -top-2 end-2 rounded-full px-1.5 py-px text-[10px] font-bold ${
-                      active ? "bg-card text-primary" : "bg-primary text-primary-foreground"
-                    }`}
-                  >
-                    מומלץ
-                  </span>
                 )}
                 <span className="text-sm font-bold">{p.label}</span>
                 <span className={`nums text-xs ${active ? "text-primary-foreground/85" : "text-muted-foreground"}`}>
