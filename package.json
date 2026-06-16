@@ -36,6 +36,8 @@
     "fflate": "^0.8.3",
     "next": "16.2.6",
     "postgres": "^3.4.9",
+    "posthog-js": "^1.383.1",
+    "posthog-node": "^5.36.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4",
