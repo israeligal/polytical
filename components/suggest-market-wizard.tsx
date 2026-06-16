@@ -145,12 +145,16 @@ export function SuggestMarketWizard({
     });
   }
 
-  // Slide+fade between steps; instant when reduced-motion is on.
+  // Slide+fade between steps. mode="wait" serializes exit→enter, so keep each
+  // leg SHORT (a snappy tween, not a settling spring) — otherwise the nav
+  // button flips to the next step while the old content is still leaving.
+  // Instant when reduced-motion is on.
   const variants = {
-    enter: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * 48 }),
+    enter: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * 40 }),
     center: { opacity: 1, x: 0 },
-    exit: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * -48 }),
+    exit: (d: number) => (reduce ? { opacity: 0 } : { opacity: 0, x: d * -40 }),
   };
+  const stepTransition = reduce ? { duration: 0.1 } : { duration: 0.18, ease: "easeOut" as const };
   const fieldStagger = {
     center: { transition: reduce ? {} : { staggerChildren: 0.06, delayChildren: 0.04 } },
   };
@@ -174,7 +178,7 @@ export function SuggestMarketWizard({
               initial="enter"
               animate="center"
               exit="exit"
-              transition={reduce ? { duration: 0.12 } : { type: "spring", stiffness: 320, damping: 32 }}
+              transition={stepTransition}
             >
               <motion.div variants={fieldStagger} initial={false} animate="center" className="space-y-4">
                 {step === 0 && (
