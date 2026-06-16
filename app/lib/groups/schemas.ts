@@ -38,3 +38,12 @@ export const setActiveCoalitionSchema = z.object({
 });
 
 export type SetActiveCoalitionInput = z.infer<typeof setActiveCoalitionSchema>;
+
+// Starter forecasts: when creating a coalition, optionally clone the latest
+// national forecasts into it (default on; top-10 or all).
+export const seedStarterSchema = z.object({
+  seedForecasts: z.boolean().default(true),
+  seedCount: z.enum(["top10", "all"]).default("top10"),
+});
+
+export type SeedStarterInput = z.infer<typeof seedStarterSchema>;

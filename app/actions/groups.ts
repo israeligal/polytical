@@ -3,7 +3,9 @@ import { revalidatePath } from "next/cache";
 import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { createGroup, joinGroup, leaveGroup } from "@/app/lib/groups/service";
-import { createGroupMotion, resolveGroupMotion } from "@/app/lib/groups/motions";
+import { createGroupMotion, resolveGroupMotion, seedGroupFromNational } from "@/app/lib/groups/motions";
+import { seedStarterSchema } from "@/app/lib/groups/schemas";
+import { logger } from "@/app/lib/logger";
 import { getMarketBundle } from "@/app/lib/markets/repo";
 import {
   GroupNotFoundError,
@@ -40,11 +42,15 @@ export async function createGroupAction({
   descriptionHe,
   emblem,
   colorToken,
+  seedForecasts,
+  seedCount,
 }: {
   nameHe: string;
   descriptionHe?: string | null;
   emblem?: string | null;
   colorToken?: string | null;
+  seedForecasts?: boolean;
+  seedCount?: "top10" | "all";
 }): Promise<GroupActionResult> {
   const s = await getSession();
   if (!s?.user) return { ok: false, message: "התחברו כדי ליצור קואליציה" };
@@ -55,18 +61,33 @@ export async function createGroupAction({
     return { ok: false, message: `יותר מדי קואליציות חדשות — נסו שוב בעוד ${mins} דקות` };
   }
 
+  let groupId: string;
   let slug: string;
   try {
     const group = await createGroup({
       userId: s.user.id,
       input: { nameHe, descriptionHe: descriptionHe ?? null, emblem: emblem ?? null, colorToken: colorToken ?? null },
     });
+    groupId = group.id;
     slug = group.slug;
   } catch (e) {
     if (e instanceof GroupNameError) return { ok: false, message: "שם הקואליציה חייב להיות 2–40 תווים" };
     if (e instanceof GroupCapError) return { ok: false, message: "הגעתם למספר הקואליציות המרבי" };
     throw e;
   }
+
+  // Starter forecasts (default on): clone the latest national forecasts into the
+  // new coalition so its feed isn't empty. Best-effort — a seeding failure must
+  // NOT fail the (already-committed) group creation.
+  const seed = seedStarterSchema.parse({ seedForecasts, seedCount });
+  if (seed.seedForecasts) {
+    try {
+      await seedGroupFromNational({ groupId, ownerId: s.user.id, count: seed.seedCount });
+    } catch (e) {
+      logger.error("groups.seed_on_create_failed", { groupId, err: String(e) });
+    }
+  }
+
   await refreshSession();
   revalidatePath("/", "layout");
   return { ok: true, slug, message: "הקואליציה נוצרה!" };
