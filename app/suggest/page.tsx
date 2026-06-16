@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/categories";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
 import type { PoliticianOption } from "@/lib/types";
-import { SuggestMarketForm } from "@/components/suggest-market-form";
+import { SuggestMarketWizard } from "@/components/suggest-market-wizard";
+import { suggestMarketAction, searchPoliticiansSuggestAction } from "@/app/actions/suggestions";
 
 // Public "propose a market" surface (the community half of admin+community).
 // Gated to logged-in users; the form posts to a rate-limited server action and
@@ -45,9 +46,11 @@ export default async function SuggestPage({
         </p>
       </header>
 
-      <SuggestMarketForm
+      <SuggestMarketWizard
         categories={CATEGORIES.map((c) => ({ key: c.key, he: c.he }))}
         defaultPolitician={defaultPolitician}
+        searchPoliticians={searchPoliticiansSuggestAction}
+        onSubmit={suggestMarketAction}
       />
 
       <p className="mt-4 text-xs text-muted-foreground">
