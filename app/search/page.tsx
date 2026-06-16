@@ -1,4 +1,6 @@
 import type { Politician } from "@/lib/types";
+import { getSession } from "@/lib/auth";
+import { getActiveCoalition } from "@/app/lib/groups/context";
 import { search, MIN_QUERY_LEN } from "@/app/lib/search/service";
 import { MarketCard } from "@/components/market-card";
 import { CaricatureCard } from "@/components/caricature-card";
@@ -23,7 +25,13 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const trimmed = q.trim();
   const hasQuery = trimmed.length >= MIN_QUERY_LEN;
-  const results = hasQuery ? await search({ q: trimmed }) : null;
+  // Market results follow the active coalition (consistent with the scoped feed);
+  // politician results stay national (handled in the search service).
+  const session = await getSession();
+  const groupScope = session?.user
+    ? await getActiveCoalition({ userId: session.user.id, defaultGroupId: session.user.defaultGroupId })
+    : null;
+  const results = hasQuery ? await search({ q: trimmed, groupScope }) : null;
 
   const politicians: Politician[] = results?.politicians ?? [];
   const markets = results?.markets ?? [];

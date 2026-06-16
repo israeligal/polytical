@@ -112,6 +112,34 @@ test("feed isolation: group motions never appear in global market reads", async 
   expect(groupFeed.map((m) => m.id)).toEqual([groupMid]); // ONLY the group motion
 });
 
+test("coalition scope: groupScope re-scopes the display reads to ONLY that coalition's motions", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  const globalId = await seedGlobalMarket("גלובלית לסקופ");
+  const { marketId: groupMid } = await createGroupMotion({
+    db: h.db, userId: "owner", groupId: g.id,
+    questionHe: "קבוצתית לסקופ", category: "coalition", closeAt: new Date(Date.now() + 86_400_000),
+  });
+
+  // The feed scoped to the coalition shows ONLY its motion; national still shows ONLY the global one.
+  expect((await listOpenMarkets({ db: h.db, groupScope: g.id })).map((m) => m.id)).toEqual([groupMid]);
+  expect((await listOpenMarkets({ db: h.db, groupScope: null })).map((m) => m.id)).toEqual([globalId]);
+
+  // MOTD + search follow the scope too.
+  expect((await getMarketOfTheDay({ db: h.db, groupScope: g.id }))?.id).toBe(groupMid);
+  await h.db.update(markets).set({ searchText: "scopezz" }).where(eq(markets.id, globalId));
+  await h.db.update(markets).set({ searchText: "scopezz" }).where(eq(markets.id, groupMid));
+  expect((await searchMarkets({ db: h.db, q: "scopezz", groupScope: g.id })).map((m) => m.id)).toEqual([groupMid]);
+
+  // getUserPredictions splits a national pick from a coalition pick by scope.
+  const [gYes] = await outcomeIds(globalId);
+  const [grpYes] = await outcomeIds(groupMid);
+  await makePrediction({ db: h.db, userId: "owner", marketId: globalId, outcomeId: gYes });
+  await makePrediction({ db: h.db, userId: "owner", marketId: groupMid, outcomeId: grpYes });
+  expect((await getUserPredictions({ db: h.db, userId: "owner", groupScope: null })).map((p) => p.marketId)).toEqual([globalId]);
+  expect((await getUserPredictions({ db: h.db, userId: "owner", groupScope: g.id })).map((p) => p.marketId)).toEqual([groupMid]);
+});
+
 test("makePrediction: non-members are rejected on a group motion", async () => {
   await seedUsers(["owner", "member", "stranger"]);
   const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });

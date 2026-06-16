@@ -532,20 +532,6 @@ export async function clearDefaultGroupIfMatches({
     .where(and(eq(users.id, requireUserId(userId)), eq(users.defaultGroupId, groupId)));
 }
 
-/** Explicitly set (or clear, with null) the user's home group — the "הפוך לבית
- *  שלי" / "חזרה לכללי" toggle. Unconditional (overrides any prior choice). */
-export async function setDefaultGroup({
-  db = defaultDb,
-  userId,
-  groupId,
-}: {
-  db?: AppDb;
-  userId: string;
-  groupId: string | null;
-}): Promise<void> {
-  await db.update(users).set({ defaultGroupId: groupId }).where(eq(users.id, requireUserId(userId)));
-}
-
 /** Sets the user's home group ONLY if they have none yet (auto-home on first
  *  group). Never overrides an explicit later choice. Returns rows updated. */
 export async function setDefaultGroupIfUnset({
