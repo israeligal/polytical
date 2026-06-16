@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Reverse-proxy PostHog through /ingest so anonymous error reports aren't blocked
+  // by ad-blockers. (PostHog is errors-only + anonymous — see instrumentation-client.ts.)
+  async rewrites() {
+    return [
+      { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/array/:path*", destination: "https://eu-assets.i.posthog.com/array/:path*" },
+      { source: "/ingest/:path*", destination: "https://eu.i.posthog.com/:path*" },
+    ];
+  },
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
