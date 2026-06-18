@@ -6,6 +6,40 @@
 
 ---
 
+## 2026-06-18 — Rematch + feed suggestion card (one shared "duelable markets" read)
+
+Make *creating* a duel discoverable + give the resolved result a real rematch path —
+**no new migration, no analytics** (per the PRD's privacy-light stance).
+
+- **One shared read** powers both surfaces: `listDuelableMarkets` (repo — open +
+  `isNull(groupId)` + closeAt within 7d, `desc(hot), asc(closeAt)`, limit, exclude;
+  a trim of `listMarketsClosingSoon` minus the cron-only `closingSoonNotifiedAt`
+  filter) → `getSuggestedDuelMarkets` (feed — reuses the `MarketCardData` view-model).
+- **`useChallengeShare` hook** — extracted the mint-and-copy logic; shared by
+  `ChallengeMarketButton` + the new wired `DuelSuggestionLive`. (Copies the link
+  rather than `navigator.share` — minting awaits a server action, consuming the
+  click's user-activation.)
+- **Feed placement:** the suggestion card sits above the home grid, **logged-in +
+  national scope only** (duels are global; don't surface inside a coalition view,
+  and an anon can't mint).
+- **Rematch:** the resolved arena shows close-this-week suggestion cards
+  (`DuelResolution.suggestedMarkets`, fetched by the `/duel/[token]` page **only
+  when logged-in**); the old dead re-share CTA became "שתפו את התוצאה" (the result
+  link is still viewable — good for bragging).
+- **Code-review fixes:** rematch picker gated to logged-in (no anon dead-end CTA +
+  skips the fetch); `disabled`/`pending` threaded into the suggestion card (no
+  double-mint); page fetches `limit:2` to match what renders. Caricature avatars in
+  standings are deferred (the column lives on the unmerged caricature branch —
+  initials fallback is correct here).
+
+**Verified:** 23 PGlite tests (3 new for the reads); typecheck/lint/build green;
+SSR-confirmed the rematch picker + suggestion card render end-to-end with a real
+close-market candidate (throwaway, since cleaned up). NOTE: visual screenshots
+were blocked this session by a claude-in-chrome OAuth/account mismatch — Storybook
+(`ResolvedWin` carries the picker) + SSR + tests are the coverage.
+
+---
+
 ## 2026-06-18 — Settlement notifications + resolved-arena result state (migration 0034)
 
 When a duel's market resolves, players get a **head-to-head result** notice and `/duel/[token]`
