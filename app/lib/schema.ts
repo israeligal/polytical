@@ -21,6 +21,10 @@ export const users = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
+  // Self-service caricature avatar (Vercel Blob URL). BYO for now (user generates
+  // in Gemini + uploads), API-ready later. null → handle-initial fallback avatar.
+  // Distinct from `image` (the Google OAuth photo, never shown as an avatar).
+  caricatureUrl: text("caricatureUrl"),
   isAdmin: boolean("isAdmin").notNull().default(false),
   // The user's prediction record — the only "score" in the app. One stake-less
   // prediction per market; on resolve we bump totalResolved (always) and totalWins

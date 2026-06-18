@@ -37,6 +37,8 @@ export class InvalidArenaError extends Error { constructor() { super("Invalid ar
 export class HandleRequiredError extends Error { constructor() { super("Handle must be set before onboarding completes"); this.name = "HandleRequiredError"; } }
 export class AlreadyOnboardedError extends Error { constructor() { super("User already onboarded"); this.name = "AlreadyOnboardedError"; } }
 export class AlreadyOwnedError extends Error { constructor() { super("Card already collected"); this.name = "AlreadyOwnedError"; } }
+// --- Caricature avatar ---
+export class InvalidCaricatureError extends Error { constructor() { super("Caricature must be a PNG/JPEG/WebP image under the size limit"); this.name = "InvalidCaricatureError"; } }
 // --- Seasons (accuracy track) ---
 export class SeasonEndedError extends Error { constructor() { super("Season has ended"); this.name = "SeasonEndedError"; } }
 export class NoActiveSeasonError extends Error { constructor() { super("No active season"); this.name = "NoActiveSeasonError"; } }

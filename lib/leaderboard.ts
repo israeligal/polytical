@@ -1,6 +1,7 @@
 export interface LeaderboardEntry {
   rank: number;
   handle: string;
+  caricatureUrl?: string | null; // caricature avatar (real rows set it; mock rows omit)
   totalWins: number;     // # correct predictions
   totalResolved: number; // # predictions that resolved
   accuracy: number;      // 0–100

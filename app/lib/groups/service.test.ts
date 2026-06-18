@@ -7,10 +7,10 @@ vi.mock("@/app/lib/push/service", () => ({ dispatchPush: vi.fn() }));
 
 import { users, groups, groupMembers } from "@/app/lib/schema";
 import {
-  createGroup, joinGroup, leaveGroup, removeMember, getGroupForMember,
+  createGroup, joinGroup, leaveGroup, removeMember, getGroupForMember, updateGroup,
 } from "./service";
 import { getMembership } from "./repo";
-import { NotGroupMemberError, InsufficientGroupRoleError, InvalidInviteCodeError } from "@/app/lib/errors";
+import { NotGroupMemberError, InsufficientGroupRoleError, InvalidInviteCodeError, GroupNameError } from "@/app/lib/errors";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -40,6 +40,40 @@ test("createGroup makes the caller owner and auto-homes their first group", asyn
   expect(m?.role).toBe("owner");
   expect(m?.status).toBe("active");
   expect(await defaultGroupId("owner")).toBe(g.id);
+});
+
+test("updateGroup: owner renames; nameHe + derived emblem (icon) persist", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "ישנה" } });
+  await updateGroup({ db: h.db, userId: "owner", groupId: g.id, nameHe: "🚀 חדשה" });
+  const [row] = await h.db.select().from(groups).where(eq(groups.id, g.id));
+  expect(row.nameHe).toBe("🚀 חדשה");
+  expect(row.emblem).toBe("🚀"); // icon = the name's leading emoji
+});
+
+test("updateGroup: a plain member cannot edit", async () => {
+  await seedUsers(["owner", "member"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await joinGroup({ db: h.db, userId: "member", inviteCode: g.inviteCode });
+  await expect(
+    updateGroup({ db: h.db, userId: "member", groupId: g.id, nameHe: "ניסיון" }),
+  ).rejects.toBeInstanceOf(InsufficientGroupRoleError);
+});
+
+test("updateGroup: a non-member cannot edit", async () => {
+  await seedUsers(["owner", "stranger"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await expect(
+    updateGroup({ db: h.db, userId: "stranger", groupId: g.id, nameHe: "ניסיון" }),
+  ).rejects.toBeInstanceOf(NotGroupMemberError);
+});
+
+test("updateGroup: rejects a too-short name", async () => {
+  await seedUsers(["owner"]);
+  const g = await createGroup({ db: h.db, userId: "owner", input: { nameHe: "קבוצה" } });
+  await expect(
+    updateGroup({ db: h.db, userId: "owner", groupId: g.id, nameHe: "א" }),
+  ).rejects.toBeInstanceOf(GroupNameError);
 });
 
 test("auto-home only sets the FIRST group, never overrides", async () => {

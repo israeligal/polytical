@@ -1,6 +1,6 @@
 {
-  "id": "2774fde8-ff80-47ea-9312-470bd9355663",
-  "prevId": "5d7c2bb8-27b3-4532-80c7-a521406eb6e5",
+  "id": "8492596b-650a-4f8d-9f75-31a77259d319",
+  "prevId": "2774fde8-ff80-47ea-9312-470bd9355663",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2071,6 +2071,12 @@
         },
         "refGroupId": {
           "name": "refGroupId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refChallengeId": {
+          "name": "refChallengeId",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -4686,7 +4692,8 @@
         "group_motion_posted",
         "group_motion_resolved",
         "group_mention",
-        "group_member_joined"
+        "group_member_joined",
+        "duel_settled"
       ]
     },
     "public.season_status": {

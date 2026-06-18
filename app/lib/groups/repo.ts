@@ -31,6 +31,7 @@ export interface MyGroup {
 export interface GroupMemberView {
   userId: string;
   handle: string | null;
+  caricatureUrl: string | null;
   role: GroupRole;
   groupWins: number;
   groupResolved: number;
@@ -125,6 +126,7 @@ export async function listActiveMembers({ db = defaultDb, groupId }: { db?: AppD
     .select({
       userId: groupMembers.userId,
       handle: users.handle,
+      caricatureUrl: users.caricatureUrl,
       role: groupMembers.role,
       groupWins: groupMembers.groupWins,
       groupResolved: groupMembers.groupResolved,
@@ -235,6 +237,28 @@ export async function insertGroup({
     })
     .returning();
   return row;
+}
+
+/** Updates a coalition's name + derived emblem (icon). The owner/admin gate lives
+ *  in the service. */
+export async function updateGroup({
+  tx,
+  db = defaultDb,
+  groupId,
+  nameHe,
+  emblem,
+}: {
+  tx?: Tx;
+  db?: AppDb;
+  groupId: string;
+  nameHe: string;
+  emblem?: string | null;
+}): Promise<void> {
+  const exec = tx ?? db;
+  await exec
+    .update(groups)
+    .set({ nameHe, emblem: emblem ?? null })
+    .where(eq(groups.id, groupId));
 }
 
 /**
@@ -372,6 +396,7 @@ export interface GroupScoreEntry {
   rank: number;
   userId: string;
   handle: string | null;
+  caricatureUrl: string | null;
   groupWins: number;
   groupResolved: number;
   accuracy: number; // 0–100, over group motions only
@@ -393,6 +418,7 @@ export async function getGroupScoreboard({ db = defaultDb, groupId }: { db?: App
     .select({
       userId: groupMembers.userId,
       handle: users.handle,
+      caricatureUrl: users.caricatureUrl,
       groupWins: groupMembers.groupWins,
       groupResolved: groupMembers.groupResolved,
       accuracy: groupAccuracyExpr,

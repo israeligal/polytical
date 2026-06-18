@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession, refreshSession } from "@/lib/auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { createGroup, joinGroup, leaveGroup } from "@/app/lib/groups/service";
+import { createGroup, joinGroup, leaveGroup, updateGroup } from "@/app/lib/groups/service";
 import { createGroupMotion, resolveGroupMotion, seedGroupFromNational } from "@/app/lib/groups/motions";
 import { seedStarterSchema } from "@/app/lib/groups/schemas";
 import { logger } from "@/app/lib/logger";
@@ -35,6 +35,34 @@ import type { ActionResult } from "./types";
 // a stale-cookie loop.
 
 type GroupActionResult = ActionResult & { slug?: string };
+
+/** Owner/admin renames a coalition — the name carries its emoji icon, so this
+ *  changes both at once. */
+export async function updateGroupAction({
+  groupId,
+  slug,
+  nameHe,
+}: {
+  groupId: string;
+  slug: string;
+  nameHe: string;
+}): Promise<ActionResult> {
+  const s = await getSession();
+  if (!s?.user) return { ok: false, message: "התחברו" };
+  const limit = checkRateLimit({ key: `group-edit:${s.user.id}`, max: 20, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) return { ok: false, message: "האטו לרגע ונסו שוב" };
+  try {
+    await updateGroup({ userId: s.user.id, groupId, nameHe });
+  } catch (e) {
+    if (e instanceof GroupNameError) return { ok: false, message: "שם לא תקין (2–40 תווים)" };
+    if (e instanceof NotGroupMemberError) return { ok: false, message: "אינכם חברים בקואליציה" };
+    if (e instanceof InsufficientGroupRoleError) return { ok: false, message: "רק מנהלי הקואליציה יכולים לערוך" };
+    throw e;
+  }
+  revalidatePath(`/g/${slug}`);
+  revalidatePath("/", "layout"); // the group switcher shows the name
+  return { ok: true };
+}
 
 /** Create a group; the caller becomes its owner. Returns the new slug. */
 export async function createGroupAction({
