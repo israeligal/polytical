@@ -6,6 +6,7 @@ import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import type { CatColor, Market, Outcome } from "@/lib/types";
 import { catBorder, catText } from "@/lib/cat";
 import { CategoryBadge } from "@/components/badges";
+import { DUEL_ARENA_SHELL } from "@/components/skeletons/containers";
 import { ArenaBackdrop } from "@/components/duel/arena-backdrop";
 import { VsBand, type BandPick } from "@/components/duel/vs-band";
 import { DuelOutcomeButton } from "@/components/duel/duel-outcome-button";
@@ -46,6 +47,7 @@ export function DuelArena({
   const [pickedId, setPickedId] = useState<string | null>(myPickId);
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const revealed = pickedId != null;
 
   const total = useMemo(() => market.outcomes.reduce((s, o) => s + o.predictors, 0), [market.outcomes]);
@@ -64,12 +66,18 @@ export function DuelArena({
 
   function handlePick(outcomeId: string) {
     if (pickedId === outcomeId) return;
+    const previous = pickedId;
     setPickedId(outcomeId); // optimistic → triggers the reveal
+    setError(null);
     startTransition(async () => {
       try {
+        // onPick (joinDuelAction) throws on a failed ActionResult — revert the
+        // optimistic reveal so the user isn't told a mandate was saved when it
+        // wasn't (closed market, rate-limit, removed link, invalid outcome).
         await onPick?.(outcomeId);
-      } catch {
-        /* real wiring surfaces errors; demo keeps the optimistic reveal */
+      } catch (e) {
+        setPickedId(previous);
+        setError(e instanceof Error && e.message ? e.message : "לא הצלחנו לרשום את המנדט — נסו שוב");
       }
     });
   }
@@ -102,11 +110,7 @@ export function DuelArena({
   });
 
   return (
-    <div
-      data-theme="dark"
-      dir="rtl"
-      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground"
-    >
+    <div data-theme="dark" dir="rtl" className={DUEL_ARENA_SHELL}>
       <ArenaBackdrop />
 
       <div className="flex w-full max-w-md flex-col items-stretch gap-5">
@@ -213,6 +217,7 @@ export function DuelArena({
           ) : (
             <motion.div key="prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
               <p className="text-sm font-bold text-muted-foreground">מה דעתך? בחר/י צד כדי לראות מי עוד ניבא</p>
+              {error && <p role="status" className="mt-1 text-sm font-bold text-negative">{error}</p>}
             </motion.div>
           )}
         </AnimatePresence>

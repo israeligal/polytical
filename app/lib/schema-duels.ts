@@ -26,7 +26,8 @@ export const challenges = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     // Opaque, url-safe id for /duel/[token] (NOT a guessable sequential id).
-    // Generated via node:crypto, retried on the rare unique clash.
+    // 128 bits of node:crypto randomness (service.generateToken) — collision is
+    // not a realistic concern, so no retry loop. The unique() is the backstop.
     token: text("token").notNull().unique(),
     challengerUserId: text("challengerUserId").notNull().references((): AnyPgColumn => users.id, { onDelete: "cascade" }),
     // The single market this duel is fought over. Global markets only — a group

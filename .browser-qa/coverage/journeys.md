@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [duel-challenge](#duel-challenge) | 2026-06-18 `c025e3a` | 1 | 5/7 |
+| [duel-challenge](#duel-challenge) | 2026-06-18 `085fdc2` | 2 | 6/7 |
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
@@ -340,7 +340,7 @@
 
 **What it is:** A user shares a single-bet duel link with friends; a recipient opens the public `/duel/[token]` arena, sees a head-to-head VS face-off on one question, picks a side, and — once the market resolves — sees who was right. v0 is a **stateless token** (no `challenges` table): the link encodes market + challenger @handle + their pick; picks reuse the normal `bets` engine.
 
-**Last walked:** 2026-06-18 `c025e3a` (feat/prediction-duels, localhost, @commenter_qa). **Walks:** 1. **Coverage:** 5/7
+**Last walked:** 2026-06-18 `085fdc2` (feat/prediction-duels P1-persisted, localhost, @commenter_qa). **Walks:** 2. **Coverage:** 6/7
 
 **Steps:**
 - ✅ open shared `/duel/[token]` → arena renders: kicker, VS face-off (challenger gold ring + viewer mint ring, picks masked "???"), question card, live urgency chip, two color-coded sides (כן/לא). Hebrew correct (real DOM bidi). No overflow, 0 console errors.
@@ -348,8 +348,9 @@
 - ✅ market-page hook: "🥊 התערבו על זה עם חבר" gold pill renders on global open markets for logged-in users (185×34, under the meta row).
 - ✅ invalid token (`/duel/garbage`) → not-found UI "הדף לא נמצא" (HTTP 200 is app-wide, not duel-specific).
 - ⚠️ logged-out reveal → "הצטרפו ושמרו את המנדט" login CTA (`/login?callbackUrl`): code-verified only — QA session was logged-in (commenter_qa), and the httpOnly session cookie can't be cleared to force logged-out.
-- ❌ animated reveal sub-elements (challenger pick flip-up, share-back CTA, crowd-fill bar growth, %/mandate count-up): frozen by the occluded QA tab (rAF + AnimatePresence mode="wait"). Verify in a FOCUSED browser window.
-- ❌ logged-in REAL pick writes a `bets` row + revealed-on-mount path (myPickId set): avoided to protect prod DB.
+- ✅ revealed-on-mount path (P1, `085fdc2`): a persisted challenge where the viewer/challenger has a pick renders the challenger's pick chip in the VS band + the picked badge + outcome rows — verified live (multi-outcome "מי ירכיב את הממשלה"). `initial={false}` dodges the occluded-tab rAF deadlock.
+- ✅ P1 persistence: createChallenge (service, against prod) → persisted row → /duel/[token] reads challenger @handle + live pick from DB; migration 0033 applied; 13 PGlite tests green.
+- ⚠️ INTERACTIVE reveal animation (prompt→revealed swap, crowd-fill growth, %/mandate count-up): still frozen by the occluded QA tab (rAF + AnimatePresence mode="wait"); foreground-only. Verify in a FOCUSED window.
 
 **Notable history:**
 - `c025e3a` (2026-06-18): feature built + wired (stateless `/duel/[token]` route, market-page challenge hook). OG unfurl image removed (Satori has no bidi → Hebrew reversed); text unfurl via generateMetadata. Entrances are transform-only so content stays visible if rAF is throttled — see [[motion-entrance-raf-throttle]].

@@ -8,7 +8,7 @@ import { createTestDb } from "@/app/lib/testing/create-test-db";
 import { bets, groups, markets, outcomes, users } from "@/app/lib/schema";
 import { MarketClosedError, MarketNotFoundError, NotDuelableMarketError } from "@/app/lib/errors";
 import { createChallenge, joinDuel } from "./service";
-import { getChallengeByToken, getParticipantCount } from "./repo";
+import { createChallenge as insertChallengeRow, getChallengeByToken, getParticipantCount } from "./repo";
 
 const CHALLENGER = "user-svc-challenger";
 const FRIEND = "user-svc-friend";
@@ -84,10 +84,16 @@ test("joinDuel rejects a bad token", async () => {
   await expect(joinDuel({ db: h.db, token: "nope", userId: FRIEND, outcomeId: "x" })).rejects.toThrow(MarketNotFoundError);
 });
 
+test("createChallenge rejects a closed market (no dead share links)", async () => {
+  const { marketId } = await newMarket("closed");
+  await expect(createChallenge({ db: h.db, challengerUserId: CHALLENGER, marketId })).rejects.toThrow(MarketClosedError);
+});
+
 test("joinDuel on a closed market is rejected and records no participant", async () => {
   const { marketId, yes } = await newMarket("closed");
-  // Create the challenge directly so we can attempt a join against a closed market.
-  const { token } = await createChallenge({ db: h.db, challengerUserId: CHALLENGER, marketId });
-  await expect(joinDuel({ db: h.db, token, userId: FRIEND, outcomeId: yes })).rejects.toThrow(MarketClosedError);
-  expect(await getParticipantCount({ db: h.db, challengeId: (await getChallengeByToken({ db: h.db, token }))!.id })).toBe(0);
+  // Persist the row directly via the repo — service.createChallenge now status-guards,
+  // so we set up the closed-market join scenario without it.
+  const c = await insertChallengeRow({ db: h.db, token: "closed-tok", challengerUserId: CHALLENGER, marketId });
+  await expect(joinDuel({ db: h.db, token: "closed-tok", userId: FRIEND, outcomeId: yes })).rejects.toThrow(MarketClosedError);
+  expect(await getParticipantCount({ db: h.db, challengeId: c.id })).toBe(0);
 });

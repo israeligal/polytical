@@ -27,3 +27,7 @@ export const BILL_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6
 export const GROUPS_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const GROUP_CONTAINER = "mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
 export const AGENDA_CONTAINER = "mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 lg:px-8";
+// The duel arena is a bespoke full-bleed share landing (not the app container).
+// Shared by DuelArena's root + DuelArenaSkeleton so the loading shape can't drift.
+export const DUEL_ARENA_SHELL =
+  "relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground";

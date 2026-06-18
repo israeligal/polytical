@@ -3,7 +3,7 @@ import { db as defaultDb } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 import { getMarketBundle } from "@/app/lib/markets/repo";
 import { makePrediction } from "@/app/lib/markets/service";
-import { MarketNotFoundError, NotDuelableMarketError } from "@/app/lib/errors";
+import { MarketClosedError, MarketNotFoundError, NotDuelableMarketError } from "@/app/lib/errors";
 import * as repo from "@/app/lib/duels/repo";
 
 // 128 bits of url-safe randomness — collision is not a realistic concern, so no
@@ -29,6 +29,10 @@ export async function createChallenge({
   const bundle = await getMarketBundle({ db, marketId });
   if (!bundle) throw new MarketNotFoundError();
   if (bundle.market.groupId) throw new NotDuelableMarketError();
+  // Don't mint a duel over a market nobody can join — a closed/resolved market
+  // would produce a dead share link (every join would fail makePrediction).
+  if (bundle.market.status !== "open" || bundle.market.closeAt.getTime() <= Date.now())
+    throw new MarketClosedError();
   const row = await repo.createChallenge({ db, token: generateToken(), challengerUserId, marketId });
   return { token: row.token };
 }

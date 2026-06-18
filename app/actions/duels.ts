@@ -27,6 +27,7 @@ export async function createChallengeAction({
   } catch (e) {
     if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית לא נמצאה" };
     if (e instanceof NotDuelableMarketError) return { ok: false, message: "אי אפשר לאתגר על הצעה קבוצתית" };
+    if (e instanceof MarketClosedError) return { ok: false, message: "התחזית סגורה — אי אפשר לאתגר עליה" };
     throw e;
   }
 }
