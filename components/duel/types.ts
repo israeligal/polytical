@@ -27,6 +27,8 @@ export interface DuelResolution {
   /** The viewer's head-to-head verdict vs the challenger; null if they didn't play. */
   verdict: "won" | "lost" | "tie" | null;
   standings: DuelStanding[];
+  /** Close-this-week markets to rematch on (the resolved market can't be re-dueled). */
+  suggestedMarkets?: Market[];
 }
 
 export interface DuelArenaProps {

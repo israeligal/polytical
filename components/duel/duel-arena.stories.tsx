@@ -86,6 +86,9 @@ export const ResolvedWin: Story = {
         { handle: "vera_m", outcomeId: "no" },
         { handle: "yossi", outcomeId: "yes" },
       ],
+      suggestedMarkets: [
+        createBinaryMarket({ id: "rematch-1", question: "האם תתקיים פגישת ראשי הקואליציה השבוע?", closeAt: inDays(4) }),
+      ],
     },
   },
 };

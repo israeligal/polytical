@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/markets/repo";
+import { getSuggestedDuelMarkets } from "@/app/lib/markets/feed";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { getChallengeByToken, getParticipants } from "@/app/lib/duels/repo";
@@ -54,7 +55,11 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
     if (viewerId === challenge.challengerUserId) verdict = challengerCorrect ? "won" : "lost";
     else if (participants.some((p) => p.userId === viewerId))
       verdict = duelResult(myPickId === winningOutcomeId, challengerCorrect);
-    resolution = { winningOutcomeId, verdict, standings };
+    // Rematch candidates — close-this-week markets (can't re-duel the resolved one).
+    const suggestedMarkets = (await getSuggestedDuelMarkets({ excludeMarketId: challenge.marketId, limit: 3 })).map(
+      (c) => c.market,
+    );
+    resolution = { winningOutcomeId, verdict, standings, suggestedMarkets };
   }
 
   return (

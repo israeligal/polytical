@@ -6,10 +6,12 @@ import {
   getMarketBundles,
   listOpenMarkets,
   listUnpredictedOpenMarkets,
+  listDuelableMarkets,
   getOutcomeCountsForMarkets,
   getUserPredictions,
 } from "@/app/lib/markets/repo";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
+import { db as defaultDb } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 
 /** marketId → the viewer's picked-outcome label, for the המנדט-שלי chip on feed cards. */
@@ -115,4 +117,43 @@ export async function getUnpredictedOpenMarketCards({
     market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
     featured: featuredFor(b.personIds),
   }));
+}
+
+/**
+ * Close-this-week open GLOBAL markets to challenge a friend on — the duel
+ * feed-suggestion card AND the rematch picker share this read. Same
+ * `MarketCardData` view-model as the rest of the feed. No `userId` — predicting
+ * it yourself first is fine (you become the challenger). Preserves the
+ * hot→soonest order from `listDuelableMarkets`.
+ */
+export async function getSuggestedDuelMarkets({
+  db = defaultDb,
+  limit = 5,
+  excludeMarketId,
+}: {
+  db?: AppDb;
+  limit?: number;
+  excludeMarketId?: string;
+}): Promise<MarketCardData[]> {
+  const marketRows = await listDuelableMarkets({ db, limit, excludeMarketId });
+  if (marketRows.length === 0) return [];
+
+  const bundles = await getMarketBundles({ db, marketIds: marketRows.map((m) => m.id) });
+  const linkedIds = [...new Set(bundles.flatMap((b) => b.personIds))];
+  const polById = new Map<string, Politician>();
+  for (const row of await getPoliticiansByPersonIds({ db, personIds: linkedIds })) {
+    polById.set(String(row.personId), dbToCard(row));
+  }
+  const featuredFor = (personIds: number[]): Politician[] =>
+    personIds.map((id) => polById.get(String(id))).filter((p): p is Politician => Boolean(p));
+
+  const countsByMarket = await getOutcomeCountsForMarkets({ db, marketIds: bundles.map((b) => b.market.id) });
+
+  const order = new Map(marketRows.map((m, i) => [m.id, i] as const));
+  return bundles
+    .map((b) => ({
+      market: bundleToMarket({ ...b, counts: countsByMarket.get(b.market.id) }),
+      featured: featuredFor(b.personIds),
+    }))
+    .sort((a, c) => (order.get(a.market.id) ?? 0) - (order.get(c.market.id) ?? 0));
 }

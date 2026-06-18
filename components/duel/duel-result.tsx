@@ -1,7 +1,9 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import type { Market } from "@/lib/types";
 import { PlayerAvatar, SparkBurst } from "@/components/duel/duel-atoms";
+import { DuelSuggestionLive } from "@/components/duel/duel-suggestion-live";
 
 /** A standings row, with labels + correctness already resolved by the arena. */
 export interface ResultStanding {
@@ -32,12 +34,15 @@ export function DuelResult({
   standings,
   onShare,
   copied,
+  suggestedMarkets,
 }: {
   verdict: "won" | "lost" | "tie" | null;
   winningLabel: string;
   standings: ResultStanding[];
   onShare: () => void;
   copied: boolean;
+  /** Close-this-week markets to rematch on (this market resolved → can't re-duel it). */
+  suggestedMarkets?: Market[];
 }) {
   const reduce = useReducedMotion();
   const v = VERDICT[verdict ?? "none"];
@@ -95,8 +100,19 @@ export function DuelResult({
         className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-base font-extrabold text-primary-foreground shadow-glow-mint transition-colors hover:bg-primary-hover"
       >
         <span aria-hidden>🔗</span>
-        {copied ? "הקישור הועתק!" : "אתגרו שוב חברים"}
+        {copied ? "הקישור הועתק!" : "שתפו את התוצאה"}
       </motion.button>
+
+      {suggestedMarkets && suggestedMarkets.length > 0 && (
+        <div className="w-full">
+          <p className="mb-2 text-center text-sm font-extrabold text-gold">רוצים ריוונש? אתגרו על תחזית קרובה 🥊</p>
+          <div className="flex flex-col gap-3">
+            {suggestedMarkets.slice(0, 2).map((m) => (
+              <DuelSuggestionLive key={m.id} market={m} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

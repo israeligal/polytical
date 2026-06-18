@@ -208,6 +208,7 @@ export function DuelArena({
             standings={resultStandings}
             onShare={handleShare}
             copied={copied}
+            suggestedMarkets={resolution!.suggestedMarkets}
           />
         ) : (
         <AnimatePresence mode="wait" initial={false}>

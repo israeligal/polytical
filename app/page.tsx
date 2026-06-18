@@ -8,7 +8,8 @@ import { CoalitionScopeBanner } from "@/components/groups/coalition-scope-banner
 import { getFeaturedPoliticians } from "@/app/lib/politicians/repo";
 import { dbToCard } from "@/app/lib/politicians/adapter";
 import { getMarketOfTheDay } from "@/app/lib/markets/repo";
-import { getMarketCards, getMyPickLabels } from "@/app/lib/markets/feed";
+import { getMarketCards, getMyPickLabels, getSuggestedDuelMarkets } from "@/app/lib/markets/feed";
+import { DuelSuggestionLive } from "@/components/duel/duel-suggestion-live";
 import { getLeaderboard, getUserStats } from "@/app/lib/leaderboard/repo";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { pctLabel } from "@/lib/format";
@@ -84,6 +85,11 @@ export default async function Home({
 
   const featuredPoliticians = (await getFeaturedPoliticians({ limit: 12 })).map(dbToCard);
   const recentVotes = (await getVotesFeed({ limit: 4 })).votes;
+
+  // "Challenge a friend" promo — a close-this-week market to duel on. Logged-in +
+  // national scope only (duels are global; don't surface inside a coalition view).
+  const duelSuggestion =
+    me && !groupScope ? ((await getSuggestedDuelMarkets({ limit: 1 }))[0] ?? null) : null;
 
   // Real leaderboard: top 8 by correct predictions, shown by public @-handle
   // (never the real name). If the viewer is logged in but outside the top 8,
@@ -169,6 +175,11 @@ export default async function Home({
               </Link>
             </div>
           </div>
+          {duelSuggestion && (
+            <div className="mb-6">
+              <DuelSuggestionLive market={duelSuggestion.market} />
+            </div>
+          )}
           <div className="mb-6">
             <CategoryRail active={active} />
           </div>
