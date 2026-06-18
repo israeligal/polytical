@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [duel-challenge](#duel-challenge) | 2026-06-18 `085fdc2` | 2 | 6/7 |
+| [duel-challenge](#duel-challenge) | 2026-06-18 `16ea351` | 3 | 8/9 |
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
@@ -340,7 +340,13 @@
 
 **What it is:** A user shares a single-bet duel link with friends; a recipient opens the public `/duel/[token]` arena, sees a head-to-head VS face-off on one question, picks a side, and — once the market resolves — sees who was right. v0 is a **stateless token** (no `challenges` table): the link encodes market + challenger @handle + their pick; picks reuse the normal `bets` engine.
 
-**Last walked:** 2026-06-18 `085fdc2` (feat/prediction-duels P1-persisted, localhost, @commenter_qa). **Walks:** 2. **Coverage:** 6/7
+**Last walked:** 2026-06-18 `16ea351` (feat/prediction-duels P2-settlement, localhost, @commenter_qa). **Walks:** 3. **Coverage:** 8/9
+
+**Settlement (P2) steps:**
+- ✅ resolve a duel's market → `duel_settled` notification per player (head-to-head won/lost/tie), live-verified on a throwaway prod market (@commenter_qa won, @bigwhale_hr lost).
+- ✅ `/duel/[token]` RESULT state: winning outcome crowned (🏆 התשובה), verdict banner, standings (✓/✗, winners on top), rematch CTA. No overflow.
+- ✅ `/notifications` renders the `duel_settled` item (gold accent) → click → `/duel/by-id/[id]` → resolved result page (full loop).
+- ⚠️ The win **celebration animation** (SparkBurst confetti) is foreground-only — frozen in the occluded QA tab; verify in a focused window.
 
 **Steps:**
 - ✅ open shared `/duel/[token]` → arena renders: kicker, VS face-off (challenger gold ring + viewer mint ring, picks masked "???"), question card, live urgency chip, two color-coded sides (כן/לא). Hebrew correct (real DOM bidi). No overflow, 0 console errors.

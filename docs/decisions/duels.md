@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-06-18 — Settlement notifications + resolved-arena result state (migration 0034)
+
+When a duel's market resolves, players get a **head-to-head result** notice and `/duel/[token]`
+shows a real **result state**.
+
+- **Decoupled from the P0 resolver (altitude).** `resolveMarket`'s transaction is NOT touched.
+  A separate best-effort `notifyDuelSettlements({marketId, winningOutcomeId})` runs *after*
+  `resolveMarket` returns, called from the admin resolve action (`admin-markets.ts`), wrapped
+  in try/catch — a notification failure can never undo a committed settlement (mirrors how
+  `dispatchPush` is already post-commit best-effort). Push inside it is also best-effort so a
+  VAPID/push hiccup can't lose the in-app rows.
+- **Result semantics = head-to-head.** A participant *won* iff participant-correct AND
+  challenger-wrong; *lost* iff reverse; *tie* otherwise. The challenger is framed vs the field
+  (won iff correct). A challenger who joins their OWN duel is **not** recorded as a participant
+  (`joinDuel` skips it; `getParticipants` excludes them defensively) — avoids a duplicate
+  standings row + a contradictory second notice.
+- **Schema (migration 0034, additive):** `notification_type += duel_settled` +
+  `notifications.refChallengeId`. Reuses the existing per-feature `ref*` pattern; the
+  notification links via `refChallengeId` → a new `/duel/by-id/[id]` route → `/duel/[token]`
+  (mirrors `refGroupId` → `/g/by-id/[id]`). Applied to prod via the guarded runner.
+- **A duel player also still gets the generic `bet_won`/`market_resolved`** (they're a
+  predictor) — accepted minor redundancy; the `duel_settled` is the richer, linked one.
+- **Resolved arena UI** (Motion + design): `DuelArenaProps.resolution` drives a result state —
+  winning outcome crowned on its button, a verdict banner (🏆 win celebration via SparkBurst,
+  reduced-motion-safe, transform-only so it shows even if rAF is throttled), and a standings
+  leaderboard (✓/✗, winners on top) with a rematch CTA. The `/duel/[token]` page computes
+  `resolution` from `markets.resolvedOutcomeId` + the derived standings.
+
+**Verified:** 20 PGlite tests (incl. notifyDuelSettlements won/tie/lost + challenger-self-join
+regressions); typecheck/lint/build green; migration 0034 applied to prod; live browser-QA of a
+throwaway resolved duel — result state (verdict/crown/standings/rematch) + the `duel_settled`
+feed item + feed→`/duel/by-id`→result navigation all confirmed (`.browser-qa/` duel-challenge
+journey). Code-review fixes: challenger self-join + settlement N+1.
+
+---
+
 ## 2026-06-18 — P1 persistence: challenges + participants (migration 0033)
 
 Duels move from a stateless URL token to a **persisted** model so we can track
