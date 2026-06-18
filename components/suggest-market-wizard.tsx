@@ -14,6 +14,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PoliticianCombobox } from "@/components/politician-combobox";
 import { CategoryChips } from "@/components/category-chips";
 import { DateTimeField } from "@/components/date-time-field";
+import { TextField } from "@/components/text-field";
 import type { PoliticianOption } from "@/lib/types";
 import type { ActionResult } from "@/app/actions/types";
 import { nowLocalInput } from "@/lib/time";
@@ -25,8 +26,6 @@ const MAX_OUTCOME_LABEL_LEN = 40;
 const MIN_OUTCOMES = 2;
 const MAX_OUTCOMES = 8;
 
-const FIELD =
-  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 const LABEL = "mb-1 block text-sm font-bold text-foreground";
 
 interface OutcomeDraft {
@@ -185,12 +184,13 @@ export function SuggestMarketWizard({
                 {step === 0 && (
                   <motion.div variants={fieldItem}>
                     <label className={LABEL} htmlFor="wq">שאלת התחזית</label>
-                    <input
+                    <TextField
                       id="wq"
                       autoFocus
                       value={question}
-                      onChange={(e) => setQuestion(e.target.value.slice(0, MAX_SUGGESTION_LEN))}
-                      className={`${FIELD} text-base`}
+                      onChange={setQuestion}
+                      maxLength={MAX_SUGGESTION_LEN}
+                      ariaLabel="שאלת התחזית"
                       placeholder="קצר וחד: ״מי יוביל את הליכוד בבחירות הבאות?״"
                     />
                     <p className="mt-1.5 text-start text-xs text-muted-foreground">
@@ -237,12 +237,13 @@ export function SuggestMarketWizard({
                             <div key={i} className="flex items-start gap-2">
                               <span className="nums mt-2.5 w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{i + 1}</span>
                               <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                                <input
+                                <TextField
                                   value={o.labelHe}
-                                  onChange={(e) => setOutcomeLabel(i, e.target.value.slice(0, MAX_OUTCOME_LABEL_LEN))}
-                                  className={`${FIELD} min-w-40 flex-1`}
+                                  onChange={(v) => setOutcomeLabel(i, v)}
+                                  maxLength={MAX_OUTCOME_LABEL_LEN}
+                                  className="min-w-40 flex-1"
                                   placeholder="תשובה (או בחרו פוליטיקאי ←)"
-                                  aria-label={`תשובה ${i + 1}`}
+                                  ariaLabel={`תשובה ${i + 1}`}
                                 />
                                 <div className="min-w-44 flex-1 sm:max-w-56">
                                   <PoliticianCombobox
@@ -311,10 +312,12 @@ export function SuggestMarketWizard({
 
                     <motion.div variants={fieldItem}>
                       <label className={LABEL} htmlFor="wsrc">מקור הכרעה (לא חובה)</label>
-                      <input
-                        id="wsrc" value={source}
-                        onChange={(e) => setSource(e.target.value.slice(0, MAX_SOURCE_NOTE_LEN))}
-                        className={FIELD}
+                      <TextField
+                        id="wsrc"
+                        value={source}
+                        onChange={setSource}
+                        maxLength={MAX_SOURCE_NOTE_LEN}
+                        ariaLabel="מקור הכרעה"
                         placeholder="למשל: אתר הכנסת, פרסום ברשומות, הודעה רשמית…"
                       />
                     </motion.div>
