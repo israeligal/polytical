@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [duel-challenge](#duel-challenge) | 2026-06-18 `16ea351` | 3 | 8/9 |
+| [duel-challenge](#duel-challenge) | 2026-06-18 `afbca46` | 4 | 9/9 |
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
@@ -340,7 +340,7 @@
 
 **What it is:** A user shares a single-bet duel link with friends; a recipient opens the public `/duel/[token]` arena, sees a head-to-head VS face-off on one question, picks a side, and — once the market resolves — sees who was right. v0 is a **stateless token** (no `challenges` table): the link encodes market + challenger @handle + their pick; picks reuse the normal `bets` engine.
 
-**Last walked:** 2026-06-18 `16ea351` (feat/prediction-duels P2-settlement, localhost, @commenter_qa). **Walks:** 3. **Coverage:** 8/9
+**Last walked:** 2026-06-18 `afbca46` (full sweep via 2 Sonnet subagents — browser + curl/SSR). **Walks:** 4. **Coverage:** 9/9
 
 **Settlement (P2) steps:**
 - ✅ resolve a duel's market → `duel_settled` notification per player (head-to-head won/lost/tie), live-verified on a throwaway prod market (@commenter_qa won, @bigwhale_hr lost).
@@ -353,7 +353,8 @@
 - ✅ pick a side → optimistic reveal STATE: picked side gets mint border+glow+"המנדט שלך ✓", crowd split renders (60/40). Verified WITHOUT a prod write (server-action POST fetch-blocked).
 - ✅ market-page hook: "🥊 התערבו על זה עם חבר" gold pill renders on global open markets for logged-in users (185×34, under the meta row).
 - ✅ invalid token (`/duel/garbage`) → not-found UI "הדף לא נמצא" (HTTP 200 is app-wide, not duel-specific).
-- ⚠️ logged-out reveal → "הצטרפו ושמרו את המנדט" login CTA (`/login?callbackUrl`): code-verified only — QA session was logged-in (commenter_qa), and the httpOnly session cookie can't be cleared to force logged-out.
+- ✅ logged-OUT landing (`afbca46`, curl SSR): an anonymous visitor gets the full arena (kicker + challenger @handle + question), NO real-name leak (all @handle/`<bdi>`); the market challenge button is correctly hidden logged-out. The post-pick login CTA itself stays code-verified (httpOnly session can't be dropped in-harness to walk the interactive logged-out pick).
+- ✅ edge `/duel/by-id/<bad|missing>` → was a blank 404 (route-handler `notFound`), **fixed `afbca46`** → redirects to `/markets`; valid by-id → 307 to the token.
 - ✅ revealed-on-mount path (P1, `085fdc2`): a persisted challenge where the viewer/challenger has a pick renders the challenger's pick chip in the VS band + the picked badge + outcome rows — verified live (multi-outcome "מי ירכיב את הממשלה"). `initial={false}` dodges the occluded-tab rAF deadlock.
 - ✅ P1 persistence: createChallenge (service, against prod) → persisted row → /duel/[token] reads challenger @handle + live pick from DB; migration 0033 applied; 13 PGlite tests green.
 - ⚠️ INTERACTIVE reveal animation (prompt→revealed swap, crowd-fill growth, %/mandate count-up): still frozen by the occluded QA tab (rAF + AnimatePresence mode="wait"); foreground-only. Verify in a FOCUSED window.
