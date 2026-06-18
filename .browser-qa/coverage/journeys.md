@@ -4,6 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
+| [duel-challenge](#duel-challenge) | 2026-06-19 `8df7707` | 5 | 12/12 |
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
@@ -333,3 +334,38 @@
 - ✅ `/profile` portfolio: stat cards + open positions + resolved history ("זכית +100")
 
 **Known gaps:** multi-user leaderboard ordering by accuracy (vs net worth) not browser-walked (unit-tested); ties / mark-to-market net worth deferred.
+
+
+## duel-challenge
+
+**What it is:** A user shares a single-bet duel link with friends; a recipient opens the public `/duel/[token]` arena, sees a head-to-head VS face-off on one question, picks a side, and — once the market resolves — sees who was right. v0 is a **stateless token** (no `challenges` table): the link encodes market + challenger @handle + their pick; picks reuse the normal `bets` engine.
+
+**Last walked:** 2026-06-19 `8df7707` (PR #107 new surfaces, foreground browser + DOM + DB). **Walks:** 5. **Coverage:** 12/12
+
+**Rematch + suggestion-card (PR #107) steps:**
+- ✅ home-feed suggestion card (`DuelSuggestionLive` on `/`, logged-in + national): gold/glow card above grid (kicker, urgency chip, question, pill), RTL correct, no overflow; click → mint+copy ("הקישור הועתק"). Mint is PICK-FREE (code + controlled reset test: 0 bets after a mint).
+- ✅ resolved-duel rematch picker (`/duel/[token]` result): close-week market(s) rendered as DuelSuggestionLive under "רוצים ריוונש?"; "שתפו את התוצאה" replaces the old dead re-share CTA.
+- ✅ hail copy "מזמין/ה אותך לעימות 🎙️" (debate framing, was "מאתגר/ת אותך 🥊") — verified live; standings/VS role badge "מאתגר/ת" (challenger) retained.
+- ⚠️ scope/gating negatives (anon `/` no card; anon resolved duel no rematch picker) code-verified only (`me && !groupScope` / `isLoggedIn` ternaries) — not browser-walked logged-out this pass.
+
+**Settlement (P2) steps:**
+- ✅ resolve a duel's market → `duel_settled` notification per player (head-to-head won/lost/tie), live-verified on a throwaway prod market (@commenter_qa won, @bigwhale_hr lost).
+- ✅ `/duel/[token]` RESULT state: winning outcome crowned (🏆 התשובה), verdict banner, standings (✓/✗, winners on top), rematch CTA. No overflow.
+- ✅ `/notifications` renders the `duel_settled` item (gold accent) → click → `/duel/by-id/[id]` → resolved result page (full loop).
+- ⚠️ The win **celebration animation** (SparkBurst confetti) is foreground-only — frozen in the occluded QA tab; verify in a focused window.
+
+**Steps:**
+- ✅ open shared `/duel/[token]` → arena renders: kicker, VS face-off (challenger gold ring + viewer mint ring, picks masked "???"), question card, live urgency chip, two color-coded sides (כן/לא). Hebrew correct (real DOM bidi). No overflow, 0 console errors.
+- ✅ pick a side → optimistic reveal STATE: picked side gets mint border+glow+"המנדט שלך ✓", crowd split renders (60/40). Verified WITHOUT a prod write (server-action POST fetch-blocked).
+- ✅ market-page hook: "🥊 התערבו על זה עם חבר" gold pill renders on global open markets for logged-in users (185×34, under the meta row).
+- ✅ invalid token (`/duel/garbage`) → not-found UI "הדף לא נמצא" (HTTP 200 is app-wide, not duel-specific).
+- ✅ logged-OUT landing (`afbca46`, curl SSR): an anonymous visitor gets the full arena (kicker + challenger @handle + question), NO real-name leak (all @handle/`<bdi>`); the market challenge button is correctly hidden logged-out. The post-pick login CTA itself stays code-verified (httpOnly session can't be dropped in-harness to walk the interactive logged-out pick).
+- ✅ edge `/duel/by-id/<bad|missing>` → was a blank 404 (route-handler `notFound`), **fixed `afbca46`** → redirects to `/markets`; valid by-id → 307 to the token.
+- ✅ revealed-on-mount path (P1, `085fdc2`): a persisted challenge where the viewer/challenger has a pick renders the challenger's pick chip in the VS band + the picked badge + outcome rows — verified live (multi-outcome "מי ירכיב את הממשלה"). `initial={false}` dodges the occluded-tab rAF deadlock.
+- ✅ P1 persistence: createChallenge (service, against prod) → persisted row → /duel/[token] reads challenger @handle + live pick from DB; migration 0033 applied; 13 PGlite tests green.
+- ⚠️ INTERACTIVE reveal animation (prompt→revealed swap, crowd-fill growth, %/mandate count-up): still frozen by the occluded QA tab (rAF + AnimatePresence mode="wait"); foreground-only. Verify in a FOCUSED window.
+
+**Notable history:**
+- `c025e3a` (2026-06-18): feature built + wired (stateless `/duel/[token]` route, market-page challenge hook). OG unfurl image removed (Satori has no bidi → Hebrew reversed); text unfurl via generateMetadata. Entrances are transform-only so content stays visible if rAF is throttled — see [[motion-entrance-raf-throttle]].
+
+**Known gaps:** focused-browser pass for the full reveal choreography; logged-out funnel walk; live mobile-viewport capture (tooling-blocked); persistent `challenges`/participants tables (P1 — needs a prod migration) → multi-participant leaderboard, settlement notifications, OG image with bundled Hebrew font + bidi-js.

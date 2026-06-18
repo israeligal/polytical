@@ -29,7 +29,9 @@ export type NotificationEvent =
   | { type: "group_motion_posted"; userId: string; groupId: string; marketId: string; questionHe: string }
   | { type: "group_motion_resolved"; userId: string; groupId: string; marketId: string; questionHe: string; won: boolean }
   | { type: "group_mention"; userId: string; groupId: string; marketId: string; questionHe: string; actorName: string }
-  | { type: "group_member_joined"; userId: string; groupId: string; groupNameHe: string; actorName: string };
+  | { type: "group_member_joined"; userId: string; groupId: string; groupNameHe: string; actorName: string }
+  // --- Duels / דו-קרב ---
+  | { type: "duel_settled"; userId: string; challengeId: string; questionHe: string; result: "won" | "lost" | "tie" };
 
 // Exported so the push dispatcher derives its `{title, body}` from the SAME
 // Hebrew copy as the in-app row — one source of truth for notification text.
@@ -104,6 +106,19 @@ export function composeNotification(e: NotificationEvent): NewNotification {
         titleHe: "חבר/ה חדש/ה בקואליציה 👋",
         bodyHe: `${e.actorName} הצטרף/ה ל${e.groupNameHe}`,
         refGroupId: e.groupId,
+      };
+    case "duel_settled":
+      return {
+        userId: e.userId, type: "duel_settled",
+        titleHe:
+          e.result === "won" ? "ניצחת בדו-קרב! 🥊" : e.result === "tie" ? "תיקו בדו-קרב 🤝" : "הדו-קרב הוכרע",
+        bodyHe:
+          e.result === "won"
+            ? `הכרעת את היריב — בדקו את התוצאות · ${e.questionHe}`
+            : e.result === "tie"
+              ? `שניכם ניבאתם אותו דבר · ${e.questionHe}`
+              : `הפעם היריב צדק — בדקו מי ניצח · ${e.questionHe}`,
+        refChallengeId: e.challengeId,
       };
   }
 }

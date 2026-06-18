@@ -1,5 +1,5 @@
 import type { ExtractTablesWithRelations } from "drizzle-orm";
-import { and, asc, desc, eq, gt, inArray, isNull, lte, notExists, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, notExists, notInArray, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/app/lib/db";
 import type { Tx } from "@/app/lib/db";
@@ -286,6 +286,41 @@ export async function listMarketsClosingSoon({
       ),
     )
     .orderBy(asc(markets.closeAt));
+}
+
+/** OPEN, GLOBAL markets closing within `withinMs` — the "challenge a friend on a
+ *  close bet" candidate set (powers the duel feed-suggestion card + the rematch
+ *  picker). Hot first, then soonest. Unlike listMarketsClosingSoon: NO
+ *  closingSoonNotifiedAt filter (this isn't the cron), takes a limit + optional
+ *  excludeMarketId, and no user filter (predicting it yourself is fine — you'd be
+ *  the challenger). */
+export async function listDuelableMarkets({
+  db = defaultDb,
+  limit = 5,
+  excludeMarketId,
+  withinMs = 7 * 24 * 3600 * 1000,
+  now = new Date(),
+}: {
+  db?: DB;
+  limit?: number;
+  excludeMarketId?: string;
+  withinMs?: number;
+  now?: Date;
+}): Promise<MarketRow[]> {
+  const horizon = new Date(now.getTime() + withinMs);
+  const conditions = [
+    eq(markets.status, "open"),
+    isNull(markets.groupId),
+    gt(markets.closeAt, now),
+    lte(markets.closeAt, horizon),
+  ];
+  if (excludeMarketId) conditions.push(ne(markets.id, excludeMarketId));
+  return db
+    .select()
+    .from(markets)
+    .where(and(...conditions))
+    .orderBy(desc(markets.hot), asc(markets.closeAt))
+    .limit(limit);
 }
 
 /** Distinct users who have a bet on a market (the closing-soon notice audience). */

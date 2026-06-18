@@ -15,6 +15,7 @@ export interface FeedItem {
   bodyHe: string;
   refMarketId: string | null;
   refGroupId: string | null;
+  refChallengeId: string | null;
   read: boolean;
   createdAtIso: string;
 }
@@ -32,6 +33,7 @@ const ACCENT: Record<FeedItem["type"], string> = {
   group_motion_resolved: "border-s-positive",
   group_mention: "border-s-border",
   group_member_joined: "border-s-border",
+  duel_settled: "border-s-accent",
 };
 
 export function NotificationFeed({ items }: { items: FeedItem[] }) {
@@ -42,11 +44,13 @@ export function NotificationFeed({ items }: { items: FeedItem[] }) {
     // Motion notifications carry a market → the (membership-gated) motion page.
     // A memberless group event (e.g. someone joined) routes via the id→slug
     // resolver (/g/by-id/[id]); otherwise fall back to the profile.
-    const href = item.refMarketId
-      ? `/market/${item.refMarketId}`
-      : item.refGroupId
-        ? `/g/by-id/${item.refGroupId}`
-        : "/profile";
+    const href = item.refChallengeId
+      ? `/duel/by-id/${item.refChallengeId}`
+      : item.refMarketId
+        ? `/market/${item.refMarketId}`
+        : item.refGroupId
+          ? `/g/by-id/${item.refGroupId}`
+          : "/profile";
     // Navigate first — marking-read is best-effort and must never block or abort
     // the navigation (a failed read-mark previously left the user stuck).
     if (!item.read) {

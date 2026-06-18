@@ -2,6 +2,7 @@ import {
   composeNotification,
   type NotificationEvent,
 } from "@/app/lib/notifications/service";
+import type { NewNotification } from "@/app/lib/notifications/repo";
 
 /**
  * The shape `public/sw.js` reads from the push message body. The `{ title,
@@ -24,14 +25,15 @@ export function eventToPush(event: NotificationEvent): PushPayload {
   return {
     title: n.titleHe,
     body: n.bodyHe,
-    url: pushUrl(event, n.refMarketId),
+    url: pushUrl(n),
   };
 }
 
-/** Where a notification click lands: the referenced market, otherwise the
- *  notifications inbox. */
-function pushUrl(_event: NotificationEvent, refMarketId?: string | null): string {
-  return refMarketId ? `/market/${refMarketId}` : "/notifications";
+/** Where a notification click lands: the duel result, the referenced market,
+ *  otherwise the notifications inbox. */
+function pushUrl(n: NewNotification): string {
+  if (n.refChallengeId) return `/duel/by-id/${n.refChallengeId}`;
+  return n.refMarketId ? `/market/${n.refMarketId}` : "/notifications";
 }
 
 /** Higher number wins when one user has multiple pending events. */
@@ -46,6 +48,7 @@ const EVENT_PRIORITY: Record<NotificationEvent["type"], number> = {
   group_motion_posted: 1,
   group_mention: 1,
   group_member_joined: 0,
+  duel_settled: 2,
 };
 
 /**

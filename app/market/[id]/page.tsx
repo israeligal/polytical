@@ -9,6 +9,7 @@ import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { listMyGroups } from "@/app/lib/groups/service";
 import { CopyMotionLink } from "@/components/groups/copy-motion-link";
 import { CloneToGroupButton } from "@/components/groups/clone-to-group-button";
+import { ChallengeMarketButton } from "@/components/duel/challenge-market-button";
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { getUnpredictedOpenMarketCards } from "@/app/lib/markets/feed";
 import { getPoliticianByPersonId } from "@/app/lib/politicians/repo";
@@ -184,6 +185,13 @@ export default async function MarketPage({
             <span className="text-border">•</span>
             <Countdown closeAt={market.closeAt} />
           </div>
+
+          {/* Global open markets: challenge a friend to a single-bet duel. */}
+          {!groupId && isLoggedIn && isOpen && (
+            <div className="mt-4">
+              <ChallengeMarketButton marketId={market.id} size="sm" />
+            </div>
+          )}
 
           {isOpen ? (
             /* Open markets: OddsBar (binary) or the pct overview (multi) then the
