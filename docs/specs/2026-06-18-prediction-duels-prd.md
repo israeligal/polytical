@@ -82,29 +82,18 @@ Polytical's growth depends on word-of-mouth, but the product has **no in-app rea
 
 ---
 
-## Success Metrics
-> ⚠️ **Instrumentation gap (blocking for measurement):** Polytical's PostHog is **error-tracking only**, not product analytics ([[posthog-errors-only]]). None of the funnel events below are emitted yet. Shipping the *measurement* of this feature is its own work item (see Open Questions, data).
+## Success Signals (no analytics — by design)
+**Polytical intentionally runs no product analytics** — PostHog is error-tracking only ([[posthog-errors-only]]), and that privacy-light stance is a product value, not a gap. We will **not** build a funnel-instrumentation pipeline or attribute signups to duel tokens. Success is judged **qualitatively + from data we already hold**, not from a measurement product:
+- **Are duels being created + accepted?** Observable directly from the `challenges` / `challenge_participants` tables (a simple admin/DB read, not a tracking pipeline) — rows growing = the loop is alive.
+- **Do challenges get multiple participants?** `challenge_participants` count per challenge = the one-to-many spread, read on demand.
+- **Anecdotal / organic signal** — do people share duel links, do new users mention them, does the team see them in WhatsApp groups. Word-of-mouth is judged by word-of-mouth.
 
-**Leading (days–weeks)**
-- **Challenges created / week**; **share rate** (created → shared).
-- **Invite CTR** — landing views per challenge link. *Target (hypothesis): ≥1 landing view per 2 created links.*
-- **Accept→signup conversion** — % of logged-out landing viewers who complete signup + first pick. *Target: ≥20%.*
-- **New signups attributed to duel links.** *Target: duels become a top-3 signup source within 60 days.*
-
-**The viral metric**
-- **K-factor** = (avg accepts delivered per challenger) × (accept-conversion per invite). *Target: directional K > 0.3 to start; tune toward ≥1.*
-
-**Lagging (weeks–months)**
-- **Retention of duel-acquired users** vs organic baseline (D7/D30). *Target: ≥ parity with organic at D7.*
-- **Settlement-notice → session rate.** *Target: ≥25% of `duel_settled` recipients open a session within 48h.*
-- **Share of new signups from duels.**
-
-*Measurement window: evaluate at 1 week, 1 month, 1 quarter post-launch.*
+If we ever DO want numbers, they're a one-off SQL query over the existing tables — not a reason to instrument the client. Ship it, watch the tables, trust the qualitative read.
 
 ---
 
 ## Open Questions
-- **[data — BLOCKING for metrics]** What pipeline instruments the duel funnel? PostHog is errors-only; RudderStack/Slack exists for ops alerts ([[observability-alerts]]) but not product funnels. Decide: instrument duel events (create/share/land/accept/signup-attribution/settle) where, and attribute signups to a duel token.
+- **[data — RESOLVED, no action]** ~~How do we instrument the funnel?~~ We don't. Per the product's privacy-light stance, no client analytics / no signup attribution is built — success is read qualitatively + from the existing `challenges` tables (see Success Signals). Closed.
 - **[product]** Should duel participants stop receiving the generic `market_resolved`/`bet_won` and get only `duel_settled`? (Currently both fire — minor redundancy.)
 - **[product/design]** Head-to-head result semantics confirmed? (Participant beats challenger iff participant-correct & challenger-wrong; tie if both same. Challenger framed vs the field.) Defaulted; easy to change.
 - **[legal/privacy]** A duel link is **public** — anyone with the token sees the challenger's `@handle`, the question, and (post-accept) the standings `@handles`. `@handle` is already public, but this is a new public surface; confirm against the same carve-out flagged for groups ([[groups-coalition-feature]]).
@@ -131,7 +120,7 @@ Polytical's growth depends on word-of-mouth, but the product has **no in-app rea
 | WhatsApp unfurl OG image (bidi-correct Hebrew) | ✅ |
 | Feed suggestion card on the home feed | ⬜ P1 (component exists, unplaced) |
 | Rematch flow | ⬜ P1 |
-| Funnel analytics / signup attribution | ⬜ **blocking for metrics** |
+| Funnel analytics / signup attribution | 🚫 **not building (privacy-light by design)** |
 | Group duels, tournaments, duel badges | ⬜ P2 parking lot |
 
 **Verification of shipped scope:** 20 PGlite integration tests; typecheck/lint/build green; migrations 0033 + 0034 applied to prod; live browser-QA of create→persist→resolve→notify→result (`.browser-qa/` `duel-challenge` journey, 8/9).
