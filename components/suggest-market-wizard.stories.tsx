@@ -55,18 +55,3 @@ export const Default: Story = {};
 export const WithPreselectedPolitician: Story = {
   args: { defaultPolitician: POLS[0] },
 };
-
-/** Input style #1 — minimal underline on every text field. */
-export const InputsUnderline: Story = {
-  args: { inputVariant: "underline" },
-};
-
-/** Input style #4 — elevated card on every text field. */
-export const InputsElevated: Story = {
-  args: { inputVariant: "elevated" },
-};
-
-/** Mix — elevated hero question (#4) over minimal underline fields (#1). */
-export const InputsMix: Story = {
-  args: { heroVariant: "elevated", inputVariant: "underline" },
-};

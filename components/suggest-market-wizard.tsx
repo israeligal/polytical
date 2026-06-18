@@ -14,7 +14,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PoliticianCombobox } from "@/components/politician-combobox";
 import { CategoryChips } from "@/components/category-chips";
 import { DateTimeField } from "@/components/date-time-field";
-import { TextField, type InputVariant } from "@/components/text-field";
+import { TextField } from "@/components/text-field";
 import type { PoliticianOption } from "@/lib/types";
 import type { ActionResult } from "@/app/actions/types";
 import { nowLocalInput } from "@/lib/time";
@@ -37,10 +37,6 @@ interface OutcomeDraft {
 export interface SuggestMarketWizardProps {
   categories: { key: string; he: string }[];
   defaultPolitician?: PoliticianOption | null;
-  /** Input chrome for the secondary text fields (answers, source). */
-  inputVariant?: InputVariant;
-  /** Input chrome for the hero question (defaults to inputVariant). */
-  heroVariant?: InputVariant;
   /** Server action (or a story noop) — searches politicians for the comboboxes. */
   searchPoliticians: (args: { q: string }) => Promise<PoliticianOption[]>;
   /** Server action (or a story noop) — submits the proposal. */
@@ -63,14 +59,10 @@ const STEPS = [
 export function SuggestMarketWizard({
   categories,
   defaultPolitician,
-  inputVariant = "default",
-  heroVariant,
   searchPoliticians,
   onSubmit,
 }: SuggestMarketWizardProps) {
   const reduce = useReducedMotion();
-  const fieldV = inputVariant;
-  const heroV = heroVariant ?? inputVariant;
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1); // 1 = forward, -1 = back (drives slide direction)
 
@@ -195,7 +187,6 @@ export function SuggestMarketWizard({
                     <TextField
                       id="wq"
                       autoFocus
-                      variant={heroV}
                       value={question}
                       onChange={setQuestion}
                       maxLength={MAX_SUGGESTION_LEN}
@@ -247,11 +238,9 @@ export function SuggestMarketWizard({
                               <span className="nums mt-2.5 w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{i + 1}</span>
                               <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                                 <TextField
-                                  variant={fieldV}
                                   value={o.labelHe}
                                   onChange={(v) => setOutcomeLabel(i, v)}
                                   maxLength={MAX_OUTCOME_LABEL_LEN}
-                                  withIcon={false}
                                   className="min-w-40 flex-1"
                                   placeholder="תשובה (או בחרו פוליטיקאי ←)"
                                   ariaLabel={`תשובה ${i + 1}`}
@@ -325,7 +314,6 @@ export function SuggestMarketWizard({
                       <label className={LABEL} htmlFor="wsrc">מקור הכרעה (לא חובה)</label>
                       <TextField
                         id="wsrc"
-                        variant={fieldV}
                         value={source}
                         onChange={setSource}
                         maxLength={MAX_SOURCE_NOTE_LEN}
