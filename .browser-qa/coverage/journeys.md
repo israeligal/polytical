@@ -356,7 +356,7 @@
 
 **Steps:**
 - ✅ open shared `/duel/[token]` → arena renders: kicker, VS face-off (challenger gold ring + viewer mint ring, picks masked "???"), question card, live urgency chip, two color-coded sides (כן/לא). Hebrew correct (real DOM bidi). No overflow, 0 console errors.
-- ✅ pick a side → optimistic reveal STATE: picked side gets mint border+glow+"המנדט שלך ✓", crowd split renders (60/40). Verified WITHOUT a prod write (server-action POST fetch-blocked).
+- ✅ pick a side → reveal STATE: picked side gets mint border+glow+"המנדט שלך ✓", crowd split renders. **REAL prod write verified 2026-06-19** (`8df7707`): recipient commenter_qa joined searcher_qa's duel, picked לא → makePrediction wrote bet=לא + recordParticipant=1 (DB-confirmed); VS band showed two distinct players. (Earlier passes were fetch-blocked.)
 - ✅ market-page hook: "🥊 התערבו על זה עם חבר" gold pill renders on global open markets for logged-in users (185×34, under the meta row).
 - ✅ invalid token (`/duel/garbage`) → not-found UI "הדף לא נמצא" (HTTP 200 is app-wide, not duel-specific).
 - ✅ logged-OUT landing (`afbca46`, curl SSR): an anonymous visitor gets the full arena (kicker + challenger @handle + question), NO real-name leak (all @handle/`<bdi>`); the market challenge button is correctly hidden logged-out. The post-pick login CTA itself stays code-verified (httpOnly session can't be dropped in-harness to walk the interactive logged-out pick).
@@ -366,6 +366,7 @@
 - ⚠️ INTERACTIVE reveal animation (prompt→revealed swap, crowd-fill growth, %/mandate count-up): still frozen by the occluded QA tab (rAF + AnimatePresence mode="wait"); foreground-only. Verify in a FOCUSED window.
 
 **Notable history:**
+- `f84f728` (2026-06-19): **PR #107 MERGED to main → shipped to prod.** Resolved a migration-number collision with main's caricature feature (both claimed 0033 → duel migs renumbered to 0034/0035). Vercel prod deploy verified live on www.polytical.co.il. Real recipient-join flow finally walked with a prod write.
 - `c025e3a` (2026-06-18): feature built + wired (stateless `/duel/[token]` route, market-page challenge hook). OG unfurl image removed (Satori has no bidi → Hebrew reversed); text unfurl via generateMetadata. Entrances are transform-only so content stays visible if rAF is throttled — see [[motion-entrance-raf-throttle]].
 
 **Known gaps:** focused-browser pass for the full reveal choreography; logged-out funnel walk; live mobile-viewport capture (tooling-blocked); persistent `challenges`/participants tables (P1 — needs a prod migration) → multi-participant leaderboard, settlement notifications, OG image with bundled Hebrew font + bidi-js.
