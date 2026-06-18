@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import bidiFactory from "bidi-js";
-import { decodeDuelToken } from "@/app/lib/duels/token";
+import { getChallengeByToken } from "@/app/lib/duels/repo";
 import { getMarketBundle } from "@/app/lib/markets/repo";
 
 export const alt = "פוליטיקל · דו-קרב";
@@ -67,10 +67,10 @@ async function loadHebrewFont(text: string): Promise<ArrayBuffer | null> {
 
 export default async function Image({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const decoded = decodeDuelToken(token);
-  const bundle = decoded ? await getMarketBundle({ marketId: decoded.m }) : null;
+  const challenge = await getChallengeByToken({ token });
+  const bundle = challenge ? await getMarketBundle({ marketId: challenge.marketId }) : null;
   const questionRaw = (bundle?.market.questionHe ?? "מי צודק?").slice(0, 110);
-  const handle = decoded?.h ?? "";
+  const handle = challenge?.challengerHandle ?? "";
 
   const kicker = toVisual("פוליטיקל · דו-קרב");
   const hail = toVisual(`@${handle} מאתגר/ת אותך`);

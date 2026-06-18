@@ -232,6 +232,13 @@
       "when": 1781534377152,
       "tag": "0032_eminent_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781791349570,
+      "tag": "0033_mute_nighthawk",
+      "breakpoints": true
     }
   ]
 }

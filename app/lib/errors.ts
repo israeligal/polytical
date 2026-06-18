@@ -17,6 +17,7 @@ export class SuggestionTooLongError extends Error { constructor() { super("Sugge
 export class InvalidCategoryError extends Error { constructor() { super("Invalid category"); this.name = "InvalidCategoryError"; } }
 export class SuggestionNotFoundError extends Error { constructor() { super("Suggestion not found"); this.name = "SuggestionNotFoundError"; } }
 export class AlreadyReviewedError extends Error { constructor() { super("Suggestion already reviewed"); this.name = "AlreadyReviewedError"; } }
+export class NotDuelableMarketError extends Error { constructor() { super("Market cannot be dueled (group motion)"); this.name = "NotDuelableMarketError"; } }
 export class UnknownPoliticianError extends Error { constructor() { super("Politician not found"); this.name = "UnknownPoliticianError"; } }
 export class ClosePastError extends Error { constructor() { super("Close date must be in the future"); this.name = "ClosePastError"; } }
 export class CloseRequiredError extends Error { constructor() { super("Proposed close date is required"); this.name = "CloseRequiredError"; } }

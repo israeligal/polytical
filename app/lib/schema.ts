@@ -638,3 +638,7 @@ export * from "./schema-votes";
 // Groups / קואליציה domain — same split + cycle-safe FK-thunk pattern. Re-exported
 // so `import * as schema` and drizzle() include groups/group_members.
 export * from "./schema-groups";
+
+// Prediction Duels P1 — challenges + participants (same split + cycle-safe
+// FK-thunk pattern). Re-exported so `import * as schema` and drizzle() include them.
+export * from "./schema-duels";

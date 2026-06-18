@@ -189,12 +189,7 @@ export default async function MarketPage({
           {/* Global open markets: challenge a friend to a single-bet duel. */}
           {!groupId && isLoggedIn && isOpen && (
             <div className="mt-4">
-              <ChallengeMarketButton
-                marketId={market.id}
-                challengerHandle={session?.user?.handle ?? FALLBACK_HANDLE}
-                pickedOutcomeId={initialPickId}
-                size="sm"
-              />
+              <ChallengeMarketButton marketId={market.id} size="sm" />
             </div>
           )}
 

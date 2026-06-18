@@ -13,10 +13,12 @@ export function ChallengeButton({
   onChallenge,
   size = "md",
   className = "",
+  disabled,
 }: {
   onChallenge?: () => void;
   size?: "sm" | "md";
   className?: string;
+  disabled?: boolean;
 }) {
   const reduce = useReducedMotion();
   const pad = size === "sm" ? "px-3 py-1.5 text-sm" : "px-5 py-2.5 text-base";
@@ -25,10 +27,11 @@ export function ChallengeButton({
     <motion.button
       type="button"
       onClick={onChallenge}
-      whileHover={reduce ? undefined : { scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
+      disabled={disabled}
+      whileHover={reduce || disabled ? undefined : { scale: 1.04, y: -2 }}
+      whileTap={disabled ? undefined : { scale: 0.96 }}
       transition={{ type: "spring", stiffness: 400, damping: 16 }}
-      className={`inline-flex items-center gap-2 rounded-full border-[1.5px] border-accent/50 bg-accent/10 font-extrabold text-gold shadow-glow-gold transition-colors hover:bg-accent/20 ${pad} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border-[1.5px] border-accent/50 bg-accent/10 font-extrabold text-gold shadow-glow-gold transition-colors hover:bg-accent/20 disabled:opacity-50 ${pad} ${className}`}
     >
       <motion.span
         aria-hidden
