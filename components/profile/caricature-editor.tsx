@@ -92,18 +92,28 @@ export function CaricatureEditor({
     if (!preview) return;
     setError(null);
     startTransition(async () => {
-      const res = await _setCaricatureAction({ dataUrl: preview });
-      if (res.ok) afterMutation();
-      else setError(res.message ?? "אירעה שגיאה");
+      try {
+        const res = await _setCaricatureAction({ dataUrl: preview });
+        if (res.ok) afterMutation();
+        else setError(res.message ?? "אירעה שגיאה");
+      } catch {
+        // e.g. the request exceeded the Server Action body limit (413) — the
+        // framework rejects before the action runs, so there's no ActionResult.
+        setError("העלאת התמונה נכשלה — נסו תמונה קטנה יותר");
+      }
     });
   }
 
   function remove() {
     setError(null);
     startTransition(async () => {
-      const res = await _clearCaricatureAction();
-      if (res.ok) afterMutation();
-      else setError(res.message ?? "אירעה שגיאה");
+      try {
+        const res = await _clearCaricatureAction();
+        if (res.ok) afterMutation();
+        else setError(res.message ?? "אירעה שגיאה");
+      } catch {
+        setError("אירעה שגיאה — נסו שוב");
+      }
     });
   }
 
