@@ -271,8 +271,13 @@ predicting, signed-up user.
 4. **Do duel picks counting toward global accuracy bother us?** They're real predictions
    and can't double-count (unique constraint), but confirm it's fine that duels feed the
    global leaderboard. *(product/data)*
-5. **Hebrew-RTL in `ImageResponse`/satori** — needs an embedded Hebrew font + correct
-   direction; known to be fiddly. Spike before committing the share-card design. *(eng)*
+5. **Hebrew-RTL in `ImageResponse`/satori** — ⚠️ **SPIKED 2026-06-18:** the route renders a
+   valid 1200×630 PNG and a runtime-fetched Heebo font rasterizes, *but Satori has no
+   bidi*, so Hebrew comes out letter-reversed (mirrored) — unusable. The image route was
+   removed; the WhatsApp unfurl falls back to `generateMetadata`'s og:title/description
+   (correct Hebrew, since clients do their own bidi). **To do it right:** bundle a local
+   Hebrew font (no runtime Google fetch) + run text through a Unicode-bidi reorder
+   (`bidi-js`) into visual order before passing to Satori. Deferred to a focused task. *(eng)*
 6. **Attribution** — how do we tag a signup as duel-originated (token in `callbackUrl` →
    persisted on the user / an analytics event at account creation)? *(eng/data)*
 7. **Onboarding interruption** — accept flow must survive auth → handle-pick → return.
