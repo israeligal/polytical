@@ -1,4 +1,4 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 import { db as defaultDb, type Tx } from "@/app/lib/db";
 import type { AppDb } from "@/app/lib/db-utils";
 import { challenges, challengeParticipants, users, bets } from "@/app/lib/schema";
@@ -111,9 +111,12 @@ export async function getParticipants({
       outcomeId: bets.outcomeId,
     })
     .from(challengeParticipants)
+    .innerJoin(challenges, eq(challenges.id, challengeParticipants.challengeId))
     .innerJoin(users, eq(users.id, challengeParticipants.userId))
     .leftJoin(bets, and(eq(bets.userId, challengeParticipants.userId), eq(bets.marketId, marketId)))
-    .where(eq(challengeParticipants.challengeId, challengeId));
+    // Exclude the challenger — they're the challenger side, never a "participant"
+    // (defends against any stale self-join row; the standings list adds them once).
+    .where(and(eq(challengeParticipants.challengeId, challengeId), ne(challengeParticipants.userId, challenges.challengerUserId)));
   return rows.map((r) => ({ ...r, outcomeId: r.outcomeId ?? null }));
 }
 
@@ -138,11 +141,20 @@ export async function getChallengesForMarket({
 }: {
   db?: AppDb;
   marketId: string;
-}): Promise<{ id: string; token: string; challengerUserId: string }[]> {
-  return db
-    .select({ id: challenges.id, token: challenges.token, challengerUserId: challenges.challengerUserId })
+}): Promise<{ id: string; token: string; challengerUserId: string; challengerOutcomeId: string | null }[]> {
+  // Fold in the challenger's current pick (leftJoin) so the settlement pass
+  // doesn't re-query per challenge.
+  const rows = await db
+    .select({
+      id: challenges.id,
+      token: challenges.token,
+      challengerUserId: challenges.challengerUserId,
+      challengerOutcomeId: bets.outcomeId,
+    })
     .from(challenges)
+    .leftJoin(bets, and(eq(bets.userId, challenges.challengerUserId), eq(bets.marketId, challenges.marketId)))
     .where(eq(challenges.marketId, marketId));
+  return rows.map((r) => ({ ...r, challengerOutcomeId: r.challengerOutcomeId ?? null }));
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

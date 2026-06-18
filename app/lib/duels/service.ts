@@ -60,7 +60,12 @@ export async function joinDuel({
   const challenge = await repo.getChallengeByToken({ db, token });
   if (!challenge) throw new MarketNotFoundError(); // bad / removed link
   await makePrediction({ db, userId, marketId: challenge.marketId, outcomeId });
-  await repo.recordParticipant({ db, challengeId: challenge.id, userId });
+  // The challenger isn't a "participant" of their own duel — their pick is the
+  // challenger side. Recording them would duplicate them in standings and emit a
+  // contradictory result notice.
+  if (userId !== challenge.challengerUserId) {
+    await repo.recordParticipant({ db, challengeId: challenge.id, userId });
+  }
 }
 
 /** A participant's head-to-head result vs the challenger on a single market. */
@@ -93,8 +98,7 @@ export async function notifyDuelSettlements({
 
   const events: NotificationEvent[] = [];
   for (const c of list) {
-    const view = await repo.getChallengeByToken({ db, token: c.token });
-    const challengerCorrect = view?.challengerOutcomeId === winningOutcomeId;
+    const challengerCorrect = c.challengerOutcomeId === winningOutcomeId;
     // Challenger is vs the whole field → framed by their own correctness.
     events.push({
       type: "duel_settled",

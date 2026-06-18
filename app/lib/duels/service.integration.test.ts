@@ -124,3 +124,22 @@ test("notifyDuelSettlements is a no-op when the market has no duels", async () =
   await notifyDuelSettlements({ db: h.db, marketId, winningOutcomeId: yes });
   expect(await h.db.select().from(notifications)).toHaveLength(0);
 });
+
+test("the challenger joining their own duel is NOT recorded as a participant", async () => {
+  const { marketId, yes } = await newMarket("open");
+  const { token } = await createChallenge({ db: h.db, challengerUserId: CHALLENGER, marketId });
+  await joinDuel({ db: h.db, token, userId: CHALLENGER, outcomeId: yes }); // self-join
+  const challengeId = (await getChallengeByToken({ db: h.db, token }))!.id;
+  expect(await getParticipantCount({ db: h.db, challengeId })).toBe(0);
+});
+
+test("a self-joined challenger gets exactly ONE (non-contradictory) duel_settled", async () => {
+  const { marketId, yes } = await newMarket("open");
+  await h.db.insert(bets).values({ userId: CHALLENGER, marketId, outcomeId: yes });
+  const { token } = await createChallenge({ db: h.db, challengerUserId: CHALLENGER, marketId });
+  await joinDuel({ db: h.db, token, userId: CHALLENGER, outcomeId: yes }); // self-join no-ops the participant row
+  await notifyDuelSettlements({ db: h.db, marketId, winningOutcomeId: yes });
+  const rows = await h.db.select().from(notifications).where(eq(notifications.userId, CHALLENGER));
+  expect(rows).toHaveLength(1);
+  expect(rows[0].titleHe).toBe("ניצחת בדו-קרב! 🥊"); // the challenger 'won' notice, no duplicate 'tie'
+});
