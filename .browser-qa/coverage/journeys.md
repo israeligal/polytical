@@ -4,7 +4,7 @@
 
 | Journey | Last walked | Walks | Coverage |
 |---|---|---|---|
-| [duel-challenge](#duel-challenge) | 2026-06-18 `afbca46` | 4 | 9/9 |
+| [duel-challenge](#duel-challenge) | 2026-06-19 `8df7707` | 5 | 12/12 |
 | [groups-coalition](#groups-coalition) | 2026-06-16 `2879102` | 3 | 9/11 |
 | [knesset-votes-loop](#knesset-votes-loop) | 2026-06-16 `f631964` | 3 | 9/9 |
 | [prod-data-integrity](#prod-data-integrity) | 2026-06-11 `7e4a516` | 1 | 4/5 |
@@ -340,7 +340,13 @@
 
 **What it is:** A user shares a single-bet duel link with friends; a recipient opens the public `/duel/[token]` arena, sees a head-to-head VS face-off on one question, picks a side, and — once the market resolves — sees who was right. v0 is a **stateless token** (no `challenges` table): the link encodes market + challenger @handle + their pick; picks reuse the normal `bets` engine.
 
-**Last walked:** 2026-06-18 `afbca46` (full sweep via 2 Sonnet subagents — browser + curl/SSR). **Walks:** 4. **Coverage:** 9/9
+**Last walked:** 2026-06-19 `8df7707` (PR #107 new surfaces, foreground browser + DOM + DB). **Walks:** 5. **Coverage:** 12/12
+
+**Rematch + suggestion-card (PR #107) steps:**
+- ✅ home-feed suggestion card (`DuelSuggestionLive` on `/`, logged-in + national): gold/glow card above grid (kicker, urgency chip, question, pill), RTL correct, no overflow; click → mint+copy ("הקישור הועתק"). Mint is PICK-FREE (code + controlled reset test: 0 bets after a mint).
+- ✅ resolved-duel rematch picker (`/duel/[token]` result): close-week market(s) rendered as DuelSuggestionLive under "רוצים ריוונש?"; "שתפו את התוצאה" replaces the old dead re-share CTA.
+- ✅ hail copy "מזמין/ה אותך לעימות 🎙️" (debate framing, was "מאתגר/ת אותך 🥊") — verified live; standings/VS role badge "מאתגר/ת" (challenger) retained.
+- ⚠️ scope/gating negatives (anon `/` no card; anon resolved duel no rematch picker) code-verified only (`me && !groupScope` / `isLoggedIn` ternaries) — not browser-walked logged-out this pass.
 
 **Settlement (P2) steps:**
 - ✅ resolve a duel's market → `duel_settled` notification per player (head-to-head won/lost/tie), live-verified on a throwaway prod market (@commenter_qa won, @bigwhale_hr lost).

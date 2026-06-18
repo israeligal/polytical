@@ -98,7 +98,7 @@ export function DuelArena({
 
   async function handleShare() {
     const url = shareUrl ?? (typeof window !== "undefined" ? window.location.href : "");
-    const text = `@${challenger.handle.replace(/^@/, "")} מאתגר/ת אותך: ${market.question}`;
+    const text = `@${challenger.handle.replace(/^@/, "")} מזמין/ה אותך לעימות: ${market.question}`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: "פוליטיקל · דו-קרב", text, url });
@@ -141,7 +141,7 @@ export function DuelArena({
         {/* the hail */}
         <motion.h1 {...reveal(1)} className="text-center font-display text-2xl leading-tight sm:text-3xl">
           <bdi className="text-accent">@{challenger.handle.replace(/^@/, "")}</bdi>{" "}
-          <span className="text-foreground">מאתגר/ת אותך</span> <span className="align-middle">🥊</span>
+          <span className="text-foreground">מזמין/ה אותך לעימות</span> <span className="align-middle">🎙️</span>
         </motion.h1>
 
         {/* VS face-off */}

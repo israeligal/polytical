@@ -73,11 +73,11 @@ export default async function Image({ params }: { params: Promise<{ token: strin
   const handle = challenge?.challengerHandle ?? "";
 
   const kicker = toVisual("פוליטיקל · דו-קרב");
-  const hail = toVisual(`@${handle} מאתגר/ת אותך`);
+  const hail = toVisual(`@${handle} מזמין/ה אותך לעימות`);
   const questionLines = wrapVisualLines(questionRaw, 26);
   const cta = toVisual("בחרו צד — מי צדק?");
   // Subset on the original (pre-reorder) text — same glyph set.
-  const font = await loadHebrewFont("פוליטיקל · דו-קרב" + `@${handle} מאתגר/ת אותך` + questionRaw + "בחרו צד — מי צדק?");
+  const font = await loadHebrewFont("פוליטיקל · דו-קרב" + `@${handle} מזמין/ה אותך לעימות` + questionRaw + "בחרו צד — מי צדק?");
 
   return new ImageResponse(
     (

@@ -90,7 +90,7 @@ export async function generateMetadata({
   const bundle = await getMarketBundle({ marketId: challenge.marketId });
   const question = bundle?.market.questionHe;
   const title = question ? `דו-קרב: ${question}` : "פוליטיקל · דו-קרב";
-  const description = `@${challenge.challengerHandle} מאתגר/ת אותך — מי צודק? בחרו צד ונראה מי ינצח.`;
+  const description = `@${challenge.challengerHandle} מזמין/ה אותך לעימות — מי צודק? בחרו צד ונראה מי ינצח.`;
   return {
     title,
     description,
