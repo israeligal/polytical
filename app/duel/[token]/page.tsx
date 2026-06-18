@@ -56,9 +56,11 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
     else if (participants.some((p) => p.userId === viewerId))
       verdict = duelResult(myPickId === winningOutcomeId, challengerCorrect);
     // Rematch candidates — close-this-week markets (can't re-duel the resolved one).
-    const suggestedMarkets = (await getSuggestedDuelMarkets({ excludeMarketId: challenge.marketId, limit: 3 })).map(
-      (c) => c.market,
-    );
+    // Logged-in only: an anon can't mint a challenge, so don't tease a dead-end CTA
+    // (and skip the fetch). limit 2 = exactly what DuelResult renders.
+    const suggestedMarkets = isLoggedIn
+      ? (await getSuggestedDuelMarkets({ excludeMarketId: challenge.marketId, limit: 2 })).map((c) => c.market)
+      : [];
     resolution = { winningOutcomeId, verdict, standings, suggestedMarkets };
   }
 

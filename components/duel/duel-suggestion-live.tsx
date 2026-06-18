@@ -10,10 +10,10 @@ import { useChallengeShare } from "@/components/duel/use-challenge-share";
  * resolved-duel rematch picker.
  */
 export function DuelSuggestionLive({ market }: { market: Market }) {
-  const { challenge, copied, message } = useChallengeShare(market.id);
+  const { challenge, pending, copied, message } = useChallengeShare(market.id);
   return (
     <div>
-      <DuelSuggestionCard market={market} onChallenge={challenge} />
+      <DuelSuggestionCard market={market} onChallenge={challenge} disabled={pending} />
       {copied && (
         <p className="mt-1.5 text-center text-xs font-semibold text-positive">הקישור הועתק — שלחו לחברים!</p>
       )}

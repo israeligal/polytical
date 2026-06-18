@@ -54,9 +54,11 @@ export function ChallengeButton({
 export function DuelSuggestionCard({
   market,
   onChallenge,
+  disabled,
 }: {
   market: Market;
   onChallenge?: () => void;
+  disabled?: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -88,7 +90,7 @@ export function DuelSuggestionCard({
       <h3 className="relative mb-4 font-display text-xl leading-snug text-foreground">{market.question}</h3>
       <div className="relative flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">שלחו לחברים — מי יצדק?</span>
-        <ChallengeButton onChallenge={onChallenge} size="sm" />
+        <ChallengeButton onChallenge={onChallenge} size="sm" disabled={disabled} />
       </div>
     </motion.div>
   );
