@@ -68,3 +68,44 @@ export const MultiOption: Story = {
     isLoggedIn: true,
   },
 };
+
+/** Resolved → the viewer WON: winner crowned, standings, gold celebration. */
+export const ResolvedWin: Story = {
+  args: {
+    market: closeBet,
+    challenger: { handle: "nadav_b", pickedOutcomeId: "no" },
+    you,
+    isLoggedIn: true,
+    myPickId: "yes",
+    resolution: {
+      winningOutcomeId: "yes",
+      verdict: "won",
+      standings: [
+        { handle: "nadav_b", outcomeId: "no", isChallenger: true },
+        { handle: "gal", outcomeId: "yes", isYou: true },
+        { handle: "vera_m", outcomeId: "no" },
+        { handle: "yossi", outcomeId: "yes" },
+      ],
+    },
+  },
+};
+
+/** Resolved → the viewer LOST (challenger was right). */
+export const ResolvedLoss: Story = {
+  args: {
+    market: closeBet,
+    challenger: { handle: "nadav_b", pickedOutcomeId: "no" },
+    you,
+    isLoggedIn: true,
+    myPickId: "yes",
+    resolution: {
+      winningOutcomeId: "no",
+      verdict: "lost",
+      standings: [
+        { handle: "nadav_b", outcomeId: "no", isChallenger: true },
+        { handle: "gal", outcomeId: "yes", isYou: true },
+        { handle: "vera_m", outcomeId: "no" },
+      ],
+    },
+  },
+};

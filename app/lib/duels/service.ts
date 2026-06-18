@@ -4,6 +4,9 @@ import type { AppDb } from "@/app/lib/db-utils";
 import { getMarketBundle } from "@/app/lib/markets/repo";
 import { makePrediction } from "@/app/lib/markets/service";
 import { MarketClosedError, MarketNotFoundError, NotDuelableMarketError } from "@/app/lib/errors";
+import { emitNotifications, type NotificationEvent } from "@/app/lib/notifications/service";
+import { dispatchPush } from "@/app/lib/push/service";
+import { logger } from "@/app/lib/logger";
 import * as repo from "@/app/lib/duels/repo";
 
 // 128 bits of url-safe randomness — collision is not a realistic concern, so no
@@ -58,4 +61,66 @@ export async function joinDuel({
   if (!challenge) throw new MarketNotFoundError(); // bad / removed link
   await makePrediction({ db, userId, marketId: challenge.marketId, outcomeId });
   await repo.recordParticipant({ db, challengeId: challenge.id, userId });
+}
+
+/** A participant's head-to-head result vs the challenger on a single market. */
+export function duelResult(playerCorrect: boolean, challengerCorrect: boolean): "won" | "lost" | "tie" {
+  if (playerCorrect && !challengerCorrect) return "won";
+  if (!playerCorrect && challengerCorrect) return "lost";
+  return "tie";
+}
+
+/**
+ * Post-resolve settlement notice for every duel on a market: tells each player
+ * the head-to-head outcome (challenger framed vs the field). Deliberately a
+ * SEPARATE, best-effort pass — it is NOT part of the P0 `resolveMarket`
+ * transaction (decoupled; a failure here can never break settlement). Callers
+ * invoke it after `resolveMarket` returns.
+ */
+export async function notifyDuelSettlements({
+  db = defaultDb,
+  marketId,
+  winningOutcomeId,
+}: {
+  db?: AppDb;
+  marketId: string;
+  winningOutcomeId: string;
+}): Promise<void> {
+  const list = await repo.getChallengesForMarket({ db, marketId });
+  if (list.length === 0) return;
+  const bundle = await getMarketBundle({ db, marketId });
+  const questionHe = bundle?.market.questionHe ?? "דו-קרב";
+
+  const events: NotificationEvent[] = [];
+  for (const c of list) {
+    const view = await repo.getChallengeByToken({ db, token: c.token });
+    const challengerCorrect = view?.challengerOutcomeId === winningOutcomeId;
+    // Challenger is vs the whole field → framed by their own correctness.
+    events.push({
+      type: "duel_settled",
+      userId: c.challengerUserId,
+      challengeId: c.id,
+      questionHe,
+      result: challengerCorrect ? "won" : "lost",
+    });
+    const participants = await repo.getParticipants({ db, challengeId: c.id, marketId });
+    for (const p of participants) {
+      events.push({
+        type: "duel_settled",
+        userId: p.userId,
+        challengeId: c.id,
+        questionHe,
+        result: duelResult(p.outcomeId === winningOutcomeId, challengerCorrect),
+      });
+    }
+  }
+  if (events.length === 0) return;
+  // The in-app rows are the durable record; push is best-effort (never let a
+  // push/VAPID hiccup lose the notifications).
+  await db.transaction(async (tx) => emitNotifications({ tx, events }));
+  try {
+    await dispatchPush({ db, events });
+  } catch (e) {
+    logger.error("duel.settlement_push_failed", { marketId, err: String(e) });
+  }
 }

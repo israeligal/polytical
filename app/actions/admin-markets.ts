@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth";
 import type { MarketKind, OutcomeInput, PoliticianOption } from "@/lib/types";
 import * as repo from "@/app/lib/markets/repo";
 import { deleteMarket, resolveMarket, voidMarket } from "@/app/lib/markets/service";
+import { notifyDuelSettlements } from "@/app/lib/duels/service";
+import { logger } from "@/app/lib/logger";
 import { MULTI_MAX_OUTCOMES, MULTI_MIN_OUTCOMES } from "@/app/lib/markets/constants";
 import { getPoliticiansByPersonIds, searchPoliticians } from "@/app/lib/politicians/repo";
 import { normalizeSearchName } from "@/app/lib/knesset/search-name";
@@ -189,6 +191,13 @@ export async function resolveMarketAction({
     if (e instanceof InvalidOutcomeError) return { ok: false, message: "התוצאה אינה שייכת לתחזית" };
     if (e instanceof MarketNotFoundError) return { ok: false, message: "התחזית לא נמצאה" };
     throw e;
+  }
+  // Duel settlement notices — best-effort, decoupled from the P0 resolve tx
+  // (a failure here must never undo a committed settlement).
+  try {
+    await notifyDuelSettlements({ marketId, winningOutcomeId });
+  } catch (e) {
+    logger.error("duel.settlement_notify_failed", { marketId, err: String(e) });
   }
   revalidatePath("/admin");
   revalidatePath(`/market/${marketId}`);

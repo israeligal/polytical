@@ -11,6 +11,8 @@ import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import {
   createChallenge,
   getChallengeByToken,
+  getChallengeTokenById,
+  getChallengesForMarket,
   getParticipantCount,
   getParticipants,
   recordParticipant,
@@ -102,4 +104,20 @@ test("scope guard: a missing user id is rejected", async () => {
   await expect(createChallenge({ db: h.db, token: "x", challengerUserId: "", marketId })).rejects.toThrow(MissingUserError);
   const c = await createChallenge({ db: h.db, token: "tok-6", challengerUserId: CHALLENGER, marketId });
   await expect(recordParticipant({ db: h.db, challengeId: c.id, userId: "" })).rejects.toThrow(MissingUserError);
+});
+
+test("getChallengesForMarket returns every challenge on the market", async () => {
+  const { marketId } = await newMarket();
+  await createChallenge({ db: h.db, token: "m1", challengerUserId: CHALLENGER, marketId });
+  await createChallenge({ db: h.db, token: "m2", challengerUserId: FRIEND, marketId });
+  const list = await getChallengesForMarket({ db: h.db, marketId });
+  expect(list.map((c) => c.token).sort()).toEqual(["m1", "m2"]);
+});
+
+test("getChallengeTokenById resolves id→token and guards malformed ids", async () => {
+  const { marketId } = await newMarket();
+  const c = await createChallenge({ db: h.db, token: "by-id-tok", challengerUserId: CHALLENGER, marketId });
+  expect(await getChallengeTokenById({ db: h.db, challengeId: c.id })).toBe("by-id-tok");
+  expect(await getChallengeTokenById({ db: h.db, challengeId: "not-a-uuid" })).toBeNull();
+  expect(await getChallengeTokenById({ db: h.db, challengeId: "00000000-0000-0000-0000-000000000000" })).toBeNull();
 });

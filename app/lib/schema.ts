@@ -521,6 +521,8 @@ export const notificationType = pgEnum("notification_type", [
   "group_motion_resolved", // a group motion you predicted resolved (your result)
   "group_mention",         // you were @-mentioned in a מליאה thread
   "group_member_joined",   // someone joined a group you're in
+  // --- Duels / דו-קרב ---
+  "duel_settled",          // a duel you're in resolved — head-to-head result
 ]);
 
 export const notifications = pgTable("notifications", {
@@ -533,6 +535,7 @@ export const notifications = pgTable("notifications", {
   refBetId: uuid("refBetId"),
   refSuggestionId: uuid("refSuggestionId"),
   refGroupId: uuid("refGroupId"),         // group notifications link to /g/[slug]
+  refChallengeId: uuid("refChallengeId"), // duel notifications link to /duel/by-id/[id]
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 }, (t) => [

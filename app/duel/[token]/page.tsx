@@ -5,6 +5,8 @@ import { getMarketBundle, getOutcomeCounts, getUserPositions } from "@/app/lib/m
 import { bundleToMarket } from "@/app/lib/markets/adapter";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { getChallengeByToken, getParticipants } from "@/app/lib/duels/repo";
+import { duelResult } from "@/app/lib/duels/service";
+import type { DuelResolution, DuelStanding } from "@/components/duel/types";
 import { DuelArenaClient } from "@/components/duel/duel-arena-client";
 
 /** Public share landing for a single-bet duel — anyone with the link can view. */
@@ -33,6 +35,28 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
     .filter((p) => p.userId !== challenge.challengerUserId && p.userId !== session?.user?.id)
     .map((p) => ({ handle: p.handle, pickedOutcomeId: p.outcomeId }));
 
+  // Resolved market → build the head-to-head result the arena renders.
+  let resolution: DuelResolution | undefined;
+  if (bundle.market.status === "resolved" && bundle.market.resolvedOutcomeId) {
+    const winningOutcomeId = bundle.market.resolvedOutcomeId;
+    const viewerId = session?.user?.id;
+    const challengerCorrect = challenge.challengerOutcomeId === winningOutcomeId;
+    const standings: DuelStanding[] = [
+      {
+        handle: challenge.challengerHandle,
+        outcomeId: challenge.challengerOutcomeId,
+        isChallenger: true,
+        isYou: viewerId === challenge.challengerUserId,
+      },
+      ...participants.map((p) => ({ handle: p.handle, outcomeId: p.outcomeId, isYou: p.userId === viewerId })),
+    ];
+    let verdict: "won" | "lost" | "tie" | null = null;
+    if (viewerId === challenge.challengerUserId) verdict = challengerCorrect ? "won" : "lost";
+    else if (participants.some((p) => p.userId === viewerId))
+      verdict = duelResult(myPickId === winningOutcomeId, challengerCorrect);
+    resolution = { winningOutcomeId, verdict, standings };
+  }
+
   return (
     <DuelArenaClient
       token={token}
@@ -41,6 +65,7 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
       you={isLoggedIn ? { handle: session!.user.handle ?? FALLBACK_HANDLE } : undefined}
       crowd={crowd}
       myPickId={myPickId}
+      resolution={resolution}
       isLoggedIn={isLoggedIn}
       loginHref={`/login?callbackUrl=${encodeURIComponent(`/duel/${token}`)}`}
     />

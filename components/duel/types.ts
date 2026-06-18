@@ -11,6 +11,24 @@ export interface DuelPlayer {
   pickedOutcomeId?: string | null;
 }
 
+/** One row in the resolved-duel standings — a player, their pick, and flags. */
+export interface DuelStanding {
+  handle: string;
+  caricatureUrl?: string | null;
+  /** Their final pick on the market; null if they never locked one. */
+  outcomeId: string | null;
+  isChallenger?: boolean;
+  isYou?: boolean;
+}
+
+/** Present once the duel's market has resolved — drives the arena's result state. */
+export interface DuelResolution {
+  winningOutcomeId: string;
+  /** The viewer's head-to-head verdict vs the challenger; null if they didn't play. */
+  verdict: "won" | "lost" | "tie" | null;
+  standings: DuelStanding[];
+}
+
 export interface DuelArenaProps {
   /** The single market this duel is fought over (the "one close bet"). */
   market: Market;
@@ -24,6 +42,8 @@ export interface DuelArenaProps {
   crowd?: DuelPlayer[];
   /** The viewer's existing pick, if they already played (resumes into the revealed state). */
   myPickId?: string | null;
+  /** Set once the market resolved → the arena renders its result state instead of the picker. */
+  resolution?: DuelResolution;
   /** Signed in? A logged-out pick routes to signup (accept = signup). */
   isLoggedIn?: boolean;
   /** Where a logged-out visitor goes to save their pick (accept = signup). */

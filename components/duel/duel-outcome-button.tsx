@@ -26,6 +26,7 @@ export function DuelOutcomeButton({
   tone,
   picked,
   revealed,
+  winner,
   disabled,
   avatarUrl,
   avatarHandle,
@@ -37,6 +38,8 @@ export function DuelOutcomeButton({
   tone: OutcomeTone;
   picked: boolean;
   revealed: boolean;
+  /** The winning outcome once the market resolved — crowned regardless of the viewer's pick. */
+  winner?: boolean;
   disabled?: boolean;
   /** Multi-candidate outcome portrait (optional). */
   avatarUrl?: string | null;
@@ -58,9 +61,18 @@ export function DuelOutcomeButton({
       animate={picked && !reduce ? { scale: [1, 1.06, 1] } : undefined}
       transition={{ type: "spring", stiffness: 380, damping: 18 }}
       className={`relative flex min-h-[7.5rem] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-card border-2 bg-card p-4 text-center transition-colors duration-200 disabled:cursor-default ${
-        picked ? `${t.border} ${t.glow}` : "border-border hover:border-foreground/25"
+        winner
+          ? "border-positive shadow-glow-mint"
+          : picked
+            ? `${t.border} ${t.glow}`
+            : "border-border hover:border-foreground/25"
       }`}
     >
+      {winner && (
+        <span className="absolute end-2 top-2 z-10 rounded-full bg-positive px-2 py-0.5 text-[11px] font-extrabold text-positive-foreground">
+          🏆 התשובה
+        </span>
+      )}
       {/* crowd share as a tinted fill — only after the reveal, grows from the start edge */}
       <motion.span
         aria-hidden

@@ -239,6 +239,13 @@
       "when": 1781791349570,
       "tag": "0033_mute_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781809728715,
+      "tag": "0034_warm_ezekiel_stane",
+      "breakpoints": true
     }
   ]
 }

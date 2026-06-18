@@ -10,6 +10,7 @@ import { DUEL_ARENA_SHELL } from "@/components/skeletons/containers";
 import { ArenaBackdrop } from "@/components/duel/arena-backdrop";
 import { VsBand, type BandPick } from "@/components/duel/vs-band";
 import { DuelOutcomeButton } from "@/components/duel/duel-outcome-button";
+import { DuelResult } from "@/components/duel/duel-result";
 import { CountUp, PlayerAvatar, UrgencyChip } from "@/components/duel/duel-atoms";
 import type { DuelArenaProps, OutcomeTone } from "@/components/duel/types";
 
@@ -38,6 +39,7 @@ export function DuelArena({
   you,
   crowd = [],
   myPickId = null,
+  resolution,
   isLoggedIn = false,
   loginHref = "/login",
   shareUrl,
@@ -48,7 +50,8 @@ export function DuelArena({
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const revealed = pickedId != null;
+  const settled = resolution != null;
+  const revealed = pickedId != null || settled;
 
   const total = useMemo(() => market.outcomes.reduce((s, o) => s + o.predictors, 0), [market.outcomes]);
   const isBinary = market.type === "binary" || market.outcomes.length === 2;
@@ -64,8 +67,19 @@ export function DuelArena({
     return tone ? { label: labelOf(id), toneClassName: bandToneClass(tone) } : undefined;
   };
 
+  const resultStandings = resolution
+    ? resolution.standings.map((s) => ({
+        handle: s.handle,
+        caricatureUrl: s.caricatureUrl,
+        pickLabel: s.outcomeId ? labelOf(s.outcomeId) : null,
+        correct: s.outcomeId === resolution.winningOutcomeId,
+        isChallenger: s.isChallenger,
+        isYou: s.isYou,
+      }))
+    : [];
+
   function handlePick(outcomeId: string) {
-    if (pickedId === outcomeId) return;
+    if (settled || pickedId === outcomeId) return; // resolved → result state, not pickable
     const previous = pickedId;
     setPickedId(outcomeId); // optimistic → triggers the reveal
     setError(null);
@@ -178,14 +192,24 @@ export function DuelArena({
                 tone={tones.get(o.id)!}
                 picked={pickedId === o.id}
                 revealed={revealed}
-                disabled={pending}
+                winner={settled && o.id === resolution!.winningOutcomeId}
+                disabled={pending || settled}
                 onPick={() => handlePick(o.id)}
               />
             ),
           )}
         </motion.div>
 
-        {/* reveal status + share hook */}
+        {/* resolved → result state; otherwise the pick/reveal prompt */}
+        {settled ? (
+          <DuelResult
+            verdict={resolution!.verdict}
+            winningLabel={labelOf(resolution!.winningOutcomeId)}
+            standings={resultStandings}
+            onShare={handleShare}
+            copied={copied}
+          />
+        ) : (
         <AnimatePresence mode="wait" initial={false}>
           {revealed ? (
             <motion.div
@@ -221,6 +245,7 @@ export function DuelArena({
             </motion.div>
           )}
         </AnimatePresence>
+        )}
 
         {/* one-to-many social proof */}
         {crowd.length > 0 && (

@@ -5,13 +5,14 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "@/app/lib/testing/create-test-db";
-import { bets, groups, markets, outcomes, users } from "@/app/lib/schema";
+import { bets, groups, markets, notifications, outcomes, users } from "@/app/lib/schema";
 import { MarketClosedError, MarketNotFoundError, NotDuelableMarketError } from "@/app/lib/errors";
-import { createChallenge, joinDuel } from "./service";
+import { createChallenge, joinDuel, notifyDuelSettlements } from "./service";
 import { createChallenge as insertChallengeRow, getChallengeByToken, getParticipantCount } from "./repo";
 
 const CHALLENGER = "user-svc-challenger";
 const FRIEND = "user-svc-friend";
+const FRIEND2 = "user-svc-friend2";
 
 let h: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -36,6 +37,7 @@ beforeEach(async () => {
   await h.db.insert(users).values([
     { id: CHALLENGER, name: "A", email: "a@svc.co", handle: "chal" },
     { id: FRIEND, name: "B", email: "b@svc.co", handle: "friend" },
+    { id: FRIEND2, name: "C", email: "c@svc.co", handle: "friend2" },
   ]);
 });
 
@@ -96,4 +98,29 @@ test("joinDuel on a closed market is rejected and records no participant", async
   const c = await insertChallengeRow({ db: h.db, token: "closed-tok", challengerUserId: CHALLENGER, marketId });
   await expect(joinDuel({ db: h.db, token: "closed-tok", userId: FRIEND, outcomeId: yes })).rejects.toThrow(MarketClosedError);
   expect(await getParticipantCount({ db: h.db, challengeId: c.id })).toBe(0);
+});
+
+test("notifyDuelSettlements emits a head-to-head result per player (won / tie / lost)", async () => {
+  const { marketId, yes, no } = await newMarket("open");
+  await h.db.insert(bets).values({ userId: CHALLENGER, marketId, outcomeId: yes }); // challenger: YES (will be correct)
+  const { token } = await createChallenge({ db: h.db, challengerUserId: CHALLENGER, marketId });
+  await joinDuel({ db: h.db, token, userId: FRIEND, outcomeId: yes }); // correct → tie with the (correct) challenger
+  await joinDuel({ db: h.db, token, userId: FRIEND2, outcomeId: no }); // wrong → lost to the correct challenger
+  const challengeId = (await getChallengeByToken({ db: h.db, token }))!.id;
+
+  await notifyDuelSettlements({ db: h.db, marketId, winningOutcomeId: yes });
+
+  const rows = await h.db.select().from(notifications).where(eq(notifications.type, "duel_settled"));
+  expect(rows).toHaveLength(3);
+  expect(rows.every((r) => r.refChallengeId === challengeId)).toBe(true);
+  const title = new Map(rows.map((r) => [r.userId, r.titleHe]));
+  expect(title.get(CHALLENGER)).toBe("ניצחת בדו-קרב! 🥊"); // challenger correct → won
+  expect(title.get(FRIEND)).toBe("תיקו בדו-קרב 🤝"); // both correct → tie
+  expect(title.get(FRIEND2)).toBe("הדו-קרב הוכרע"); // wrong vs a correct challenger → lost
+});
+
+test("notifyDuelSettlements is a no-op when the market has no duels", async () => {
+  const { marketId, yes } = await newMarket("open");
+  await notifyDuelSettlements({ db: h.db, marketId, winningOutcomeId: yes });
+  expect(await h.db.select().from(notifications)).toHaveLength(0);
 });

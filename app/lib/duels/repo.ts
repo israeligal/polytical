@@ -130,3 +130,33 @@ export async function getParticipantCount({
     .where(eq(challengeParticipants.challengeId, challengeId));
   return row?.n ?? 0;
 }
+
+/** Every challenge fought over a market — used by the post-resolve settlement pass. */
+export async function getChallengesForMarket({
+  db = defaultDb,
+  marketId,
+}: {
+  db?: AppDb;
+  marketId: string;
+}): Promise<{ id: string; token: string; challengerUserId: string }[]> {
+  return db
+    .select({ id: challenges.id, token: challenges.token, challengerUserId: challenges.challengerUserId })
+    .from(challenges)
+    .where(eq(challenges.marketId, marketId));
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Resolve a challenge id → its share token (for the /duel/by-id/[id] redirect).
+ *  Guards malformed ids so a bad link 404s instead of throwing an invalid-uuid error. */
+export async function getChallengeTokenById({
+  db = defaultDb,
+  challengeId,
+}: {
+  db?: AppDb;
+  challengeId: string;
+}): Promise<string | null> {
+  if (!UUID_RE.test(challengeId)) return null;
+  const [row] = await db.select({ token: challenges.token }).from(challenges).where(eq(challenges.id, challengeId));
+  return row?.token ?? null;
+}
