@@ -26,6 +26,8 @@ export interface DuelArenaProps {
   myPickId?: string | null;
   /** Signed in? A logged-out pick routes to signup (accept = signup). */
   isLoggedIn?: boolean;
+  /** Where a logged-out visitor goes to save their pick (accept = signup). */
+  loginHref?: string;
   /** Canonical share URL; falls back to `window.location.href`. */
   shareUrl?: string;
   /** Called when the viewer locks a pick (real wiring upserts a `bets` row). */

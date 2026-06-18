@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import type { CatColor, Market, Outcome } from "@/lib/types";
@@ -37,6 +38,7 @@ export function DuelArena({
   crowd = [],
   myPickId = null,
   isLoggedIn = false,
+  loginHref = "/login",
   shareUrl,
   onPick,
 }: DuelArenaProps) {
@@ -192,12 +194,21 @@ export function DuelArena({
               <p className="text-sm font-extrabold text-positive">
                 המנדט שלך נרשם! מי צודק? נגלה כשהשוק ייסגר.
               </p>
-              {!isLoggedIn && (
-                <p className="text-xs text-muted-foreground">
-                  כדי לשמור את המנדט ולראות מי ניצח — צריך חשבון. זה לוקח שנייה.
-                </p>
+              {isLoggedIn ? (
+                <ShareButton onShare={handleShare} copied={copied} label="אתגרו עוד חברים" primary />
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    כדי לשמור את המנדט ולראות מי ניצח — צריך חשבון. זה לוקח שנייה.
+                  </p>
+                  <Link
+                    href={loginHref}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-base font-extrabold text-primary-foreground shadow-glow-mint transition-colors hover:bg-primary-hover"
+                  >
+                    הצטרפו ושמרו את המנדט ←
+                  </Link>
+                </>
               )}
-              <ShareButton onShare={handleShare} copied={copied} label={isLoggedIn ? "אתגרו עוד חברים" : "הצטרפו ושמרו את המנדט"} primary />
             </motion.div>
           ) : (
             <motion.div key="prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
