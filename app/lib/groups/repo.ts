@@ -31,6 +31,7 @@ export interface MyGroup {
 export interface GroupMemberView {
   userId: string;
   handle: string | null;
+  caricatureUrl: string | null;
   role: GroupRole;
   groupWins: number;
   groupResolved: number;
@@ -125,6 +126,7 @@ export async function listActiveMembers({ db = defaultDb, groupId }: { db?: AppD
     .select({
       userId: groupMembers.userId,
       handle: users.handle,
+      caricatureUrl: users.caricatureUrl,
       role: groupMembers.role,
       groupWins: groupMembers.groupWins,
       groupResolved: groupMembers.groupResolved,
@@ -372,6 +374,7 @@ export interface GroupScoreEntry {
   rank: number;
   userId: string;
   handle: string | null;
+  caricatureUrl: string | null;
   groupWins: number;
   groupResolved: number;
   accuracy: number; // 0–100, over group motions only
@@ -393,6 +396,7 @@ export async function getGroupScoreboard({ db = defaultDb, groupId }: { db?: App
     .select({
       userId: groupMembers.userId,
       handle: users.handle,
+      caricatureUrl: users.caricatureUrl,
       groupWins: groupMembers.groupWins,
       groupResolved: groupMembers.groupResolved,
       accuracy: groupAccuracyExpr,

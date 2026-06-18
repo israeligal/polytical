@@ -27,10 +27,13 @@
     "seed:markets": "tsx --env-file=.env scripts/seed-markets.ts",
     "seed:season": "tsx --env-file=.env scripts/seed-season.ts",
     "backfill:market-search": "tsx --env-file=.env scripts/backfill-market-search.ts",
-    "backfill:politician-search": "tsx --env-file=.env scripts/backfill-politician-search.ts"
+    "backfill:politician-search": "tsx --env-file=.env scripts/backfill-politician-search.ts",
+    "caricature:migrate": "tsx --env-file=.env scripts/apply-caricature-migration.ts",
+    "reset:caricature": "tsx --env-file=.env scripts/reset-user-caricature.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.4.0",
     "better-auth": "^1.5.6",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",

@@ -11,6 +11,7 @@ import {
   generateHandleAction,
 } from "@/app/actions/onboarding";
 import { PolyticalLogo, Crest, type Suit } from "@/components/icons";
+import { CaricatureEditor } from "@/components/profile/caricature-editor";
 
 const ARENA_SUITS: Suit[] = ["knesset", "ballot", "podium", "mandate"];
 
@@ -138,7 +139,7 @@ export function OnboardingWizard({
 
       {/* step dots */}
       <div className="mb-7 flex items-center gap-2" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <span
             key={i}
             className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? "bg-primary" : "bg-border"}`}
@@ -270,6 +271,35 @@ export function OnboardingWizard({
       )}
 
       {step === 2 && (
+        <section>
+          <h2 className="font-display text-xl text-foreground">אווטאר קריקטורה (רשות)</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            רוצים פרצוף משלכם? צרו קריקטורה ב-Gemini והעלו אותה — אפשר גם לדלג ולהוסיף אחר כך מהפרופיל.
+          </p>
+          {/* defaultEditing → shown expanded; onSaved advances the wizard (a
+              router.refresh() would remount the wizard and lose its state). */}
+          <CaricatureEditor defaultEditing onSaved={() => setStep(3)} />
+          {error && <p className="mt-2 text-sm font-semibold text-negative">{error}</p>}
+          <div className="mt-5 flex gap-3">
+            <button
+              type="button"
+              onClick={() => { setError(null); setStep(1); }}
+              className="rounded-full border border-border px-5 py-3 font-bold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              חזרה
+            </button>
+            <button
+              type="button"
+              onClick={() => { setError(null); setStep(3); }}
+              className="flex-1 rounded-full bg-primary px-4 py-3 font-display text-lg text-primary-foreground transition-colors hover:bg-primary-hover"
+            >
+              דלגו
+            </button>
+          </div>
+        </section>
+      )}
+
+      {step === 3 && (
         <section className="text-center">
           <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-accent/15 text-accent shadow-glow-gold">
             <PolyticalLogo className="h-9 w-9" />
@@ -283,7 +313,7 @@ export function OnboardingWizard({
           <div className="mt-6 flex gap-3">
             <button
               type="button"
-              onClick={() => { setError(null); setStep(1); }}
+              onClick={() => { setError(null); setStep(2); }}
               className="rounded-full border border-border px-5 py-3 font-bold text-muted-foreground transition-colors hover:text-foreground"
             >
               חזרה

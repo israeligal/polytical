@@ -31,6 +31,7 @@ export interface CommentView {
   marketId: string;
   userId: string;
   authorHandle: string;
+  authorCaricatureUrl: string | null;
   body: string;
   upvotes: number;
   hidden: boolean;
@@ -79,6 +80,7 @@ export async function listComments({
       marketId: comments.marketId,
       userId: comments.userId,
       authorHandle: sql<string>`coalesce(${users.handle}, ${FALLBACK_HANDLE})`,
+      authorCaricatureUrl: users.caricatureUrl,
       body: comments.body,
       upvotes: comments.upvotes,
       hidden: comments.hidden,

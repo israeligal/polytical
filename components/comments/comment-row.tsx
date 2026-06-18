@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { upvoteCommentAction, hideCommentAction } from "@/app/actions/comments";
 import { formatDate } from "@/lib/time";
+import { UserAvatar } from "@/components/user-avatar";
 
 /**
  * A single comment: author initial + @-handle, posted date, body, an upvote pill
@@ -19,6 +20,7 @@ export function CommentRow({
   marketId,
   commentId,
   authorHandle,
+  authorCaricatureUrl = null,
   body,
   createdAtIso,
   upvotes,
@@ -28,6 +30,7 @@ export function CommentRow({
   marketId: string;
   commentId: string;
   authorHandle: string;
+  authorCaricatureUrl?: string | null;
   body: string;
   createdAtIso: string;
   upvotes: number;
@@ -39,8 +42,6 @@ export function CommentRow({
   const [hidden, setHidden] = useState(false);
   const [, startVote] = useTransition();
   const [, startHide] = useTransition();
-
-  const initial = authorHandle.trim().charAt(0).toUpperCase() || "?";
 
   function toggleVote() {
     // Optimistic flip; the action reconciles via revalidatePath. Roll back by
@@ -80,12 +81,7 @@ export function CommentRow({
 
   return (
     <article className="flex gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-      <div
-        aria-hidden="true"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-black text-primary"
-      >
-        {initial}
-      </div>
+      <UserAvatar size="sm" caricatureUrl={authorCaricatureUrl} handle={authorHandle} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm">

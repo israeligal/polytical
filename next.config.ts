@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
+  images: {
+    // User caricature avatars are stored as public Vercel Blob objects.
+    remotePatterns: [
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+    ],
+  },
   async headers() {
     return [
       {

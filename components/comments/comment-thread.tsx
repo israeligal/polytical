@@ -48,6 +48,7 @@ export async function CommentThread({
               marketId={marketId}
               commentId={c.id}
               authorHandle={c.authorHandle}
+              authorCaricatureUrl={c.authorCaricatureUrl}
               body={c.body}
               createdAtIso={c.createdAt.toISOString()}
               upvotes={c.upvotes}

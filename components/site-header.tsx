@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "@/components/auth-buttons";
 import { MobileMenu } from "@/components/mobile-menu";
 import { GroupSwitcher } from "@/components/groups/group-switcher";
+import { UserAvatar } from "@/components/user-avatar";
 import { getSession } from "@/lib/auth";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { getUnreadCount } from "@/app/lib/notifications/service";
@@ -31,8 +32,6 @@ export async function SiteHeader() {
     : null;
   // Logged-in users get a "my groups" entry in the mobile menu.
   const mobileNav = user ? [...NAV, { href: "/g", label: "הקואליציות שלי" }] : NAV;
-  // Avatar initial comes from the public @-handle, never the user's real name.
-  const initial = user?.handle?.trim()?.[0]?.toUpperCase() ?? "?";
   const theme: Theme = resolveTheme({ cookieValue: (await cookies()).get(THEME_COOKIE)?.value });
 
   return (
@@ -86,13 +85,13 @@ export async function SiteHeader() {
                 >
                   פרופיל
                 </Link>
-                <Link
-                  href="/profile"
-                  aria-label="פרופיל"
-                  className="grid h-10 w-10 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border transition-colors hover:ring-primary"
-                >
-                  {/* leading-none: the font's tall line box otherwise floats the glyph off-center */}
-                  <span aria-hidden="true" className="leading-none">{initial}</span>
+                <Link href="/profile" aria-label="פרופיל" className="group rounded-full">
+                  <UserAvatar
+                    caricatureUrl={user.caricatureUrl}
+                    handle={user.handle}
+                    size="md"
+                    className="transition-[box-shadow] group-hover:ring-primary"
+                  />
                 </Link>
                 <SignOutButton />
               </>
