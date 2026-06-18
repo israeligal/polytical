@@ -27,6 +27,8 @@ import { PoliticianPortrait } from "@/components/politician-portrait";
 import { PROFILE_CONTAINER } from "@/components/skeletons/containers";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { ChangeHandleForm } from "@/components/profile/change-handle-form";
+import { CaricatureEditor } from "@/components/profile/caricature-editor";
+import { UserAvatar } from "@/components/user-avatar";
 
 /** Whether a resolved prediction picked the winning outcome. */
 function isCorrect(p: PortfolioPrediction): boolean {
@@ -81,7 +83,6 @@ export default async function ProfilePage() {
 
   // Identity is the public @-handle only — never the user's real `name`.
   const handle = user.handle ?? FALLBACK_HANDLE;
-  const initial = handle.trim()[0]?.toUpperCase() ?? "?";
 
   return (
     <main className={PROFILE_CONTAINER}>
@@ -89,12 +90,7 @@ export default async function ProfilePage() {
       {/* HEADER + STAT CARDS */}
       <section className="mb-8">
         <div className="flex items-center gap-4">
-          <span
-            aria-hidden="true"
-            className="grid h-14 w-14 place-items-center rounded-full bg-muted font-display text-2xl font-black leading-none text-foreground ring-1 ring-border"
-          >
-            {initial}
-          </span>
+          <UserAvatar size="lg" caricatureUrl={user.caricatureUrl} handle={user.handle} />
           <div>
             <h1 className="font-display text-3xl font-black leading-tight text-foreground">
               <bdi>@{handle}</bdi>
@@ -103,6 +99,7 @@ export default async function ProfilePage() {
             <ChangeHandleForm currentHandle={user.handle ?? ""} />
           </div>
         </div>
+        <CaricatureEditor currentCaricatureUrl={user.caricatureUrl} />
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="מנדטים מדויקים">

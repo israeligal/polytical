@@ -11,6 +11,7 @@ import { GROUP_CONTAINER } from "@/components/skeletons/containers";
 import { EditGroupName } from "@/components/groups/edit-group-name";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
 import { Ballot } from "@/components/icons";
+import { UserAvatar } from "@/components/user-avatar";
 
 /**
  * Coalition MANAGEMENT page. After the global-context redesign the coalition's
@@ -87,6 +88,7 @@ export default async function GroupManagePage({ params }: { params: Promise<{ sl
               {board.map((e) => (
                 <li key={e.userId} className="flex items-center gap-3 text-sm">
                   <span className="nums w-5 text-center font-bold text-muted-foreground">{e.rank}</span>
+                  <UserAvatar size="xs" caricatureUrl={e.caricatureUrl} handle={e.handle} />
                   <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
                     <bdi>@{e.handle ?? FALLBACK_HANDLE}</bdi>
                   </span>
@@ -103,7 +105,10 @@ export default async function GroupManagePage({ params }: { params: Promise<{ sl
           <ul className="space-y-2">
             {roster.map((m) => (
               <li key={m.userId} className="flex items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate text-foreground"><bdi>@{m.handle ?? FALLBACK_HANDLE}</bdi></span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <UserAvatar size="xs" caricatureUrl={m.caricatureUrl} handle={m.handle} />
+                  <bdi className="truncate text-foreground">@{m.handle ?? FALLBACK_HANDLE}</bdi>
+                </span>
                 {m.role !== "member" && (
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {m.role === "owner" ? "בעלים" : "מנהל/ת"}

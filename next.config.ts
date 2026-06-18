@@ -11,6 +11,18 @@ const nextConfig: NextConfig = {
     ];
   },
   skipTrailingSlashRedirect: true,
+  experimental: {
+    // Caricature uploads POST a base64 data URL to a Server Action. The client
+    // normalizes to a small 512px WebP, but the service cap is 1.5 MB decoded
+    // (~2 MB base64) — over Next's 1 MB default — so raise the limit with headroom.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
+  images: {
+    // User caricature avatars are stored as public Vercel Blob objects.
+    remotePatterns: [
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+    ],
+  },
   async headers() {
     return [
       {

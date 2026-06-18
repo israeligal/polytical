@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { GroupVoteStancesView } from "@/app/lib/groups/stance-service";
 import { groupLabel } from "@/lib/group-display";
 import { FALLBACK_HANDLE } from "@/app/lib/onboarding/handle";
+import { UserAvatar } from "@/components/user-avatar";
 
 /**
  * "איך הקואליציה הצביעה" — per the viewer's sharing groups, fellow consenting
@@ -26,7 +27,10 @@ export function GroupVoteStances({ groups }: { groups: GroupVoteStancesView[] })
           <ul className="space-y-2">
             {stances.map((s) => (
               <li key={s.userId} className="flex items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate text-foreground"><bdi>@{s.handle ?? FALLBACK_HANDLE}</bdi></span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <UserAvatar size="xs" caricatureUrl={s.caricatureUrl} handle={s.handle} />
+                  <bdi className="truncate text-foreground">@{s.handle ?? FALLBACK_HANDLE}</bdi>
+                </span>
                 <span
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                     s.stance === "for" ? "bg-positive/15 text-positive" : "bg-negative/15 text-negative"

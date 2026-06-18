@@ -1,5 +1,6 @@
 import type { LeaderboardEntry } from "@/lib/leaderboard";
 import { formatCount } from "@/lib/format";
+import { UserAvatar } from "@/components/user-avatar";
 
 export function LeaderboardRow({
   entry,
@@ -17,12 +18,7 @@ export function LeaderboardRow({
       <span className={`nums w-7 text-center font-display text-lg ${you ? "text-primary" : "text-muted-foreground"}`}>
         {entry.rank}
       </span>
-      <span
-        aria-hidden="true"
-        className="grid h-9 w-9 place-items-center rounded-full bg-muted font-bold text-foreground ring-1 ring-border"
-      >
-        {entry.handle[0]?.toUpperCase() ?? "?"}
-      </span>
+      <UserAvatar size="sm" caricatureUrl={entry.caricatureUrl ?? null} handle={entry.handle} />
       <span className="flex-1 truncate font-semibold text-foreground">
         <bdi>@{entry.handle}</bdi>
         {you && <span className="text-muted-foreground"> · אתה</span>}

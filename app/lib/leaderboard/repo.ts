@@ -23,6 +23,7 @@ export interface LeaderboardEntry {
   rank: number;
   userId: string;
   handle: string;
+  caricatureUrl: string | null;
   totalWins: number;
   totalResolved: number;
   accuracy: number; // 0–100
@@ -68,6 +69,7 @@ export async function getLeaderboard({
     .select({
       userId: users.id,
       handle: users.handle,
+      caricatureUrl: users.caricatureUrl,
       totalWins: users.totalWins,
       totalResolved: users.totalResolved,
       accuracy: accuracyExpr,
@@ -80,6 +82,7 @@ export async function getLeaderboard({
     rank: i + 1,
     userId: r.userId,
     handle: r.handle ?? FALLBACK_HANDLE,
+    caricatureUrl: r.caricatureUrl ?? null,
     totalWins: r.totalWins,
     totalResolved: r.totalResolved,
     accuracy: r.accuracy,
