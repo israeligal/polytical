@@ -53,3 +53,4 @@ next-env.d.ts
 
 # Local git worktrees (full checkouts, never part of the repo)
 .claude/worktrees/
+.subagent-runs/
