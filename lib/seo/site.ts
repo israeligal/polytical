@@ -2,7 +2,7 @@
 // sitemap, robots and metadata block imports from here so the canonical origin
 // and brand identity can never drift across surfaces.
 
-export const SITE_URL = "https://polytical.co.il";
+export const SITE_URL = "https://www.polytical.co.il";
 export const SITE_NAME = "פוליטיקל";
 export const SITE_TAGLINE = "זירת התחזיות של הפוליטיקה הישראלית";
 export const SITE_CONTACT_EMAIL = "contact@polytical.co.il";
