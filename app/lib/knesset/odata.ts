@@ -6,9 +6,12 @@ import type { ODataPage } from "./odata-types";
 export const PARLIAMENT_BASE = "https://knesset.gov.il/Odata/ParliamentInfo.svc/";
 
 /**
- * The current Knesset number — single source of truth for the ingest filters AND the
- * "current term" UI label, so they never drift. Verified current 2026-06-11 (no K26
- * bills exist). Bump this one line when the 26th Knesset is seated.
+ * The current Knesset number: single source of truth for the executable term filters
+ * (roster/bills/laws ingest, check-roster, agenda curate, politician activity split) and
+ * the politician-page term label. NOTE: not all user-facing term copy tracks it; several
+ * marketing/guide pages hardcode the term (see the runbook). Verified current 2026-06-11
+ * (no K26 bills exist). K26 cutover is a checklist, not one line:
+ * docs/runbooks/election-k26-cutover.md.
  */
 export const CURRENT_KNESSET = 25;
 

@@ -38,7 +38,7 @@ async function classify(): Promise<void> {
   `);
   logger.info("votes.enrich.classified_bills", { rows: billsRes.count ?? 0 });
 
-  // agenda motions: K25 KNS_Agenda ids (a few thousand — pages fine)
+  // legacy K25 backfill: scope is the term being classified, NOT the current term (widen at K26 cutover)
   const agendas = await fetchAll<KnsAgenda>({ entity: "KNS_Agenda", filter: "KnessetNum eq 25" });
   let agendaRows = 0;
   for (const batch of chunk(agendas.map((a) => a.AgendaID), 500)) {
