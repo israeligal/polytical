@@ -13,7 +13,7 @@ You build ONE LLM-SEO content page for Polytical (פוליטיקל). Hebrew, RTL
 1. `app/guides/<slug>/page.tsx`
 2. `app/guides/<slug>/<slug>-jsonld.ts`  (e.g. `elections-2026-jsonld.ts`)
 
-The `*-jsonld.ts` MUST contain, as literal text (an audit greps these tokens in this file): `"@type": "Article"`, `"@type": "FAQPage"`, `dateModified: "2026-09-14"`, and `buildBreadcrumbJsonLd(...)`. Define the FAQ once as `FaqItem[]` and use it in BOTH the FAQPage `mainEntity.map(...)` and the page's `<Faq items={...}>`. `datePublished` and `dateModified` = `"2026-09-14"`.
+The `*-jsonld.ts` MUST contain, as literal text (an audit greps these tokens in this file): `"@type": "Article"`, `"@type": "FAQPage"`, `dateModified: "2026-09-14"`, and `buildBreadcrumbJsonLd(...)`. Every `/guides/*` breadcrumb uses the SAME two-level trail: `trail: [{ name: "מדריכים", path: "/site-index" }, { name: "<short leaf>", path: "/guides/<slug>" }]`. Define the FAQ once as `FaqItem[]` and use it in BOTH the FAQPage `mainEntity.map(...)` and the page's `<Faq items={...}>`. `datePublished` and `dateModified` = `"2026-09-14"`.
 
 ## Page structure (the sandwich — same order as the pilot)
 

@@ -67,5 +67,8 @@ export const elections2026FaqJsonLd = {
 } as const;
 
 export const elections2026BreadcrumbJsonLd = buildBreadcrumbJsonLd({
-  trail: [{ name: "תחזיות לבחירות 2026", path: "/guides/elections-2026" }],
+  trail: [
+    { name: "מדריכים", path: "/site-index" },
+    { name: "תחזיות לבחירות 2026", path: "/guides/elections-2026" },
+  ],
 });
