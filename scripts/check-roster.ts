@@ -1,5 +1,6 @@
 import { isNotNull } from "drizzle-orm";
 import { db } from "@/app/lib/db";
+import { CURRENT_KNESSET } from "@/app/lib/knesset/odata";
 import { politicians } from "@/app/lib/schema";
 import { PARTY_LEADER_PERSON_IDS } from "@/lib/rarity";
 
@@ -10,7 +11,7 @@ import { PARTY_LEADER_PERSON_IDS } from "@/lib/rarity";
 // Run: pnpm check:roster   (exit 1 on findings, so preflight/CI can gate)
 
 const ODATA = "https://knesset.gov.il/Odata/ParliamentInfo.svc";
-const K = 25;
+const K = CURRENT_KNESSET;
 
 // PositionIDs that mean "holds a seat / serves now" (KNS_Position):
 // 39/57 שר/שרה · 40/59 סגן/ית שר · 43/61 חבר/ת הכנסת · 45 ראש הממשלה
@@ -24,7 +25,7 @@ interface OpenPosition {
   PositionID: number;
 }
 
-/** Page through all OPEN (FinishDate eq null) K25 positions. */
+/** Page through all OPEN (FinishDate eq null) current-Knesset positions. */
 async function fetchOpenPositions(): Promise<OpenPosition[]> {
   const rows: OpenPosition[] = [];
   let url =
@@ -127,7 +128,7 @@ async function main() {
     if (!r?.active) findings.push(`curated party leader is not active: ${pid} ${r?.nameHe ?? "(missing row)"}`);
   }
 
-  console.log(`open K25 positions: ${open.length} · officially serving: ${officialServing.size} · DB active: ${dbRows.filter((r) => r.active).length}`);
+  console.log(`open K${K} positions: ${open.length} · officially serving: ${officialServing.size} · DB active: ${dbRows.filter((r) => r.active).length}`);
   if (findings.length) {
     console.log(`\n❌ ${findings.length} finding(s):`);
     for (const f of findings) console.log(`   ${f}`);
