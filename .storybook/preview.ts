@@ -1,6 +1,13 @@
 import type { Decorator, Preview } from "@storybook/nextjs-vite";
 import "../app/globals.css";
 
+// TEMP (product-review capture only): server-action imports drag Node globals into the
+// Vite browser bundle; stub Buffer so module-eval doesn't ReferenceError before render.
+import { Buffer as _NodeBuffer } from "buffer";
+const _g = globalThis as unknown as { Buffer?: unknown; global?: unknown };
+if (typeof _g.Buffer === "undefined") _g.Buffer = _NodeBuffer;
+if (typeof _g.global === "undefined") _g.global = globalThis;
+
 /**
  * RTL + Hebrew is the product baseline (see AGENTS.md "Styling, design system &
  * RTL"). Storybook does not run `next/font`, so the `--font-*` CSS variables
