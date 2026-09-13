@@ -47,11 +47,13 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} · ${SITE_TAGLINE}`,
     description: "זירת תחזיות חינמית על הפוליטיקה הישראלית. בחרו תוצאה, צברו דיוק, עקבו אחרי הצבעות הכנסת.",
     locale: "he_IL",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: SITE_NAME }],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} · ${SITE_TAGLINE}`,
     description: "זירת תחזיות חינמית על הפוליטיקה הישראלית. בחרו תוצאה, צברו דיוק, עקבו אחרי הצבעות הכנסת.",
+    images: ["/icons/icon-512.png"],
   },
   // Installed-app look on iOS (without this, Add-to-Home-Screen renders in Safari chrome).
   appleWebApp: {
