@@ -25,6 +25,7 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
 
   const session = await getSession();
   const isLoggedIn = Boolean(session?.user);
+  const viewerIsChallenger = session?.user?.id === challenge.challengerUserId;
   const positions = session?.user
     ? await getUserPositions({ userId: session.user.id, marketId: challenge.marketId })
     : [];
@@ -69,9 +70,10 @@ export default async function DuelPage({ params }: { params: Promise<{ token: st
       token={token}
       market={market}
       challenger={{ handle: challenge.challengerHandle, pickedOutcomeId: challenge.challengerOutcomeId }}
-      you={isLoggedIn ? { handle: session!.user.handle ?? FALLBACK_HANDLE } : undefined}
+      you={isLoggedIn && !viewerIsChallenger ? { handle: session!.user.handle ?? FALLBACK_HANDLE } : undefined}
       crowd={crowd}
       myPickId={myPickId}
+      isOwnDuel={viewerIsChallenger}
       resolution={resolution}
       isLoggedIn={isLoggedIn}
       loginHref={`/login?callbackUrl=${encodeURIComponent(`/duel/${token}`)}`}

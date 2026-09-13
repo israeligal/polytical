@@ -44,6 +44,8 @@ export interface DuelArenaProps {
   crowd?: DuelPlayer[];
   /** The viewer's existing pick, if they already played (resumes into the revealed state). */
   myPickId?: string | null;
+  /** The viewer IS the challenger (opened their own link) — show their pick vs an invite, never a self face-off. */
+  isOwnDuel?: boolean;
   /** Set once the market resolved → the arena renders its result state instead of the picker. */
   resolution?: DuelResolution;
   /** Signed in? A logged-out pick routes to signup (accept = signup). */

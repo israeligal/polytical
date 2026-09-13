@@ -39,6 +39,7 @@ export function DuelArena({
   you,
   crowd = [],
   myPickId = null,
+  isOwnDuel = false,
   resolution,
   isLoggedIn = false,
   loginHref = "/login",
@@ -150,11 +151,12 @@ export function DuelArena({
             challengerHandle={challenger.handle}
             challengerAvatar={challenger.caricatureUrl}
             challengerPick={bandPick(challenger.pickedOutcomeId)}
-            youHandle={you?.handle}
-            youAvatar={you?.caricatureUrl}
-            youPick={bandPick(pickedId)}
+            youHandle={isOwnDuel ? undefined : you?.handle}
+            youAvatar={isOwnDuel ? undefined : you?.caricatureUrl}
+            youPick={isOwnDuel ? undefined : bandPick(pickedId)}
             revealed={revealed}
-            agree={revealed && !!challenger.pickedOutcomeId && challenger.pickedOutcomeId === pickedId}
+            ownerView={isOwnDuel}
+            agree={!isOwnDuel && revealed && !!challenger.pickedOutcomeId && challenger.pickedOutcomeId === pickedId}
           />
         </motion.div>
 

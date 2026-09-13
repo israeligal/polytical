@@ -22,6 +22,7 @@ export function VsBand({
   youAvatar,
   youPick,
   revealed,
+  ownerView,
   agree,
 }: {
   challengerHandle: string;
@@ -31,6 +32,8 @@ export function VsBand({
   youAvatar?: string | null;
   youPick?: BandPick;
   revealed: boolean;
+  /** The viewer is the challenger: end side is an "invite an opponent" slot, no verdict. */
+  ownerView?: boolean;
   /** When both have picked: did they land on the same side? */
   agree?: boolean;
 }) {
@@ -71,7 +74,7 @@ export function VsBand({
           <span className="relative font-display text-lg leading-none sm:text-xl">VS</span>
         </motion.div>
         <AnimatePresence>
-          {revealed && (
+          {revealed && !ownerView && (
             <motion.span
               key={agree ? "agree" : "clash"}
               initial={{ opacity: 0, y: 4 }}
@@ -89,10 +92,11 @@ export function VsBand({
         avatar={youAvatar}
         ringClassName="ring-primary/70"
         glow="mint"
-        roleLabel="אתה/את"
+        roleLabel={ownerView ? "יריב/ה" : "אתה/את"}
         pick={revealed ? youPick : undefined}
-        masked={!youPick && !revealed}
+        masked={!youPick && !revealed && !ownerView}
         emptyYou={!youHandle && !youPick}
+        emptyLabel={ownerView ? "מחכה ליריב/ה" : undefined}
       />
     </div>
   );
@@ -107,6 +111,7 @@ function PlayerSide({
   pick,
   masked,
   emptyYou,
+  emptyLabel,
 }: {
   handle?: string | null;
   avatar?: string | null;
@@ -116,6 +121,7 @@ function PlayerSide({
   pick?: BandPick;
   masked: boolean;
   emptyYou?: boolean;
+  emptyLabel?: string;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center gap-2 rounded-card border border-border bg-card/70 p-3 backdrop-blur-sm">
@@ -129,7 +135,7 @@ function PlayerSide({
       />
       <span className="text-[11px] font-bold uppercase tracking-wide text-text-low">{roleLabel}</span>
       <bdi className="max-w-full truncate text-sm font-extrabold text-foreground">
-        {emptyYou ? "אתה?" : `@${(handle ?? "").replace(/^@/, "")}`}
+        {emptyYou ? (emptyLabel ?? "אתה?") : `@${(handle ?? "").replace(/^@/, "")}`}
       </bdi>
 
       {/* pick chip — masked "?" until revealed, then the chosen side flips up */}

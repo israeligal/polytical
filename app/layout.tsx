@@ -6,6 +6,9 @@ import { SiteHeader } from "@/components/site-header";
 import { THEME_COOKIE, resolveTheme, type Theme } from "@/lib/theme";
 import { ServiceWorkerRegistration } from "@/components/pwa/sw-register";
 import { PwaInstall } from "@/components/pwa/pwa-install";
+import { JsonLd } from "@/components/seo/json-ld";
+import { organizationJsonLd, webApplicationJsonLd } from "./site-jsonld";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE } from "@/lib/seo/site";
 
 // Display — Secular One: heavy Hebrew display face for headlines + big odds.
 const secularOne = Secular_One({
@@ -27,9 +30,29 @@ const rubik = Rubik({
 });
 
 export const metadata: Metadata = {
-  title: "פוליטיקל — זירת התחזיות של הפוליטיקה הישראלית",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} · ${SITE_TAGLINE}`,
+    template: `%s | ${SITE_NAME}`,
+  },
   description:
-    "תנו מנדט על הפוליטיקה הישראלית — בחרו תוצאה בכל תחזית, עקבו אחרי כמה צדקתם, ובדקו איזה פוליטיקאי מבצע כמוכם במליאה.",
+    "תנו מנדט על הפוליטיקה הישראלית: בחרו תוצאה בכל תחזית, עקבו אחרי כמה צדקתם, ובדקו איזה חבר כנסת מצביע כמוכם במליאה. חינם, בלי כסף אמיתי.",
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} · ${SITE_TAGLINE}`,
+    description: "זירת תחזיות חינמית על הפוליטיקה הישראלית. בחרו תוצאה, צברו דיוק, עקבו אחרי הצבעות הכנסת.",
+    locale: "he_IL",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} · ${SITE_TAGLINE}`,
+    description: "זירת תחזיות חינמית על הפוליטיקה הישראלית. בחרו תוצאה, צברו דיוק, עקבו אחרי הצבעות הכנסת.",
+  },
   // Installed-app look on iOS (without this, Add-to-Home-Screen renders in Safari chrome).
   appleWebApp: {
     capable: true,
@@ -74,6 +97,8 @@ export default async function RootLayout({
         {children}
         <ServiceWorkerRegistration />
         <PwaInstall />
+        <JsonLd payload={organizationJsonLd} />
+        <JsonLd payload={webApplicationJsonLd} />
       </body>
     </html>
   );

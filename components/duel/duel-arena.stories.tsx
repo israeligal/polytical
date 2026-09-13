@@ -58,6 +58,11 @@ export const AlreadyPlayed: Story = {
   args: { market: closeBet, challenger, you, crowd, isLoggedIn: true, myPickId: "yes" },
 };
 
+/** Challenger opened their OWN link — shows their pick vs a "waiting for opponent" slot, never a self face-off. */
+export const OwnDuel: Story = {
+  args: { market: closeBet, challenger, you, crowd, isLoggedIn: true, myPickId: "no", isOwnDuel: true },
+};
+
 /** A multi-option duel — sides render as stacked, color-coded party rows. */
 export const MultiOption: Story = {
   args: {
