@@ -62,6 +62,12 @@ export const PAGES = {
     summary:
       "דו-קרב הוא תחזית ראש בראש על שאלה אחת: שולחים קישור אתגר לחבר, כל אחד בוחר תוצאה, ומי שצדק כשהשאלה נסגרת מנצח.",
   },
+  "/guides/elections-2026": {
+    title: "תחזיות לבחירות 2026 בישראל",
+    href: "/guides/elections-2026",
+    summary:
+      "לקראת מערכת הבחירות, פוליטיקל פותחת שאלות תחזית על התוצאות: מי יוביל, אילו מפלגות יעברו את אחוז החסימה, ואיזו קואליציה תיתכן. בלי כסף אמיתי.",
+  },
   "/site-index": {
     title: "מפת האתר של פוליטיקל",
     href: "/site-index",
@@ -73,15 +79,16 @@ export type PageSlug = keyof typeof PAGES;
 
 // 3-5 topically-tight siblings per page (used by <RelatedPages>).
 export const RELATED: Record<PageSlug, PageSlug[]> = {
-  "/about": ["/guides/how-it-works", "/guides/who-is-it-for", "/guides/knesset-votes"],
+  "/about": ["/guides/how-it-works", "/guides/who-is-it-for", "/guides/knesset-votes", "/guides/elections-2026"],
   "/guides/how-it-works": ["/about", "/guides/who-is-it-for", "/guides/cards", "/guides/duels"],
   "/guides/who-is-it-for": ["/about", "/guides/how-it-works", "/guides/is-it-free"],
-  "/guides/knesset-votes": ["/guides/mk-match", "/about", "/guides/coalitions"],
+  "/guides/knesset-votes": ["/guides/mk-match", "/about", "/guides/elections-2026"],
   "/guides/mk-match": ["/guides/knesset-votes", "/guides/coalitions", "/guides/how-it-works"],
   "/guides/coalitions": ["/guides/duels", "/guides/mk-match", "/guides/who-is-it-for"],
   "/guides/cards": ["/guides/how-it-works", "/about", "/guides/mk-match"],
   "/guides/is-it-free": ["/about", "/guides/who-is-it-for", "/guides/how-it-works"],
   "/guides/duels": ["/guides/coalitions", "/guides/how-it-works", "/guides/cards"],
+  "/guides/elections-2026": ["/about", "/guides/how-it-works", "/guides/knesset-votes", "/guides/mk-match"],
   "/site-index": ["/about", "/guides/how-it-works", "/guides/knesset-votes"],
 };
 
@@ -90,6 +97,10 @@ export const TOPICS: { heading: string; slugs: PageSlug[] }[] = [
   {
     heading: "התחלה",
     slugs: ["/about", "/guides/how-it-works", "/guides/who-is-it-for", "/guides/is-it-free"],
+  },
+  {
+    heading: "לקראת הבחירות",
+    slugs: ["/guides/elections-2026"],
   },
   {
     heading: "המשחק",

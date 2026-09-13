@@ -83,12 +83,13 @@ export function Bullets({ items }: { items: ReactNode[] }) {
   );
 }
 
-// Key Takeaways: 3-5 declarative, quotable bullets at the end of the body. The
-// heading text is what the SEO audit greps for, keep it as-is.
-export function KeyTakeaways({ items }: { items: ReactNode[] }) {
+// Key Takeaways: 3-5 declarative, quotable bullets at the end of the body.
+// `title` is required (pass "עיקרי הדברים") so the audited heading token lives
+// literally in each page.tsx, not only here in the component.
+export function KeyTakeaways({ title, items }: { title: string; items: ReactNode[] }) {
   return (
     <section className="mb-10 rounded-card border border-border bg-muted p-6">
-      <h2 className="mb-3 font-display text-2xl font-bold text-foreground">עיקרי הדברים</h2>
+      <h2 className="mb-3 font-display text-2xl font-bold text-foreground">{title}</h2>
       <ul className="ms-5 list-disc space-y-2 leading-relaxed text-foreground">
         {items.map((item, i) => (
           <li key={i}>{item}</li>
