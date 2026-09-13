@@ -18,7 +18,7 @@ These skills were gathered from four sibling projects (`dirot`, `shift-manager-s
 | `analytics` | gcg-platform | Pattern ports; references RudderStack→PostHog + GA4. Swap to Polytical's chosen pipeline. |
 | `observability-alerts` | gcg-platform | Pattern ports (Slack alerts, cron heartbeats, `/api/health`). Re-point vendor + channels. |
 | `support-email` | gcg-platform | Use the transactional-email half (React Email templates); Slack inbound bridge optional. |
-| `seo` | gcg-marketing | Drop-in. Swap the "not a law firm" legal section for Polytical's play-money/no-financial-advice disclaimer. |
+| `seo` | gcg-marketing | **Reskinned for Polytical (2026-09-14).** Rewritten from the GCG carry-over to point at the built marketing layer (`lib/seo`, `components/seo`, robots/sitemap/llms.txt, `/about` + `/guides/*`); play-money/no-financial-advice framing; generic GEO method deferred to the global `llm-seo` skill. See `docs/decisions/llm-seo.md`. |
 | `time-and-timezone` | shift-manager | Concepts for Asia/Jerusalem; impl is date-fns + shift helpers + Prisma — adapt. |
 | `government-data-sources` | dirot | **Template** — content is Israeli real-estate APIs. Keep the *structure* (source table, per-source `references/`, "naming traps"), reskin sources to Polytical's gov sites + curated newsletters. |
 | `data-pipeline` | dirot | **Template** — keep the provenance pattern (`sourceUrl`/`fetchedAt` per row) + Neon batch limits; table list is real-estate. |

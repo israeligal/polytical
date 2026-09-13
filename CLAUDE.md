@@ -55,6 +55,9 @@
 - All v1 user-facing copy is **Hebrew**; times display in **Asia/Jerusalem**, stored as UTC (see `time-and-timezone`).
 - **Loading states**: every route's `loading.tsx` imports a named skeleton from `components/skeletons/` (stories in `skeletons.stories.tsx` — review them against the real page whenever sections change); pages and skeletons share container/grid classes via `components/skeletons/containers.ts`, so the page shape can't drift from its skeleton.
 
+## SEO & marketing pages
+- The `/about` pillar + `/guides/*` content pages + `/site-index`, plus robots/sitemap/`llms.txt` and the shared JSON-LD + section-sandwich kit, live in `lib/seo/` + `components/seo/`. **Load the `seo` skill** (and the global `llm-seo` skill for the method) before touching them or adding a page; build one page per `docs/prompts/marketing-page-agent.md`. `lib/seo/related-pages.ts` `PAGES` is the source of truth for every page title/link. Why: `docs/decisions/llm-seo.md`.
+
 ## Neon / Drizzle specifics
 - Use `prepare: false` for the pgbouncer (pooled) connection; **import the shared `db` client only** — never re-instantiate `neon()`/`drizzle()` per script.
 - Use `drizzle-kit push` in non-interactive/CI shells (`generate` needs a TTY); batch inserts ≈100 rows to stay under Neon's parameter limit. NB: `push` can offer a destructive TTY prompt (e.g. truncate-on-unique-constraint) — when it does, apply the generated migration SQL via a guarded one-off runner instead.
