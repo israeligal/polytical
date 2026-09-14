@@ -78,3 +78,5 @@
 
 ## Recommended guardrail hooks (not yet installed)
 If/when the hookify plugin is enabled here, port these (adapt commands to Polytical): `verify-before-stop` (lint+typecheck), `review-before-push` (`/code-review`), `block-direct-date-imports` (force the central Asia/Jerusalem time module), `block-dynamic-imports`, `block-barrel-imports`. See PROVENANCE for sources.
+
+- **A family of related constants is one structured `as const` object, never a flat prefixed spray** — a set of sibling enum / status / wire-code values is `const FOO_STATUS = { PENDING: 0, DONE: 1 } as const` with a derived union type (`(typeof FOO_STATUS)[keyof typeof FOO_STATUS]`) and `Object.values`-derived membership, not scattered `FOO_STATUS_*` module constants with hand-kept parallel arrays. A lone value stays a lone `const`.
