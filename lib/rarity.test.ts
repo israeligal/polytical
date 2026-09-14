@@ -8,6 +8,19 @@ test("current minister → uncommon (sapphire)", () => {
   expect(statureTierForPolitician({ personId: 999999, role: "שר הביטחון" })).toBe("uncommon");
 });
 
+test("minister construct variants → uncommon", () => {
+  // "השר ל…" (definite + lamed) and feminine "שרת …" are real DutyDesc forms the old regex missed / must keep.
+  expect(statureTierForPolitician({ personId: 999999, role: "השר לביטחון לאומי" })).toBe("uncommon");
+  expect(statureTierForPolitician({ personId: 999999, role: "שרת התחבורה" })).toBe("uncommon");
+  expect(statureTierForPolitician({ personId: 999999, role: "שרת החוץ" })).toBe("uncommon");
+  expect(statureTierForPolitician({ personId: 999999, role: "שר האוצר" })).toBe("uncommon");
+});
+
+test("deputy minister ('סגן השר ל…') and plain MK are NOT a minister tier", () => {
+  expect(statureTierForPolitician({ personId: 999999, role: "סגן השר לביטחון" })).toBe("common");
+  expect(statureTierForPolitician({ personId: 999999, role: "חבר הכנסת" })).toBe("common");
+});
+
 test("current PM → legendary", () => {
   expect(statureTierForPolitician({ personId: 999999, role: "ראש הממשלה" })).toBe("legendary");
 });

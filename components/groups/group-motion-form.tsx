@@ -16,8 +16,8 @@ const FIELD =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
 const LABEL = "mb-1 block text-sm font-bold text-foreground";
 
-/** Post a הצעה לסדר inside a group — mirrors SuggestMarketForm, minus the
- *  politician picker (group motions are casual). Binary כן/לא by default. */
+/** Post a הצעה לסדר inside a group — no politician picker (group motions are
+ *  casual). Binary כן/לא by default. */
 export function GroupMotionForm({
   groupId,
   slug,
