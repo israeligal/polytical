@@ -75,7 +75,9 @@ function CommunityLine({ community }: { community: AgendaCommunity }) {
   if (community.forPct == null) {
     return (
       <span className="text-xs text-muted-foreground">
-        {community.total > 0 ? `${community.total} עמדות עד כה — היו הראשונים לחשוף את הרוב` : "טרם נקבעו עמדות — קבעו ראשונים"}
+        {community.total > 0
+          ? `${community.total} עמדות עד כה · הוסיפו עמדה כדי לחשוף את הרוב`
+          : "טרם נקבעו עמדות · קבעו ראשונים"}
       </span>
     );
   }

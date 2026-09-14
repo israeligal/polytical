@@ -8,7 +8,7 @@ import { catTint } from "@/lib/cat";
 import { AgendaSplitBar, InitiatorCluster, type AgendaCommunity, type AgendaStance } from "@/components/agenda-card";
 import { BillLineage } from "@/components/bill-lineage";
 import { CategoryBadge, HotBadge } from "@/components/badges";
-import { OddsBar } from "@/components/odds-bar";
+import { OddsBar, ODDS_EMPTY } from "@/components/odds-bar";
 import { PoliticianPortrait } from "@/components/politician-portrait";
 import { StatusChip } from "@/components/status-chip";
 import { VoteTotalsBar } from "@/components/vote-totals-bar";
@@ -62,33 +62,40 @@ export function HeroSpotlight({
       {market.type === "binary" ? (
         <OddsBar market={market} />
       ) : (
-        <ul className="overflow-hidden rounded-lg border border-border">
-          {top.map((o) => {
-            const politician =
-              o.personId != null ? byPersonId.get(String(o.personId)) : undefined;
-            return (
-              <li
-                key={o.id}
-                className="relative overflow-hidden border-b border-border last:border-b-0"
-              >
-                <div
-                  aria-hidden
-                  className={`absolute inset-y-0 start-0 transition-[width] duration-500 ease-out ${catTint[o.color ?? 1]}`}
-                  style={{ width: `${pct(o.predictors, total)}%` }}
-                />
-                <div className="relative flex items-center gap-3 px-3.5 py-2.5">
-                  {politician && <PoliticianPortrait politician={politician} size="sm" />}
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-foreground">
-                    {o.label}
-                  </span>
-                  <span className="nums shrink-0 font-display text-xl font-black text-foreground">
-                    {pctLabel(o.predictors, total)}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          <ul className="overflow-hidden rounded-lg border border-border">
+            {top.map((o) => {
+              const politician =
+                o.personId != null ? byPersonId.get(String(o.personId)) : undefined;
+              return (
+                <li
+                  key={o.id}
+                  className="relative overflow-hidden border-b border-border last:border-b-0"
+                >
+                  <div
+                    aria-hidden
+                    className={`absolute inset-y-0 start-0 transition-[width] duration-500 ease-out ${catTint[o.color ?? 1]}`}
+                    style={{ width: `${pct(o.predictors, total)}%` }}
+                  />
+                  <div className="relative flex items-center gap-3 px-3.5 py-2.5">
+                    {politician && <PoliticianPortrait politician={politician} size="sm" />}
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-foreground">
+                      {o.label}
+                    </span>
+                    {total > 0 && (
+                      <span className="nums shrink-0 font-display text-xl font-black text-foreground">
+                        {pctLabel(o.predictors, total)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {total === 0 && (
+            <p className="mt-2 text-sm font-semibold text-muted-foreground">{ODDS_EMPTY}</p>
+          )}
+        </>
       )}
       {rest > 0 && (
         <p className="nums mt-2 text-sm font-bold text-muted-foreground">
@@ -268,8 +275,8 @@ export function AgendaHeroSpotlight({
       ) : (
         <p className="text-sm text-muted-foreground">
           {community.total > 0
-            ? `${community.total} אנשים כבר קבעו עמדה — הצטרפו וגלו את הרוב`
-            : "טרם נקבעו עמדות — היו הראשונים לקבוע עמדה לפני ההצבעה"}
+            ? `${community.total} אנשים כבר קבעו עמדה · הצטרפו וגלו את הרוב`
+            : "טרם נקבעו עמדות · היו הראשונים לקבוע עמדה לפני ההצבעה"}
         </p>
       )}
 

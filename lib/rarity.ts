@@ -62,7 +62,8 @@ function isMinisterRole(role: string): boolean {
   // Exclude deputies — both masculine "סגן" (final nun ן) and feminine/plural
   // "סגנית"/"סגני" (regular nun נ). `/סגן/` alone misses "סגנית".
   if (/סג[ןנ]/.test(role)) return false; // deputy minister / deputy speaker
-  return /^שר|\bשר\b|שרה|יושב.?ראש הכנסת|יו״ר הכנסת/.test(role);
+  // ^ה?שר[ הת] covers "שר ה…" / "השר ל…" (space), "השרה" (ה) and feminine "שרת…" (ת); JS \b never matches inside Hebrew.
+  return /^ה?שר[ הת]|יושב.?ראש הכנסת|יו״ר הכנסת/.test(role);
 }
 
 /**

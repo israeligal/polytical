@@ -2,6 +2,21 @@ import type { Market } from "@/lib/types";
 import { pct, pctLabel } from "@/lib/format";
 import { catBg } from "@/lib/cat";
 
+export const ODDS_EMPTY = "טרם נרשמו תחזיות";
+
+/** Shown when a market has no predictors yet — status-neutral (renders on closed markets too). */
+export function OddsBarEmpty() {
+  return (
+    <div
+      role="img"
+      aria-label={ODDS_EMPTY}
+      className="flex h-10 items-center justify-center rounded-[12px] border border-dashed border-border bg-muted/40 px-3 text-sm font-semibold text-muted-foreground"
+    >
+      {ODDS_EMPTY}
+    </div>
+  );
+}
+
 /**
  * The signature component: the YES/NO crowd split. Binary renders one split bar —
  * mint YES segment (at the start/right in RTL) vs coral NO segment — with the
@@ -12,6 +27,8 @@ import { catBg } from "@/lib/cat";
 export function OddsBar({ market, compact = false }: { market: Market; compact?: boolean }) {
   const total = market.outcomes.reduce((sum, o) => sum + o.predictors, 0);
 
+  if (total === 0) return <OddsBarEmpty />;
+
   if (market.type === "binary") {
     const [yes, no] = market.outcomes;
     const yp = pct(yes.predictors, total);
@@ -19,16 +36,18 @@ export function OddsBar({ market, compact = false }: { market: Market; compact?:
     return (
       <div className="flex h-10 overflow-hidden rounded-[12px] border border-border">
         <div
-          className="flex min-w-[54px] items-center bg-positive px-3 text-sm font-extrabold text-primary-foreground transition-[width] duration-500 ease-out"
+          className="flex min-w-[64px] items-center gap-1 bg-positive px-3 text-sm font-extrabold text-primary-foreground transition-[width] duration-500 ease-out"
           style={{ width: `${yp}%` }}
         >
-          <span className="nums truncate">{yes.label} {yp}%</span>
+          <span className="truncate">{yes.label}</span>
+          <span className="nums shrink-0 whitespace-nowrap">{yp}%</span>
         </div>
         <div
-          className="flex min-w-[54px] items-center justify-end bg-negative px-3 text-sm font-extrabold text-primary-foreground transition-[width] duration-500 ease-out"
+          className="flex min-w-[64px] items-center justify-end gap-1 bg-negative px-3 text-sm font-extrabold text-primary-foreground transition-[width] duration-500 ease-out"
           style={{ width: `${np}%` }}
         >
-          <span className="nums truncate">{no.label} {np}%</span>
+          <span className="truncate">{no.label}</span>
+          <span className="nums shrink-0 whitespace-nowrap">{np}%</span>
         </div>
       </div>
     );
@@ -57,7 +76,7 @@ export function OddsBar({ market, compact = false }: { market: Market; compact?:
             </span>
           ))}
           {sorted.length > 2 && (
-            <span className="nums ms-1.5 font-bold">‎+{sorted.length - 2}</span>
+            <span className="ms-1.5 font-bold">ועוד {sorted.length - 2}</span>
           )}
         </p>
       ) : (
